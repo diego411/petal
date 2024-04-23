@@ -27,11 +27,12 @@ def update():
         predictions = query_model.classify(file_path)
     except Exception as e:
         logging.error(traceback.format_exc())
+        return "bad request", 400
     finally:
         os.remove(file_path)
 
     print(predictions)
-    return "ok"
+    return jsonify(predictions), 200
 
 @app.route('/classify', methods=['POST'])
 def classify():

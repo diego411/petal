@@ -1,0 +1,44 @@
+URL = "http://192.168.178.42:5000/update"
+const ADC_PIN = C_PIN_06        # ACD input on IN06
+
+const THRESHOLD = 300000
+bucket:int[THRESHOLD]
+
+current:int = 0
+
+def to_json(list:int[]) -> string
+    n:int = sizeof(list)
+
+    out:string
+    out.add("{")
+    out.add("\"voltages\"")
+    out.add(": [")
+    i = 0
+    for element in list:
+        out.addInt(element)
+        if i < n - 1:
+            out.add(",")
+        i = i + 1
+
+    out.add("] }")
+    return out
+
+def onDraw():
+    bucket[current] = readADC(ADC_PIN, 10)
+    print(current)
+    current = current + 1
+    if current >= THRESHOLD:
+        current = 0
+        print("sending request")
+        body = to_json(bucket)
+        clear()
+        addRequestHeader("Content-Type", "application/json")
+        print(body.buf)
+        if (postRequest(URL, body.buf)):
+            drawText(10, 10,"ok")
+            print("ok")
+        else:
+            drawText(10, 10,"error")
+            print("error")
+        update()
+    #delay(500)

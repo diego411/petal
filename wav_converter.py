@@ -4,9 +4,6 @@ import scipy.io.wavfile as wav
 import random
 
 def convert(voltages):
-    voltages = []
-    for _ in range(10000 * 100): 
-        voltages.append(random.uniform(0, 1))
     # Assuming the voltage measurements range from 0 to 1, map them to audio samples (-1 to 1)
     audio_samples = np.array(voltages) * 2 - 1
 
