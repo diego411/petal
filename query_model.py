@@ -1,3 +1,5 @@
+from typing import Dict, Union
+
 import tensorflow as tf
 import numpy as np
 from scipy.io import wavfile
@@ -6,14 +8,15 @@ import os
 parameters = {}
 model = {}
 
+
 def classify(path_to_data: str):
     dataset = create_dataset(path_to_data, parameters)
     return run_inference(dataset)
 
 
 def run_inference(
-    dataset: tf.data.Dataset
-) -> None:
+        dataset: tf.data.Dataset
+) -> Dict[str, Union[int, str]]:
     """
     Run inference on a plant dataset.
 
@@ -23,26 +26,31 @@ def run_inference(
     emotions = ["anger", "surprise", "disgust", "joy", "fear", "sadness", "neutral"]
     predictions = {}
     results = model.predict(dataset)
-    #print(results)
     emotion_ids = np.argmax(results, axis=1)
     print(results.shape)
-    unique_emotions_ids = np.unique(emotion_ids, return_counts=True) 
+    unique_emotions_ids = np.unique(emotion_ids, return_counts=True)
+    highest_val = 0
+    main_emotion = ""
     for i, emotion in enumerate(emotions):
         emotion_index = find_first_index(unique_emotions_ids[0], i)
-        predictions[emotion] = int(unique_emotions_ids[1][emotion_index]) if emotion_index > -1 else 0
+        val = int(unique_emotions_ids[1][emotion_index]) if emotion_index > -1 else 0
+        if val > highest_val:
+            highest_val = val
+            main_emotion = emotion
+        predictions[emotion] = val
 
     print("{:<10} {:<10}".format('Emotion', '#Occurrences'))
     for key, value in predictions.items():
         print("{:<10} {:<10}".format(key, value))
-    
+    predictions["current_emotion"] = main_emotion
     return predictions
+
 
 def find_first_index(array: np.ndarray, element) -> int:
     all_indexes = np.where(array == element)[0]
     if len(all_indexes) == 0:
         return -1
     return all_indexes[0]
-
 
 
 def create_dataset(file_path: str, parameters: dict) -> tf.data.Dataset:
@@ -71,7 +79,7 @@ def create_dataset(file_path: str, parameters: dict) -> tf.data.Dataset:
 
 
 def get_data_generator(
-    data: np.ndarray, sample_rate: int, parameters: dict
+        data: np.ndarray, sample_rate: int, parameters: dict
 ):
     """
     Generator that generates the data
@@ -89,12 +97,13 @@ def get_data_generator(
     def generator():
         for second in range(window, int(data.shape[0] / sample_rate), hop):
             sample = np.reshape(
-                data[(second - window) * sample_rate : second * sample_rate],
+                data[(second - window) * sample_rate: second * sample_rate],
                 (-1,),
             )
             yield sample,
 
     return generator
+
 
 def init():
     global parameters
@@ -106,4 +115,5 @@ def init():
         "hop": 3,
         "save_path": "./model/plant_mfcc_resnet",
     }
+    #tf.config.run_functions_eagerly(True)
     model = tf.keras.models.load_model(parameters['save_path'])

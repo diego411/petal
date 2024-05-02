@@ -1,44 +1,53 @@
-URL = "http://192.168.178.42:5000/update"
+# Constants
 const ADC_PIN = C_PIN_06        # ACD input on IN06
+const THRESHOLD = 5000
 
-const THRESHOLD = 300000
-bucket:int[THRESHOLD]
+# Server Endpoints
+URL = "http://192.168.178.42:5000/"
+UPDATE_URL = URL + "update"
+STATE_URL = URL + "state"
 
-current:int = 0
+# Variables
+i:int = 0
+count:int = 0
+out:byte[20000]
+out = ""
 
-def to_json(list:int[]) -> string
-    n:int = sizeof(list)
+# Draws the current emotional state and time stamp on the screen
+def draw_state():
+    dt:dateTime
+    dt.now()
+    clear()
+    getRequest(STATE_URL)
+    drawText(10, 10, readRequestJSON("current_emotion"))
+    drawText(10, 100, dt.getHour() + ":" + dt.getMinute())
+    update()
 
-    out:string
-    out.add("{")
-    out.add("\"voltages\"")
-    out.add(": [")
-    i = 0
-    for element in list:
-        out.addInt(element)
-        if i < n - 1:
-            out.add(",")
-        i = i + 1
+draw_state()
 
-    out.add("] }")
-    return out
+while(true):
+    voltage = readADC(ADC_PIN, 2)
 
-def onDraw():
-    bucket[current] = readADC(ADC_PIN, 10)
-    print(current)
-    current = current + 1
-    if current >= THRESHOLD:
-        current = 0
-        print("sending request")
-        body = to_json(bucket)
-        clear()
+    hByte = byteToHex(voltage>>8)
+    lByte = byteToHex(voltage&0xFF)
+
+    index = 4*i  # das ist die Startvariable für das Byte-Muster
+    out[index] = hByte[0]
+    out[index+1] = hByte[1]
+    out[index+2] = lByte[0]
+    out[index+3] = lByte[1]
+
+    i = i + 1
+
+    if i >= THRESHOLD:
+        i = 0
+        count = count + 1
+
         addRequestHeader("Content-Type", "application/json")
-        print(body.buf)
-        if (postRequest(URL, body.buf)):
-            drawText(10, 10,"ok")
-            print("ok")
-        else:
-            drawText(10, 10,"error")
-            print("error")
-        update()
-    #delay(500)
+        postRequest(UPDATE_URL, out)
+
+        out = ""
+
+        if count % 60 == 0:
+            count = 0
+            draw_state()

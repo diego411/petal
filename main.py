@@ -9,30 +9,45 @@ import logging
 app = Flask(__name__)
 query_model.init()
 
+bucket = []
+current_emotion = "None"
+
+
 @app.route('/')
 def index():
-    return { "data": "Plant Emotion Classification v0.0.1" }
+    return {"data": "Plant Emotion Classification v0.0.1"}
 
 
 @app.route('/update', methods=['POST'])
 def update():
-    data = request.json
+    global bucket
+    global current_emotion
+    data = request.data
+    bucket = bucket + wav_converter.parse_raw(data)
 
-    if 'voltages' not in data:
-        return "malformed request, not volatages provided", 400
+    if len(bucket) < 300_000:
+        return jsonify({'current_emotion': current_emotion}), 200
 
-    voltages = data['voltages']
-    file_path = wav_converter.convert(voltages)
+    file_path = wav_converter.convert(bucket)
+
     try:
         predictions = query_model.classify(file_path)
     except Exception as e:
         logging.error(traceback.format_exc())
-        return "bad request", 400
+        return "something went wrong getting the predictions from the model", 500
     finally:
         os.remove(file_path)
 
-    print(predictions)
-    return jsonify(predictions), 200
+    current_emotion = predictions['current_emotion']
+    bucket = []
+
+    return jsonify({'current_emotion': current_emotion}), 200
+
+
+@app.route("/state", methods=['GET'])
+def state():
+    return jsonify({'current_emotion': current_emotion})
+
 
 @app.route('/classify', methods=['POST'])
 def classify():
@@ -50,6 +65,6 @@ def classify():
     print(predictions)
     return jsonify(predictions), 200
 
+
 if __name__ == '__main__':
     app.run(debug=True)
-    
