@@ -1,4 +1,5 @@
 venv
 data
 model
+/audio/*.wav
 __pycache__

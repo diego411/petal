@@ -2,6 +2,9 @@ import time
 import numpy as np
 import scipy.io.wavfile as wav
 
+augment_window = 3  # how many values are considered for augmenting a new value
+augment_padding = 100  # how many values are augmented from the window
+
 
 def parse_raw(data):
     data = data[:-3]
@@ -15,6 +18,28 @@ def parse_raw(data):
             continue
 
     return out
+
+
+def augment(voltages):
+    augmented_voltages = []
+    n = len(voltages)
+
+    for i in range(0, n, augment_window):
+        # Get the current window of values
+        current_window = voltages[i:i + augment_window]
+
+        # Calculate the average of the current window
+        if len(current_window) > 0:
+            avg_value = sum(current_window) / len(current_window)
+        else:
+            avg_value = 0  # In case the window is empty
+
+        # Append current window
+        augmented_voltages.extend(current_window)
+        # Append the average value `augment_padding` times
+        augmented_voltages.extend([avg_value] * augment_padding)
+
+    return augmented_voltages
 
 
 def convert(voltages):

@@ -1,0 +1,15 @@
+<svg height="100" width="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Circle for the face -->
+  <circle cx="50" cy="50" r="45" stroke="black" stroke-width="3" fill="blue" />
+  <!-- Left eye -->
+  <circle cx="35" cy="35" r="7" fill="white" />
+  <circle cx="35" cy="35" r="3" fill="black" />
+  <!-- Right eye -->
+  <circle cx="65" cy="35" r="7" fill="white" />
+  <circle cx="65" cy="35" r="3" fill="black" />
+  <!-- Open mouth (scared) -->
+  <ellipse cx="50" cy="70" rx="15" ry="10" stroke="black" stroke-width="3" fill="black" />
+  <!-- Raised eyebrows -->
+  <path d="M 25 25 Q 35 15 45 25" stroke="black" stroke-width="3" fill="transparent" />
+  <path d="M 55 25 Q 65 15 75 25" stroke="black" stroke-width="3" fill="transparent" />
+</svg>

@@ -1,4 +1,5 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
+from flask_socketio import SocketIO, emit
 import query_model
 import wav_converter
 import time
@@ -6,24 +7,33 @@ import os
 import traceback
 import logging
 
+AUDIO_DIR = 'audio'
+LOG_THRESHOLD = 20
+
 app = Flask(__name__)
+socketio = SocketIO(app)
 query_model.init()
 
 bucket = []
-current_emotion = "None"
+current_emotion = "none"
 
 
 @app.route('/')
 def index():
-    return {"data": "Plant Emotion Classification v0.0.1"}
+    return render_template(
+        "index.html",
+        initial_emotion=current_emotion,
+        initial_image_src=os.path.join('static', f"{current_emotion}.svg")
+    )
 
 
 @app.route('/update', methods=['POST'])
 def update():
     global bucket
     global current_emotion
+
     data = request.data
-    bucket = bucket + wav_converter.parse_raw(data)
+    bucket = bucket + wav_converter.augment(wav_converter.parse_raw(data))
 
     if len(bucket) < 300_000:
         return jsonify({'current_emotion': current_emotion}), 200
@@ -36,10 +46,19 @@ def update():
         logging.error(traceback.format_exc())
         return "something went wrong getting the predictions from the model", 500
     finally:
-        os.remove(file_path)
+        log_size = len([name for name in os.listdir(AUDIO_DIR) if os.path.isfile(os.path.join(AUDIO_DIR, name))])
+        if log_size >= LOG_THRESHOLD:
+            os.remove(file_path)
 
     current_emotion = predictions['current_emotion']
     bucket = []
+
+    socketio.emit(
+        'update',
+        {
+            'emotion': current_emotion,
+        }
+    )
 
     return jsonify({'current_emotion': current_emotion}), 200
 
@@ -68,3 +87,4 @@ def classify():
 
 if __name__ == '__main__':
     app.run(debug=True)
+    socketio.run(app, host='0.0.0.0', port=5000)
