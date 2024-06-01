@@ -9,7 +9,7 @@ UPDATE_URL = URL + "update"
 # Variables
 i:int = 0
 count:int = 0
-out:byte[20000]
+out:byte[20001]
 out = ""
 
 print(i)
