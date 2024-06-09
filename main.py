@@ -3,6 +3,7 @@ from flask_socketio import SocketIO, emit
 import query_model
 import wav_converter
 import time
+import datetime
 import os
 import traceback
 import logging
@@ -14,6 +15,7 @@ app = Flask(__name__)
 socketio = SocketIO(app)
 query_model.init()
 
+state_map = {}
 bucket = []
 current_emotion = "none"
 
@@ -25,6 +27,69 @@ def index():
         initial_emotion=current_emotion,
         initial_image_src=os.path.join('static', f"{current_emotion}.svg")
     )
+
+
+@app.route('/start', methods=['POST'])
+def start():
+    global state_map
+    data = request.json
+    if 'user' not in data:
+        return 'Field \"user\" in request body is required', 400
+
+    user = data['user']
+
+    if user in state_map:
+        return 'Recording for this user started already. Stop it first', 400
+
+    now = datetime.datetime.now()
+    state_map[user] = {
+        'start_time': now,
+        'bucket': []
+    }
+
+    return f'Successfully started data collection for {user}', 200
+
+
+@app.route('/update/<user>', methods=['POST'])
+def update_by_name(user):
+    global state_map
+
+    if user not in state_map:
+        return f'The data collection for the user: {user} has not started yet', 400
+
+    data = request.data
+
+    user_bucket = state_map[user]['bucket']
+    user_bucket = user_bucket + wav_converter.augment(wav_converter.parse_raw(data))
+    state_map[user]['bucket'] = user_bucket
+
+    return f'Successful update for: {user}', 200
+
+
+@app.route('/stop', methods=['POST'])
+def stop():
+    global state_map
+
+    data = request.json
+    user = data['user']
+
+    if user not in state_map:
+        return 'Not recording in progress for this user.', 400
+
+    user_bucket = state_map[user]['bucket']
+    start_time = state_map[user]['start_time']
+    now = datetime.datetime.now()
+    delta_seconds = (now - start_time).seconds
+    sample_rate = int(len(user_bucket) / delta_seconds)
+    wav_converter.convert(
+        user_bucket,
+        sample_rate=sample_rate,
+        path=f'audio/{user}_{start_time.strftime("%d-%m-%Y_%H:%M:%S")}_{sample_rate}Hz.wav'
+    )
+
+    del state_map[user]
+
+    return f'Data collection for user: {user} successfully stopped and file saved.', 200
 
 
 @app.route('/update', methods=['POST'])
@@ -63,9 +128,18 @@ def update():
     return jsonify({'current_emotion': current_emotion}), 200
 
 
-@app.route("/state", methods=['GET'])
+@app.route('/state', methods=['GET'])
 def state():
     return jsonify({'current_emotion': current_emotion})
+
+
+@app.route('/state/<user>', methods=['GET'])
+def user_state(user):
+    global state_map
+    if user not in state_map:
+        return f'No data collection in progress for user: {user}', 400
+
+    return jsonify(state_map[user]), 200
 
 
 @app.route('/classify', methods=['POST'])

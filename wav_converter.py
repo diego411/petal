@@ -42,20 +42,19 @@ def augment(voltages):
     return augmented_voltages
 
 
-def convert(voltages):
+def convert(voltages, sample_rate=10_000, path=None):
     # Assuming the voltage measurements range from 0 to 1, map them to audio samples (-1 to 1)
     audio_samples = np.array(voltages) * 2 - 1
 
     # Scale the audio samples to fit within the valid range for 16-bit audio (-32768 to 32767)
     scaled_audio_samples = (audio_samples * 32767).astype(np.int16)
 
-    # Set the sample rate
-    sample_rate = 10000  # e.g., 44.1 kHz
-
     # Write audio data to a WAV file
     extension = 'wav'
-    date = time.ctime(time.time())
-    file_path = f'audio/plant_audio_{date}.{extension}'
+    file_path = path
+    if file_path is None:
+        date = time.ctime(time.time())
+        file_path = f'audio/plant_audio_{date}.{extension}'
     wav.write(file_path, sample_rate, scaled_audio_samples)
 
     return file_path
