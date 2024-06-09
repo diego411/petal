@@ -91,7 +91,7 @@ def stop():
 
     dropbox_controller.upload_file_to_dropbox(
         file_path=file_path,
-        dropbox_path=f'/{user}/{file_name}'
+        dropbox_path=f'/Data/{user}/{file_name}'
     )
 
     os.remove(file_path)
