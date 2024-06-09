@@ -42,7 +42,7 @@ def augment(voltages):
     return augmented_voltages
 
 
-def convert(voltages, sample_rate=10_000, path=None):
+def convert(voltages, sample_rate=10_000, path=None) -> str:
     # Assuming the voltage measurements range from 0 to 1, map them to audio samples (-1 to 1)
     audio_samples = np.array(voltages) * 2 - 1
 

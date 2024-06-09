@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify, render_template
 from flask_socketio import SocketIO, emit
 import query_model
 import wav_converter
+import dropbox_controller
 import time
 import datetime
 import os
@@ -81,11 +82,19 @@ def stop():
     now = datetime.datetime.now()
     delta_seconds = (now - start_time).seconds
     sample_rate = int(len(user_bucket) / delta_seconds)
-    wav_converter.convert(
+    file_name = f'{user}_{start_time.strftime("%d-%m-%Y_%H:%M:%S")}_{sample_rate}Hz.wav'
+    file_path = wav_converter.convert(
         user_bucket,
         sample_rate=sample_rate,
-        path=f'audio/{user}_{start_time.strftime("%d-%m-%Y_%H:%M:%S")}_{sample_rate}Hz.wav'
+        path=f'audio/{file_name}'
     )
+
+    dropbox_controller.upload_file_to_dropbox(
+        file_path=file_path,
+        dropbox_path=f'/{user}/{file_name}'
+    )
+
+    os.remove(file_path)
 
     del state_map[user]
 
