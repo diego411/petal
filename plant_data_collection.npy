@@ -1,0 +1,321 @@
+USER_NAME = "Diego"
+SERVER_IP = "162.55.63.212"
+URL = "http://" + SERVER_IP + ":5000/"
+START_URL = URL + "start"
+STOP_URL = URL + "stop"
+UPDATE_URL = URL + "update/" + USER_NAME
+
+const ADC_PIN = C_PIN_06        # ACD input on IN06
+const THRESHOLD = 50
+const RECT_SIZE = 10
+
+collecting = false
+i = 0
+drawIndex = 0
+out:byte[301]
+
+def onClick
+    collecting = not collecting
+    body = "{ \"user\": \""
+    body = body + USER_NAME
+    body = body + "\" }"
+    addRequestHeader("Content-Type", "application/json")
+    if collecting:
+        postRequest(START_URL, body)
+    else:
+        postRequest(STOP_URL, body)
+        i = 0
+    clearRequestHeaders()
+
+def drawState():
+    if drawIndex >= 60:
+        drawIndex = 0
+    clear()
+    push()
+
+    background(255,255,255)
+
+    stroke(0, 0, 0)
+    drawText(10, 10, "USER: " + USER_NAME)
+    if collecting:
+        drawText(10, 200, "Collecting...")
+    else:
+        drawText(10, 200, "Paused")
+
+    translate(40, 60)
+
+    noStroke()
+
+    # Outline
+    if collecting:
+        fill(0, 100, 0)
+    else:
+        fill(0, 0, 0)
+    drawRectangle(0, -10, RECT_SIZE, RECT_SIZE)
+    drawRectangle(10, -10, RECT_SIZE, RECT_SIZE)
+    drawRectangle(20, -10, RECT_SIZE, RECT_SIZE)
+    drawRectangle(0, 0, RECT_SIZE, RECT_SIZE)
+    drawRectangle(-10, 10, RECT_SIZE, RECT_SIZE)
+    drawRectangle(-10, 20, RECT_SIZE, RECT_SIZE)
+    drawRectangle(-10, 30, RECT_SIZE, RECT_SIZE)
+    drawRectangle(-10, 40, RECT_SIZE, RECT_SIZE)
+    drawRectangle(-10, 50, RECT_SIZE, RECT_SIZE)
+    drawRectangle(-10, 60, RECT_SIZE, RECT_SIZE)
+    drawRectangle(-10, 70, RECT_SIZE, RECT_SIZE)
+    drawRectangle(0, 80, RECT_SIZE, RECT_SIZE)
+    drawRectangle(0, 90, RECT_SIZE, RECT_SIZE)
+    drawRectangle(10, 100, RECT_SIZE, RECT_SIZE)
+    drawRectangle(20, 110, RECT_SIZE, RECT_SIZE)
+    drawRectangle(30, 110, RECT_SIZE, RECT_SIZE)
+    drawRectangle(40, 110, RECT_SIZE, RECT_SIZE)
+    drawRectangle(50, 120, RECT_SIZE, RECT_SIZE)
+    drawRectangle(60, 120, RECT_SIZE, RECT_SIZE)
+    drawRectangle(70, 120, RECT_SIZE, RECT_SIZE)
+    drawRectangle(80, 120, RECT_SIZE, RECT_SIZE)
+    drawRectangle(90, 120, RECT_SIZE, RECT_SIZE)
+    drawRectangle(100, 120, RECT_SIZE, RECT_SIZE)
+    drawRectangle(110, 120, RECT_SIZE, RECT_SIZE)
+    drawRectangle(120, 120, RECT_SIZE, RECT_SIZE)
+    drawRectangle(130, 120, RECT_SIZE, RECT_SIZE)
+    drawRectangle(140, 110, RECT_SIZE, RECT_SIZE)
+    drawRectangle(150, 100, RECT_SIZE, RECT_SIZE)
+    drawRectangle(150, 90, RECT_SIZE, RECT_SIZE)
+    drawRectangle(160, 80, RECT_SIZE, RECT_SIZE)
+    drawRectangle(160, 70, RECT_SIZE, RECT_SIZE)
+    drawRectangle(160, 60, RECT_SIZE, RECT_SIZE)
+    drawRectangle(160, 50, RECT_SIZE, RECT_SIZE)
+    drawRectangle(160, 40, RECT_SIZE, RECT_SIZE)
+    drawRectangle(150, 40, RECT_SIZE, RECT_SIZE)
+    drawRectangle(140, 40, RECT_SIZE, RECT_SIZE)
+    drawRectangle(130, 40, RECT_SIZE, RECT_SIZE)
+    drawRectangle(120, 40, RECT_SIZE, RECT_SIZE)
+    drawRectangle(110, 50, RECT_SIZE, RECT_SIZE)
+    drawRectangle(100, 50, RECT_SIZE, RECT_SIZE)
+    drawRectangle(90, 50, RECT_SIZE, RECT_SIZE)
+    # Middle
+    drawRectangle(90, 60, RECT_SIZE, RECT_SIZE)
+    drawRectangle(80, 70, RECT_SIZE, RECT_SIZE)
+    drawRectangle(80, 80, RECT_SIZE, RECT_SIZE)
+    drawRectangle(80, 90, RECT_SIZE, RECT_SIZE)
+    drawRectangle(80, 100, RECT_SIZE, RECT_SIZE)
+    drawRectangle(80, 110, RECT_SIZE, RECT_SIZE)
+    # Left middle part
+    drawRectangle(70, 100, RECT_SIZE, RECT_SIZE)
+    drawRectangle(60, 90, RECT_SIZE, RECT_SIZE)
+    drawRectangle(60, 80, RECT_SIZE, RECT_SIZE)
+    drawRectangle(50, 70, RECT_SIZE, RECT_SIZE)
+    drawRectangle(40, 60, RECT_SIZE, RECT_SIZE)
+    # Right middle part
+    drawRectangle(90, 110, RECT_SIZE, RECT_SIZE)
+    drawRectangle(100, 100, RECT_SIZE, RECT_SIZE)
+    drawRectangle(100, 90, RECT_SIZE, RECT_SIZE)
+    drawRectangle(110, 80, RECT_SIZE, RECT_SIZE)
+    drawRectangle(90, 40, RECT_SIZE, RECT_SIZE)
+    drawRectangle(80, 30, RECT_SIZE, RECT_SIZE)
+    drawRectangle(70, 20, RECT_SIZE, RECT_SIZE)
+    drawRectangle(60, 10, RECT_SIZE, RECT_SIZE)
+    drawRectangle(50, 10, RECT_SIZE, RECT_SIZE)
+    drawRectangle(40, 0, RECT_SIZE, RECT_SIZE)
+    drawRectangle(30, 0, RECT_SIZE, RECT_SIZE)
+    drawRectangle(20, -10, RECT_SIZE, RECT_SIZE)
+    drawRectangle(10, -10, RECT_SIZE, RECT_SIZE)
+
+    # Dark Filling
+    if collecting:
+        fill(0, 200, 0)
+    else:
+        fill(105, 105, 105)
+    drawRectangle(0, 10, RECT_SIZE, RECT_SIZE)
+    drawRectangle(0, 20, RECT_SIZE, RECT_SIZE)
+    drawRectangle(0, 30, RECT_SIZE, RECT_SIZE)
+    drawRectangle(0, 40, RECT_SIZE, RECT_SIZE)
+    drawRectangle(0, 50, RECT_SIZE, RECT_SIZE)
+    drawRectangle(0, 60, RECT_SIZE, RECT_SIZE)
+    drawRectangle(0, 70, RECT_SIZE, RECT_SIZE)
+    drawRectangle(10, 50, RECT_SIZE, RECT_SIZE)
+    drawRectangle(10, 60, RECT_SIZE, RECT_SIZE)
+    drawRectangle(10, 70, RECT_SIZE, RECT_SIZE)
+    drawRectangle(10, 80, RECT_SIZE, RECT_SIZE)
+    drawRectangle(10, 90, RECT_SIZE, RECT_SIZE)
+    drawRectangle(20, 80, RECT_SIZE, RECT_SIZE)
+    drawRectangle(20, 90, RECT_SIZE, RECT_SIZE)
+    drawRectangle(20, 100, RECT_SIZE, RECT_SIZE)
+    drawRectangle(30, 100, RECT_SIZE, RECT_SIZE)
+    drawRectangle(40, 100, RECT_SIZE, RECT_SIZE)
+    drawRectangle(50, 110, RECT_SIZE, RECT_SIZE)
+    if collecting:
+        fill(0, 220, 0)
+    else:
+        fill(120, 120, 120)
+    drawRectangle(100, 60, RECT_SIZE, RECT_SIZE)
+    drawRectangle(110, 60, RECT_SIZE, RECT_SIZE)
+    drawRectangle(90, 70, RECT_SIZE, RECT_SIZE)
+    drawRectangle(90, 80, RECT_SIZE, RECT_SIZE)
+    drawRectangle(90, 90, RECT_SIZE, RECT_SIZE)
+    drawRectangle(90, 100, RECT_SIZE, RECT_SIZE)
+
+    # Ligh filling
+    if collecting:
+        fill(0, 240, 0)
+    else:
+        fill(220, 220, 220)
+    drawRectangle(10, 0, RECT_SIZE, RECT_SIZE)
+    drawRectangle(10, 10, RECT_SIZE, RECT_SIZE)
+    drawRectangle(10, 20, RECT_SIZE, RECT_SIZE)
+    drawRectangle(10, 30, RECT_SIZE, RECT_SIZE)
+    drawRectangle(10, 40, RECT_SIZE, RECT_SIZE)
+    drawRectangle(10, 50, RECT_SIZE, RECT_SIZE)
+
+    drawRectangle(20, 0, RECT_SIZE, RECT_SIZE)
+    drawRectangle(20, 10, RECT_SIZE, RECT_SIZE)
+    drawRectangle(20, 20, RECT_SIZE, RECT_SIZE)
+    drawRectangle(20, 30, RECT_SIZE, RECT_SIZE)
+    drawRectangle(20, 40, RECT_SIZE, RECT_SIZE)
+    drawRectangle(20, 50, RECT_SIZE, RECT_SIZE)
+    drawRectangle(20, 60, RECT_SIZE, RECT_SIZE)
+    drawRectangle(20, 70, RECT_SIZE, RECT_SIZE)
+
+    drawRectangle(30, 10, RECT_SIZE, RECT_SIZE)
+    drawRectangle(30, 20, RECT_SIZE, RECT_SIZE)
+    drawRectangle(30, 30, RECT_SIZE, RECT_SIZE)
+    drawRectangle(30, 40, RECT_SIZE, RECT_SIZE)
+    drawRectangle(30, 50, RECT_SIZE, RECT_SIZE)
+    drawRectangle(30, 60, RECT_SIZE, RECT_SIZE)
+    drawRectangle(30, 70, RECT_SIZE, RECT_SIZE)
+    drawRectangle(30, 80, RECT_SIZE, RECT_SIZE)
+    drawRectangle(30, 90, RECT_SIZE, RECT_SIZE)
+
+    drawRectangle(40, 10, RECT_SIZE, RECT_SIZE)
+    drawRectangle(40, 20, RECT_SIZE, RECT_SIZE)
+    drawRectangle(40, 30, RECT_SIZE, RECT_SIZE)
+    drawRectangle(40, 40, RECT_SIZE, RECT_SIZE)
+    drawRectangle(40, 50, RECT_SIZE, RECT_SIZE)
+    drawRectangle(40, 70, RECT_SIZE, RECT_SIZE)
+    drawRectangle(40, 80, RECT_SIZE, RECT_SIZE)
+    drawRectangle(40, 90, RECT_SIZE, RECT_SIZE)
+
+    drawRectangle(50, 20, RECT_SIZE, RECT_SIZE)
+    drawRectangle(50, 30, RECT_SIZE, RECT_SIZE)
+    drawRectangle(50, 40, RECT_SIZE, RECT_SIZE)
+    drawRectangle(50, 50, RECT_SIZE, RECT_SIZE)
+    drawRectangle(50, 60, RECT_SIZE, RECT_SIZE)
+    drawRectangle(50, 80, RECT_SIZE, RECT_SIZE)
+    drawRectangle(50, 90, RECT_SIZE, RECT_SIZE)
+    drawRectangle(50, 100, RECT_SIZE, RECT_SIZE)
+
+    drawRectangle(60, 20, RECT_SIZE, RECT_SIZE)
+    drawRectangle(60, 30, RECT_SIZE, RECT_SIZE)
+    drawRectangle(60, 40, RECT_SIZE, RECT_SIZE)
+    drawRectangle(60, 50, RECT_SIZE, RECT_SIZE)
+    drawRectangle(60, 60, RECT_SIZE, RECT_SIZE)
+    drawRectangle(60, 70, RECT_SIZE, RECT_SIZE)
+    drawRectangle(60, 100, RECT_SIZE, RECT_SIZE)
+    drawRectangle(60, 110, RECT_SIZE, RECT_SIZE)
+
+    drawRectangle(70, 30, RECT_SIZE, RECT_SIZE)
+    drawRectangle(70, 40, RECT_SIZE, RECT_SIZE)
+    drawRectangle(70, 50, RECT_SIZE, RECT_SIZE)
+    drawRectangle(70, 60, RECT_SIZE, RECT_SIZE)
+    drawRectangle(70, 70, RECT_SIZE, RECT_SIZE)
+    drawRectangle(70, 80, RECT_SIZE, RECT_SIZE)
+    drawRectangle(70, 90, RECT_SIZE, RECT_SIZE)
+    drawRectangle(70, 110, RECT_SIZE, RECT_SIZE)
+
+    drawRectangle(80, 40, RECT_SIZE, RECT_SIZE)
+    drawRectangle(80, 50, RECT_SIZE, RECT_SIZE)
+    drawRectangle(80, 60, RECT_SIZE, RECT_SIZE)
+
+    drawRectangle(100, 70, RECT_SIZE, RECT_SIZE)
+    drawRectangle(100, 80, RECT_SIZE, RECT_SIZE)
+    drawRectangle(100, 110, RECT_SIZE, RECT_SIZE)
+
+    drawRectangle(110, 70, RECT_SIZE, RECT_SIZE)
+    drawRectangle(110, 90, RECT_SIZE, RECT_SIZE)
+    drawRectangle(110, 100, RECT_SIZE, RECT_SIZE)
+    drawRectangle(110, 110, RECT_SIZE, RECT_SIZE)
+
+    drawRectangle(120, 50, RECT_SIZE, RECT_SIZE)
+    drawRectangle(120, 60, RECT_SIZE, RECT_SIZE)
+    drawRectangle(120, 70, RECT_SIZE, RECT_SIZE)
+    drawRectangle(120, 80, RECT_SIZE, RECT_SIZE)
+    drawRectangle(120, 90, RECT_SIZE, RECT_SIZE)
+    drawRectangle(120, 100, RECT_SIZE, RECT_SIZE)
+    drawRectangle(120, 110, RECT_SIZE, RECT_SIZE)
+
+    drawRectangle(130, 50, RECT_SIZE, RECT_SIZE)
+    drawRectangle(130, 60, RECT_SIZE, RECT_SIZE)
+    drawRectangle(130, 70, RECT_SIZE, RECT_SIZE)
+    drawRectangle(130, 80, RECT_SIZE, RECT_SIZE)
+    drawRectangle(130, 90, RECT_SIZE, RECT_SIZE)
+    drawRectangle(130, 100, RECT_SIZE, RECT_SIZE)
+    drawRectangle(130, 110, RECT_SIZE, RECT_SIZE)
+
+    drawRectangle(140, 50, RECT_SIZE, RECT_SIZE)
+    drawRectangle(140, 60, RECT_SIZE, RECT_SIZE)
+    drawRectangle(140, 70, RECT_SIZE, RECT_SIZE)
+    drawRectangle(140, 80, RECT_SIZE, RECT_SIZE)
+    drawRectangle(140, 90, RECT_SIZE, RECT_SIZE)
+    drawRectangle(140, 100, RECT_SIZE, RECT_SIZE)
+
+    drawRectangle(150, 50, RECT_SIZE, RECT_SIZE)
+    drawRectangle(150, 60, RECT_SIZE, RECT_SIZE)
+    drawRectangle(150, 70, RECT_SIZE, RECT_SIZE)
+    drawRectangle(150, 80, RECT_SIZE, RECT_SIZE)
+
+    # Lightning
+    if collecting && (drawIndex % 60 == 0 || drawIndex % 60 == 1 || drawIndex % 60 == 2 || drawIndex % 60 == 3 || drawIndex % 60 == 4 || drawIndex % 60 == 5 || drawIndex % 60 == 6):
+        fill(255, 255, 0)
+        drawRectangle(40, 90, RECT_SIZE, RECT_SIZE)
+        drawRectangle(30, 100, RECT_SIZE, RECT_SIZE)
+        drawRectangle(20, 100, RECT_SIZE, RECT_SIZE)
+        drawRectangle(10, 110, RECT_SIZE, RECT_SIZE)
+        drawRectangle(0, 110, RECT_SIZE, RECT_SIZE)
+
+        drawRectangle(30, 40, RECT_SIZE, RECT_SIZE)
+        drawRectangle(20, 40, RECT_SIZE, RECT_SIZE)
+        drawRectangle(10, 40, RECT_SIZE, RECT_SIZE)
+        drawRectangle(0, 30, RECT_SIZE, RECT_SIZE)
+        drawRectangle(-10, 20, RECT_SIZE, RECT_SIZE)
+        drawRectangle(-20, 20, RECT_SIZE, RECT_SIZE)
+        drawRectangle(-30, 20, RECT_SIZE, RECT_SIZE)
+
+
+        drawRectangle(140, 60, RECT_SIZE, RECT_SIZE)
+        drawRectangle(150, 50, RECT_SIZE, RECT_SIZE)
+        drawRectangle(150, 40, RECT_SIZE, RECT_SIZE)
+        drawRectangle(160, 30, RECT_SIZE, RECT_SIZE)
+        drawRectangle(160, 20, RECT_SIZE, RECT_SIZE)
+
+
+    pop()
+    update()
+
+    drawIndex = drawIndex + 1
+
+def onDraw
+    print(i)
+
+    drawState()
+
+    if not collecting
+        return
+
+    voltage = readADC(ADC_PIN, 2)
+
+    hByte = byteToHex(voltage>>8)
+    lByte = byteToHex(voltage&0xFF)
+
+    index = 4*i  # das ist die Startvariable für das Byte-Muster
+    out[index] = hByte[0]
+    out[index+1] = hByte[1]
+    out[index+2] = lByte[0]
+    out[index+3] = lByte[1]
+
+    i = i + 1
+
+    if i >= THRESHOLD:
+        i = 0
+        addRequestHeader("Content-Type", "application/json")
+        postRequest(UPDATE_URL, out)
+        clearRequestHeaders()
+        out = ""
