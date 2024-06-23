@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>State of: {{user}}</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <a href="/">Home</a>
+    <p>Recording start time: {{start_time}}</p>
+    <a id="initialBucket" style="display: None">{{initial_bucket}}</a>
+    <a id="userName" style="display: None">{{user}}</a>
+    <canvas id="myChart" width="400" height="200"></canvas>
+    <script>
+        const socket = io();
+        const userName = document.getElementById('userName').textContent
+        let initialData = JSON.parse(document.getElementById('initialBucket').textContent)
+        initialData = initialData.slice(initialData.length - 500)
+
+        const ctx = document.getElementById('myChart').getContext('2d');
+        const myChart = new Chart(ctx, {
+            type: 'line', // Change this to 'bar' or other types if you prefer
+            data: {
+                labels: initialData.map((_, index) => index + 1), // Labels for X-axis (1, 2, 3, ...)
+                datasets: [{
+                    label: 'Values',
+                    data: initialData,
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1,
+                    pointRadius: 0,
+                }]
+            },
+            options: {
+                animations: {
+                    duration: 200
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 1
+                    }
+                }
+            }
+        });
+
+        socket.on(`update-${userName}`, (data) => {
+            let bucket = data.bucket;
+            bucket = bucket.slice(bucket.length - 500);
+            myChart.data.labels = bucket.map((_, index) => index + 1);
+            myChart.data.datasets[0].data = bucket;
+
+            myChart.update();
+        });
+    </script>
+</body>
+</html>

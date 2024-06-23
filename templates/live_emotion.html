@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Plant Emotion Classification</title>
+</head>
+<body>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <a href="/">Home</a>
+    <img id="emotionImage" src="{{ initial_image_src }}">
+    <p id="currentEmotion">Current emotion: {{initial_emotion}}</p>
+    <p id="lastUpdate"></p>
+    <script>
+        const socket = io();
+        const emotionText = document.getElementById('currentEmotion');
+        const emotionImage = document.getElementById('emotionImage');
+        const lastUpdateText = document.getElementById('lastUpdate');
+
+        const getTime = () => {
+            const now = new Date();
+            const time = `${now.getHours()}:${now.getMinutes()}`
+
+            return `Last update: ${time}`;
+        }
+
+        lastUpdateText.textContent = getTime();
+
+        socket.on('update', (data) => {
+            emotionText.textContent = `Current emotion: ${data.emotion}`;
+            emotionImage.src = `static/${data.emotion}.svg`;
+            lastUpdateText.textContent = getTime();
+        });
+    </script>
+</body>
+<footer>
+    <p>Plant Emotion Classification v0.0.1</p>
+</footer>
+</html>

@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Recording states</title>
+</head>
+<body>
+    <a href="/">Home</a>
+    <ul>
+        {% for user in users %}
+            <li><a href="/state/{{user}}">{{user}}</a></li>
+        {% endfor %}
+    </ul>
+</body>
+</html>

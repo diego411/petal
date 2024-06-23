@@ -25,8 +25,23 @@ current_emotion = "none"
 def index():
     return render_template(
         "index.html",
+    )
+
+
+@app.route('/liveEmotion')
+def live_emotion():
+    return render_template(
+        "live_emotion.html",
         initial_emotion=current_emotion,
         initial_image_src=os.path.join('static', f"{current_emotion}.svg")
+    )
+
+
+@app.route('/states')
+def states():
+    return render_template(
+        "states.html",
+        users=state_map.keys()
     )
 
 
@@ -45,7 +60,8 @@ def start():
     now = datetime.datetime.now()
     state_map[user] = {
         'start_time': now,
-        'bucket': []
+        'bucket': [],
+        'raw_bucket': []
     }
 
     return f'Successfully started data collection for {user}', 200
@@ -61,8 +77,15 @@ def update_by_name(user):
     data = request.data
 
     user_bucket = state_map[user]['bucket']
-    user_bucket = user_bucket + wav_converter.augment(wav_converter.parse_raw(data))
+    user_bucket = user_bucket + wav_converter.parse_raw(data)
     state_map[user]['bucket'] = user_bucket
+
+    socketio.emit(
+        f'update-{user}',
+        {
+            'bucket': user_bucket,
+        }
+    )
 
     return f'Successful update for: {user}', 200
 
@@ -145,10 +168,14 @@ def state():
 @app.route('/state/<user>', methods=['GET'])
 def user_state(user):
     global state_map
-    if user not in state_map:
-        return f'No data collection in progress for user: {user}', 400
+    user_data = state_map[user] if user in state_map else None
 
-    return jsonify(state_map[user]), 200
+    return render_template(
+        'user_state.html',
+        user=user,
+        start_time=user_data['start_time'],
+        initial_bucket=user_data['bucket']
+    )
 
 
 @app.route('/classify', methods=['POST'])

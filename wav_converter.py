@@ -7,7 +7,7 @@ augment_padding = 100  # how many values are augmented from the window
 
 
 def parse_raw(data):
-    data = data[:-3]
+    data = data[:-1]
     chunks = [data[i:i + 4] for i in range(0, len(data), 4)]
     out = []
     for chunk in chunks:
