@@ -168,6 +168,10 @@ def state():
 @app.route('/state/<user>', methods=['GET'])
 def user_state(user):
     global state_map
+
+    if user not in state_map:
+        return "No recording in progress for given user", 404
+
     user_data = state_map[user] if user in state_map else None
 
     return render_template(
