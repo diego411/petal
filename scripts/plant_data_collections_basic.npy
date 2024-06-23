@@ -1,0 +1,59 @@
+USER_NAME = "diego"
+SERVER_IP = "192.168.178.42"
+URL = "http://" + SERVER_IP + ":5000/"
+START_URL = URL + "start"
+STOP_URL = URL + "stop"
+UPDATE_URL = URL + "update/" + USER_NAME
+
+const ADC_PIN = C_PIN_06        # ACD input on IN06
+const THRESHOLD = 50
+const RECT_SIZE = 10
+
+collecting = false
+i = 0
+drawIndex = 0
+out:byte[200]
+
+def onClick
+    collecting = not collecting
+    body = "{ \"user\": \""
+    body = body + USER_NAME
+    body = body + "\" }"
+    addRequestHeader("Content-Type", "application/json")
+    if collecting:
+        postRequest(START_URL, body)
+    else:
+        postRequest(STOP_URL, body)
+        i = 0
+    clearRequestHeaders()
+
+def onDraw      
+    voltage = readADC(ADC_PIN, 1)
+
+    clear()
+    drawText(50, 50, voltage)
+    if collecting:
+        drawText(50, 100, "Collecting")
+        update()
+    else:
+        drawText(50, 100, "Paused")
+        update()
+        return
+    
+    hByte = byteToHex(voltage>>8)
+    lByte = byteToHex(voltage&0xFF)
+
+    index = 4*i  # das ist die Startvariable für das Byte-Muster
+    out[index] = hByte[0]
+    out[index+1] = hByte[1]
+    out[index+2] = lByte[0]
+    out[index+3] = lByte[1]
+
+    i = i + 1
+
+    if i >= THRESHOLD:
+        i = 0
+        addRequestHeader("Content-Type", "application/json")
+        postRequest(UPDATE_URL, out)
+        clearRequestHeaders()
+        out = ""
