@@ -9,7 +9,7 @@ import os
 import traceback
 import logging
 
-AUDIO_DIR = '../audio'
+AUDIO_DIR = 'audio'
 LOG_THRESHOLD = 20
 
 state_map = {}
@@ -181,7 +181,6 @@ def create_app():
 
     @app.route('/classify', methods=['POST'])
     def classify():
-        print("classify endpoint called")
         binary_data = request.data
 
         extension = 'wav'
