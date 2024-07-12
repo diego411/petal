@@ -14,8 +14,6 @@ dbx = dropbox.Dropbox(
 
 
 def upload_file_to_dropbox(file_path, dropbox_path):
-    global dbx
-
     dbx.check_and_refresh_access_token()
 
     try:

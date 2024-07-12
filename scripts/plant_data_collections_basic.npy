@@ -1,5 +1,5 @@
-USER_NAME = "diego"
-SERVER_IP = "192.168.178.42"
+USER_NAME = "<<USER NAME>>"
+SERVER_IP = "<<SERVER IP>>"
 URL = "http://" + SERVER_IP + ":5000/"
 START_URL = URL + "start"
 STOP_URL = URL + "stop"
