@@ -1,6 +1,6 @@
 venv
 .env
 data
-model
+src/models/model
 /audio/*.wav
 __pycache__
