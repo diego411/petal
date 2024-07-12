@@ -16,12 +16,14 @@ state_map = {}
 bucket = []
 current_emotion = "none"
 
+socketio = SocketIO()
+
 
 def create_app():
     app = Flask(__name__)
+    socketio.init_app(app)
 
-    with app.app_context():
-        g.jakob_classifier = JakobPlantEmotionClassifier()
+    jakob_classifier = JakobPlantEmotionClassifier()
 
     @app.route('/')
     def index():
@@ -80,7 +82,6 @@ def create_app():
         user_bucket = state_map[user]['bucket']
         user_bucket = user_bucket + wav_converter.parse_raw(data)
         state_map[user]['bucket'] = user_bucket
-
         socketio.emit(
             f'update-{user}',
             {
@@ -137,7 +138,7 @@ def create_app():
         file_path = wav_converter.convert(bucket)
 
         try:
-            predictions = g.jakob_classifier.classify(file_path)
+            predictions = jakob_classifier.classify(file_path)
         except Exception as e:
             logging.error(traceback.format_exc())
             return "something went wrong getting the predictions from the model", 500
@@ -189,7 +190,7 @@ def create_app():
         with open(file_path, 'wb') as f:
             f.write(binary_data)
 
-        predictions = g.jakob_classifier.classify(file_path)
+        predictions = jakob_classifier.classify(file_path)
         os.remove(file_path)
         print(predictions)
         return jsonify(predictions), 200
@@ -200,5 +201,4 @@ def create_app():
 if __name__ == '__main__':
     app = create_app()
     app.run(debug=True)
-    socketio = SocketIO(app)
-    socketio.run(app, host='0.0.0.0', port=5000)
+    socketio.run(app, host="0.0.0.0", port=5000)
