@@ -3,13 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <title>Recording states</title>
+    <link rel="stylesheet" type="text/css" href="static/styles/styles.css">
+    <style>
+        li {
+            display: inline-block;
+            list-style-type: none;
+        }
+    </style>
 </head>
 <body>
-    <a href="/">Home</a>
+    {% from "macros.html" import render_top_bar, render_footer %}
+    {{ render_top_bar() }}
     <ul>
         {% for user in users %}
             <li><a href="/state/{{user}}">{{user}}</a></li>
         {% endfor %}
     </ul>
 </body>
+{{ render_footer() }}
 </html>

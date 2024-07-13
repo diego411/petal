@@ -2,13 +2,27 @@
 <html>
 <head>
     <title>Plant Emotion Classification</title>
+    <link rel="stylesheet" type="text/css" href="static/styles/styles.css">
+    <style>
+        .container p {
+            font-size: 2em;
+        }
+
+        .container img {
+            width: 25rem;
+        }
+
+    </style>
 </head>
 <body>
+    {% from "macros.html" import render_top_bar, render_footer %}
     <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
-    <a href="/">Home</a>
-    <img id="emotionImage" src="{{ initial_image_src }}">
-    <p id="currentEmotion">Current emotion: {{initial_emotion}}</p>
-    <p id="lastUpdate"></p>
+    {{ render_top_bar() }}
+    <div class="container">
+        <img id="emotionImage" src="{{ initial_image_src }}">
+        <p id="currentEmotion">Current emotion: {{initial_emotion}}</p>
+        <p id="lastUpdate"></p>
+    </div>
     <script>
         const socket = io();
         const emotionText = document.getElementById('currentEmotion');
@@ -31,7 +45,5 @@
         });
     </script>
 </body>
-<footer>
-    <p>Plant Emotion Classification v0.0.1</p>
-</footer>
+{{ render_footer() }}
 </html>
