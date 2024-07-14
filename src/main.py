@@ -160,7 +160,7 @@ def create_app():
         finally:
             log_size = len([name for name in os.listdir(app.config['AUDIO_DIR']) if
                             os.path.isfile(os.path.join(app.config['AUDIO_DIR'], name))])
-            if log_size >= app.config['LOG_THRESHOLD']:
+            if log_size >= int(app.config['LOG_THRESHOLD']):
                 os.remove(file_path)
 
         current_emotion = predictions['current_emotion']
