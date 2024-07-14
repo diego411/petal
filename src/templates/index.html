@@ -2,12 +2,12 @@
 <html>
 <head>
     <title>Plant Emotion Classification</title>
+    <link rel="stylesheet" type="text/css" href="static/styles/styles.css">
 </head>
 <body>
-    <a href="/states">Live Recordings</a>
-    <a href="/liveEmotion">Live Emotion</a>
+   {% from "macros.html" import render_top_bar, render_footer %}
+   {{ render_top_bar() }}
+    <img src="static/Molde.gif">
 </body>
-<footer>
-    <p>Plant Emotion Classification v0.0.6</p>
-</footer>
+{{ render_footer(version) }}
 </html>
