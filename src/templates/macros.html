@@ -1,14 +1,14 @@
 {% macro render_top_bar() %}
 <div class="top-bar">
-    <a href="/" class="icon">&#127793;</a> <!-- Unicode character for a plant icon -->
-    <a href="/states">Live Recordings</a>
-    <a href="/liveEmotion">Live Emotion</a>
-    <a href="/audioClassification">Audio Classification</a>
+    <a href="/" class="icon nav">&#127793;</a> <!-- Unicode character for a plant icon -->
+    <a href="/states" class="nav">Live Recordings</a>
+    <a href="/liveEmotion" class="nav">Live Emotion</a>
+    <a href="/audioClassification" class="nav">Audio Classification</a>
 </div>
 {% endmacro %}
 
 {% macro render_footer(version) %}
 <footer>
-    <p>Plant Emotion Classification {{ version }}</p>
+    <p>Plant Emotion Classification {{ version }} | <a href="https://github.com/diego411/plant_emotion_classification">GitHub</a></p>
 </footer>
 {% endmacro %}

@@ -27,7 +27,7 @@ body {
     background-color: #fcdd03;
 }
 
-a {
+.nav {
     display: block;
     margin: 10px 0;
     padding: 15px 25px;
@@ -40,7 +40,7 @@ a {
     transition: background-color 0.3s ease;
 }
 
-a:hover {
+.nav:hover {
     background-color: #2e7d32; /* Darker green on hover */
 }
 
