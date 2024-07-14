@@ -39,6 +39,12 @@ def create_app():
             initial_image_src=os.path.join('static', f"{current_emotion}.svg")
         )
 
+    @app.route('/audioClassification')
+    def audio_classification():
+        return render_template(
+            "audio_classification.html"
+        )
+
     @app.route('/states')
     def states():
         return render_template(
