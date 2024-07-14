@@ -3,14 +3,12 @@ from flask_socketio import SocketIO
 from src.service import wav_converter
 from src.controller import dropbox_controller
 from src.models.JakobPlantEmotionClassifier import JakobPlantEmotionClassifier
+from src.AppConfig import AppConfig
 import time
 import datetime
 import os
 import traceback
 import logging
-
-AUDIO_DIR = 'audio'
-LOG_THRESHOLD = 20
 
 state_map = {}
 bucket = []
@@ -21,9 +19,19 @@ socketio = SocketIO()
 
 def create_app():
     app = Flask(__name__)
+    app.config.from_object(AppConfig)
     socketio.init_app(app)
 
     jakob_classifier = JakobPlantEmotionClassifier()
+    dropbox_client = dropbox_controller.create_dropbox_client(
+        app_key=app.config['DROPBOX_APP_KEY'],
+        app_secret=app.config['DROPBOX_APP_SECRET'],
+        refresh_token=app.config['DROPBOX_REFRESH_TOKEN']
+    )
+
+    @app.context_processor
+    def inject_version():
+        return dict(version=app.config['VERSION'])
 
     @app.route('/')
     def index():
@@ -37,6 +45,12 @@ def create_app():
             "live_emotion.html",
             initial_emotion=current_emotion,
             initial_image_src=os.path.join('static', f"{current_emotion}.svg")
+        )
+
+    @app.route('/audioClassification')
+    def audio_classification():
+        return render_template(
+            "audio_classification.html"
         )
 
     @app.route('/states')
@@ -114,6 +128,7 @@ def create_app():
         )
 
         dropbox_controller.upload_file_to_dropbox(
+            dropbox_client=dropbox_client,
             file_path=file_path,
             dropbox_path=f'/Data/{user}/{file_name}'
         )
@@ -143,8 +158,9 @@ def create_app():
             logging.error(traceback.format_exc())
             return "something went wrong getting the predictions from the model", 500
         finally:
-            log_size = len([name for name in os.listdir(AUDIO_DIR) if os.path.isfile(os.path.join(AUDIO_DIR, name))])
-            if log_size >= LOG_THRESHOLD:
+            log_size = len([name for name in os.listdir(app.config['AUDIO_DIR']) if
+                            os.path.isfile(os.path.join(app.config['AUDIO_DIR'], name))])
+            if log_size >= app.config['LOG_THRESHOLD']:
                 os.remove(file_path)
 
         current_emotion = predictions['current_emotion']
@@ -198,6 +214,6 @@ def create_app():
 
 
 if __name__ == '__main__':
-    app = create_app()
-    app.run(debug=True)
-    socketio.run(app, host="0.0.0.0", port=5000)
+    flask_app = create_app()
+    flask_app.run(debug=True)
+    socketio.run(flask_app, host="0.0.0.0", port=5000)
