@@ -1,9 +1,9 @@
-{% macro render_top_bar() %}
+{% macro render_top_bar(current_page) %}
 <div class="top-bar">
     <a href="/" class="icon nav">&#127793;</a> <!-- Unicode character for a plant icon -->
-    <a href="/states" class="nav">Live Recordings</a>
-    <a href="/liveEmotion" class="nav">Live Emotion</a>
-    <a href="/audioClassification" class="nav">Audio Classification</a>
+    <a href="/states" class="nav {% if current_page == 'states' %}highlighted{% endif %}">Live Recordings</a>
+    <a href="/liveEmotion" class="nav {% if current_page == 'liveEmotion' %}highlighted{% endif %}">Live Emotion</a>
+    <a href="/audioClassification" class="nav {% if current_page == 'audioClassification' %}highlighted{% endif %}">Audio Classification</a>
 </div>
 {% endmacro %}
 

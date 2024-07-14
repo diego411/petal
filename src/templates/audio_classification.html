@@ -90,7 +90,7 @@
 </head>
 <body>
 {% from "macros.html" import render_top_bar, render_footer %}
-{{ render_top_bar() }}
+{{ render_top_bar('audioClassification') }}
 <div class="container">
     <form id="uploadForm">
         <input type="file" id="audioFile" name="audioFile" class="file-input" accept="audio/*" required>
@@ -133,5 +133,5 @@
     });
 </script>
 </body>
-{{ render_footer(version) }}
+{{ render_footer() }}
 </html>
