@@ -47,7 +47,7 @@
     <a id="userName" style="display: none">{{user}}</a>
     <canvas id="myChart"></canvas>
 </main>
-{{ render_footer() }}
+{{ render_footer(version) }}
 <script>
     const socket = io();
     const userName = document.getElementById('userName').textContent;
