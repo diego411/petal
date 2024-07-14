@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Audio Classification</title>
+    <link rel="stylesheet" type="text/css" href="static/styles/styles.css">
+    <style>
+        .container {
+            font-size: 2em;
+        }
+
+        form {
+            display: flex;
+        }
+
+       .button {
+            position: relative;
+            padding: 8px 16px;
+            background: #fcdd03;
+            border: none;
+            outline: none;
+            border-radius: 2px;
+            cursor: pointer;
+       }
+
+        .button:active {
+            background: #007a63;
+        }
+
+        .button__text {
+            color: #388e3c;
+            font-size: 2em;
+            transition: all 0.2s;
+        }
+
+        .button--loading .button__text {
+            visibility: hidden;
+            opacity: 0;
+        }
+
+        .button--loading::after {
+            content: "";
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            margin: auto;
+            border: 4px solid transparent;
+            border-top-color: #ffffff;
+            border-radius: 50%;
+            animation: button-loading-spinner 1s ease infinite;
+        }
+
+        @keyframes button-loading-spinner {
+            from {
+                transform: rotate(0turn);
+            }
+
+            to {
+                transform: rotate(1turn);
+            }
+        }
+
+        input[type="file"]::file-selector-button {
+            border-radius: 4px;
+            font-size: 2em;
+            padding: 0 16px;
+            height: 40px;
+            cursor: pointer;
+            background-color: white;
+            border: 1px solid rgba(0, 0, 0, 0.16);
+            box-shadow: 0px 1px 0px rgba(0, 0, 0, 0.05);
+            margin-right: 16px;
+            transition: background-color 200ms;
+        }
+
+        /* file upload button hover state */
+        input[type="file"]::file-selector-button:hover {
+            background-color: #f3f4f6;
+        }
+
+        /* file upload button active state */
+        input[type="file"]::file-selector-button:active {
+            background-color: #e5e7eb;
+        }
+    </style>
+</head>
+<body>
+{% from "macros.html" import render_top_bar, render_footer %}
+{{ render_top_bar() }}
+<div class="container">
+    <form id="uploadForm">
+        <input type="file" id="audioFile" name="audioFile" class="file-input" accept="audio/*" required>
+        <br><br>
+        <button type="submit" class="button" id="sendButton">
+            <span class="button__text">Send</span>
+        </button>
+    </form>
+    <p id="result"></p>
+</div>
+<script>
+    document.getElementById('uploadForm').addEventListener('submit', function(event) {
+        event.preventDefault(); // Prevent the default form submission
+
+        const fileInput = document.getElementById('audioFile');
+        const file = fileInput.files[0];
+
+        const btn = document.querySelector(".button");
+        btn.classList.add("button--loading");
+
+        fetch('/classify', {
+            method: 'POST',
+            headers: {
+                'Content-Type': file.type
+            },
+            body: file
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Success:', data);
+            document.getElementById('result').textContent = `Predicted emotion: ${data?.current_emotion}`;
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert("Error uploading file.");
+        })
+        .finally(() => {
+            btn.classList.remove("button--loading");
+        });
+    });
+</script>
+</body>
+{{ render_footer() }}
+</html>
