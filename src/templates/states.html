@@ -16,7 +16,7 @@
     {{ render_top_bar('states') }}
     <ul>
         {% for user in users %}
-            <li><a href="/state/{{user}}">{{user}}</a></li>
+            <li><a href="/state/{{user}}" class="button">{{user}}</a></li>
         {% endfor %}
     </ul>
 </body>

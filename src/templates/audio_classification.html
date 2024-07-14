@@ -13,7 +13,7 @@
             display: flex;
         }
 
-       .button {
+       .submit-button {
             position: relative;
             padding: 8px 16px;
             background: #fcdd03;
@@ -23,7 +23,7 @@
             cursor: pointer;
        }
 
-        .button:active {
+        .submit-button:active {
             background: #007a63;
         }
 
@@ -33,12 +33,12 @@
             transition: all 0.2s;
         }
 
-        .button--loading .button__text {
+        .submit-button--loading .button__text {
             visibility: hidden;
             opacity: 0;
         }
 
-        .button--loading::after {
+        .submit-button--loading::after {
             content: "";
             position: absolute;
             width: 16px;
@@ -95,7 +95,7 @@
     <form id="uploadForm">
         <input type="file" id="audioFile" name="audioFile" class="file-input" accept="audio/*" required>
         <br><br>
-        <button type="submit" class="button" id="sendButton">
+        <button type="submit" class="submit-button" id="sendButton">
             <span class="button__text">Send</span>
         </button>
     </form>
@@ -108,8 +108,8 @@
         const fileInput = document.getElementById('audioFile');
         const file = fileInput.files[0];
 
-        const btn = document.querySelector(".button");
-        btn.classList.add("button--loading");
+        const btn = document.querySelector(".submit-button");
+        btn.classList.add("submit-button--loading");
 
         fetch('/classify', {
             method: 'POST',
@@ -128,7 +128,7 @@
             alert("Error uploading file.");
         })
         .finally(() => {
-            btn.classList.remove("button--loading");
+            btn.classList.remove("submit-button--loading");
         });
     });
 </script>
