@@ -55,9 +55,17 @@ def create_app():
 
     @app.route('/states')
     def states():
+        users = []
+        for name, state in state_map.items():
+            users.append({
+                "name": name,
+                "start_time": state['start_time'].strftime('%d.%m.%Y %H:%M:%S'),
+                "bucket": state['bucket']
+            })
+
         return render_template(
             "states.html",
-            users=state_map.keys()
+            users=users
         )
 
     @app.route('/start', methods=['POST'])
@@ -97,9 +105,10 @@ def create_app():
         user_bucket = user_bucket + wav_converter.parse_raw(data)
         state_map[user]['bucket'] = user_bucket
         socketio.emit(
-            f'update-{user}',
+            f'user-update',
             {
                 'bucket': user_bucket,
+                'name': user
             }
         )
 

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>Audio Classification</title>
@@ -13,7 +14,7 @@
             display: flex;
         }
 
-       .submit-button {
+        .submit-button {
             position: relative;
             padding: 8px 16px;
             background: #fcdd03;
@@ -21,7 +22,7 @@
             outline: none;
             border-radius: 2px;
             cursor: pointer;
-       }
+        }
 
         .submit-button:active {
             background: #007a63;
@@ -88,50 +89,52 @@
         }
     </style>
 </head>
+
 <body>
-{% from "macros.html" import render_top_bar, render_footer %}
-{{ render_top_bar('audioClassification') }}
-<div class="container">
-    <form id="uploadForm">
-        <input type="file" id="audioFile" name="audioFile" class="file-input" accept="audio/*" required>
-        <br><br>
-        <button type="submit" class="submit-button" id="sendButton">
-            <span class="button__text">Send</span>
-        </button>
-    </form>
-    <p id="result"></p>
-</div>
-<script>
-    document.getElementById('uploadForm').addEventListener('submit', function(event) {
-        event.preventDefault(); // Prevent the default form submission
+    {% from "macros.html" import render_top_bar, render_footer %}
+    {{ render_top_bar('audioClassification') }}
+    <div class="container">
+        <form id="uploadForm">
+            <input type="file" id="audioFile" name="audioFile" class="file-input" accept="audio/*" required>
+            <br><br>
+            <button type="submit" class="submit-button" id="sendButton">
+                <span class="button__text">Send</span>
+            </button>
+        </form>
+        <p id="result"></p>
+    </div>
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', function (event) {
+            event.preventDefault(); // Prevent the default form submission
 
-        const fileInput = document.getElementById('audioFile');
-        const file = fileInput.files[0];
+            const fileInput = document.getElementById('audioFile');
+            const file = fileInput.files[0];
 
-        const btn = document.querySelector(".submit-button");
-        btn.classList.add("submit-button--loading");
+            const btn = document.querySelector(".submit-button");
+            btn.classList.add("submit-button--loading");
 
-        fetch('/classify', {
-            method: 'POST',
-            headers: {
-                'Content-Type': file.type
-            },
-            body: file
-        })
-        .then(response => response.json())
-        .then(data => {
-            console.log('Success:', data);
-            document.getElementById('result').textContent = `Predicted emotion: ${data?.current_emotion}`;
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert("Error uploading file.");
-        })
-        .finally(() => {
-            btn.classList.remove("submit-button--loading");
+            fetch('/classify', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': file.type
+                },
+                body: file
+            })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Success:', data);
+                    document.getElementById('result').textContent = `Predicted emotion: ${data?.current_emotion}`;
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert("Error uploading file.");
+                })
+                .finally(() => {
+                    btn.classList.remove("submit-button--loading");
+                });
         });
-    });
-</script>
+    </script>
 </body>
 {{ render_footer() }}
+
 </html>

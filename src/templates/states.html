@@ -1,24 +1,134 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>Recording states</title>
     <link rel="stylesheet" type="text/css" href="static/styles/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
     <style>
+        .wrapper {
+            overflow: auto;
+        }
+
+        ul {
+            display: flex;
+            flex-wrap: wrap;
+            margin: 0;
+            padding: 1em;
+            justify-content: space-evenly;
+            margin: 5% 0%;
+        }
+
         li {
             display: inline-block;
             list-style-type: none;
+            margin: 1em;
+            border-radius: 5px;
+            background-color: white;
+            padding: 1em 1em;
+        }
+
+        canvas {
+            min-height: 16em;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 1em;
+            margin-bottom: 0.5em;
+        }
+
+        .header a {
+            text-decoration: none;
+            color: #388e3c;
+        }
+
+        .header p {
+            padding: 0;
+            margin: 0;
         }
     </style>
 </head>
+
 <body>
     {% from "macros.html" import render_top_bar, render_footer %}
     {{ render_top_bar('states') }}
-    <ul>
-        {% for user in users %}
-            <li><a href="/state/{{user}}" class="button">{{user}}</a></li>
-        {% endfor %}
-    </ul>
+    <div class="wrapper">
+        <p style="display: none;" id="users">{{users}}</p>
+        <ul>
+            {% for user in users %}
+            <li>
+                <div class="header">
+                    <a href="/state/{{user.name}}">{{user.name}}</a>
+                    <p>Start time: {{user.start_time}}</p>
+                </div>
+                <!-- <a id="initialBucket" style="display: none">{{initial_bucket}}</a> -->
+                <canvas id="chart_{{user.name}}"></canvas>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {{ render_footer(version) }}
 </body>
-{{ render_footer(version) }}
+<script>
+    const socket = io();
+    const users = JSON.parse(document.getElementById('users').textContent.replace(/'/g, '"'));
+    const charts = {};
+
+    for (const user of users) {
+        const bucket = user.bucket.slice(user.bucket.length - 500);
+
+        const ctx = document.getElementById(`chart_${user.name}`).getContext('2d');
+        const myChart = new Chart(ctx, {
+            type: 'line', // Change this to 'bar' or other types if you prefer
+            data: {
+                labels: bucket.map((_, index) => index + 1), // Labels for X-axis (1, 2, 3, ...)
+                datasets: [{
+                    label: 'Values',
+                    data: bucket,
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1,
+                    pointRadius: 0,
+                }]
+            },
+            options: {
+                animations: {
+                    duration: 200
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 1
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+        charts[user.name] = myChart;
+    }
+
+    socket.on(`user-update`, (data) => {
+        const chart = charts[data.name];
+        if (chart === undefined)
+            return;
+
+        let bucket = data.bucket;
+        bucket = bucket.slice(bucket.length - 500);
+
+        chart.data.labels = bucket.map((_, index) => index + 1);
+        chart.data.datasets[0].data = bucket;
+
+        chart.update();
+    });
+
+</script>
+
 </html>
