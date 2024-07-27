@@ -4,14 +4,14 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    height: 90vh;
+    height: 100vh;
     margin: 0;
-    background-color: #e8f5e9; /* Light green background */
+    background-color: #e8f5e9;
 }
 
 .top-bar {
     width: 100%;
-    padding: 5px;
+    padding: 0.5em;
     display: flex;
     align-items: stretch;
     position: absolute;
@@ -22,26 +22,28 @@ body {
 .top-bar a.icon {
     text-decoration: none;
     color: #fff;
-    font-size: 1.5em;
+    font-size: 1.25em;
     margin-left: 10px;
     background-color: #fcdd03;
 }
 
 .button {
-    display: block;
-    margin: 10px 0;
-    padding: 15px 25px;
+    display: inline-block;
+    white-space: nowrap;
+    padding: 0.5em 1em;
+    max-height: 2.5em;
     text-align: center;
     text-decoration: none;
     color: #fff;
-    background-color: #388e3c; /* Green button */
+    background-color: #388e3c;
     border-radius: 5px;
     font-size: 1.2em;
     transition: background-color 0.3s ease;
 }
 
 .button:hover {
-    background-color: #2e7d32; /* Darker green on hover */
+    background-color: #2e7d32;
+    /* Darker green on hover */
 }
 
 .highlighted {
@@ -58,8 +60,8 @@ footer {
     padding: 5px 0;
     margin-left: 1rem;
     text-align: start;
-    color: #1b5e20; /* Dark green text */
+    color: #1b5e20;
     font-size: 0.8em;
     position: fixed;
-    bottom: 0;;
+    bottom: 0;
 }

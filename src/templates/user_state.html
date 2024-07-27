@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,7 +16,7 @@
             justify-content: flex-start;
             height: 100vh;
             margin: 0;
-            background-color: #e8f5e9; /* Light green background */
+            background-color: #e8f5e9;
         }
 
         main {
@@ -25,70 +26,75 @@
             align-items: center;
             justify-content: center;
             width: 100%;
-            padding-top: 60px; /* To account for the fixed top bar */
+            padding-top: 60px;
             padding-bottom: 60px;
             box-sizing: border-box;
         }
 
         canvas {
-            width: 100% !important;
+            width: 90% !important;
             height: auto !important;
-            max-height: calc(100vh - 120px); /* To account for the top bar and footer */
+            max-height: calc(100vh - 120px);
         }
     </style>
 </head>
-<body>
-{% from "macros.html" import render_top_bar, render_footer %}
-<script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
-{{ render_top_bar() }}
-<main>
-    <p>Recording start time: {{start_time}}</p>
-    <a id="initialBucket" style="display: none">{{initial_bucket}}</a>
-    <a id="userName" style="display: none">{{user}}</a>
-    <canvas id="myChart"></canvas>
-</main>
-{{ render_footer(version) }}
-<script>
-    const socket = io();
-    const userName = document.getElementById('userName').textContent;
-    let initialData = JSON.parse(document.getElementById('initialBucket').textContent);
-    initialData = initialData.slice(initialData.length - 500);
 
-    const ctx = document.getElementById('myChart').getContext('2d');
-    const myChart = new Chart(ctx, {
-        type: 'line', // Change this to 'bar' or other types if you prefer
-        data: {
-            labels: initialData.map((_, index) => index + 1), // Labels for X-axis (1, 2, 3, ...)
-            datasets: [{
-                label: 'Values',
-                data: initialData,
-                backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                borderColor: 'rgba(75, 192, 192, 1)',
-                borderWidth: 1,
-                pointRadius: 0,
-            }]
-        },
-        options: {
-            animations: {
-                duration: 200
+<body>
+    {% from "macros.html" import render_top_bar, render_footer %}
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    {{ render_top_bar() }}
+    <main>
+        <p>Recording start time: {{start_time}}</p>
+        <a id="initialBucket" style="display: none">{{initial_bucket}}</a>
+        <a id="userName" style="display: none">{{user}}</a>
+        <canvas id="myChart"></canvas>
+    </main>
+    {{ render_footer(version) }}
+    <script>
+        const socket = io();
+        const userName = document.getElementById('userName').textContent;
+        let initialData = JSON.parse(document.getElementById('initialBucket').textContent);
+        initialData = initialData.slice(initialData.length - 500);
+
+        const ctx = document.getElementById('myChart').getContext('2d');
+        const myChart = new Chart(ctx, {
+            type: 'line', // Change this to 'bar' or other types if you prefer
+            data: {
+                labels: initialData.map((_, index) => index + 1), // Labels for X-axis (1, 2, 3, ...)
+                datasets: [{
+                    label: 'Values',
+                    data: initialData,
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1,
+                    pointRadius: 0,
+                }]
             },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    max: 1
+            options: {
+                animations: {
+                    duration: 200
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 1
+                    }
                 }
             }
-        }
-    });
+        });
 
-    socket.on(`update-${userName}`, (data) => {
-        let bucket = data.bucket;
-        bucket = bucket.slice(bucket.length - 500);
-        myChart.data.labels = bucket.map((_, index) => index + 1);
-        myChart.data.datasets[0].data = bucket;
+        socket.on(`user-update`, (data) => {
+            if (data.name !== userName)
+                return;
 
-        myChart.update();
-    });
-</script>
+            let bucket = data.bucket;
+            bucket = bucket.slice(bucket.length - 500);
+            myChart.data.labels = bucket.map((_, index) => index + 1);
+            myChart.data.datasets[0].data = bucket;
+
+            myChart.update();
+        });
+    </script>
 </body>
+
 </html>
