@@ -1,24 +1,230 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>Recording states</title>
     <link rel="stylesheet" type="text/css" href="static/styles/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
     <style>
+        .wrapper {
+            overflow: auto;
+        }
+
+        ul {
+            display: flex;
+            flex-wrap: wrap;
+            margin: 0;
+            padding: 1em;
+            justify-content: space-evenly;
+            margin: 5% 0%;
+        }
+
         li {
             display: inline-block;
             list-style-type: none;
+            margin: 1em;
+            border-radius: 5px;
+            background-color: white;
+            padding: 1em 1em;
+        }
+
+        canvas {
+            min-height: 16em;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 1em;
+            margin-bottom: 0.5em;
+        }
+
+        .header a {
+            text-decoration: none;
+            color: #388e3c;
+        }
+
+        .header p {
+            padding: 0;
+            margin: 0;
+        }
+
+        .action-button {
+            width: 2em;
+            height: 2em;
+            background-color: #fcdd03;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background-color 0.3s, box-shadow 0.3s;
+            border: none;
+            outline: none;
+        }
+
+        .action-button:hover {
+            background-color: #fcdf03d5;
+        }
+
+        .action-icon {
+            fill: white;
         }
     </style>
 </head>
+
 <body>
     {% from "macros.html" import render_top_bar, render_footer %}
     {{ render_top_bar('states') }}
-    <ul>
-        {% for user in users %}
-            <li><a href="/state/{{user}}" class="button">{{user}}</a></li>
-        {% endfor %}
-    </ul>
+    <div class="wrapper">
+        <p style="display: none;" id="users">{{users}}</p>
+        <ul>
+            {% for user in users %}
+            <li id="item_{{user.name}}">
+                <div id="header_{{user.name}}" class="header">
+                    <a href="/state/{{user.name}}">{{user.name}}</a>
+                    {% if user.start_time is defined %}
+                    <p id="start_time_{{user.name}}">Start time: {{user.start_time}}</p>
+                    <button id="button_stop_{{user.name}}" onclick="stop('{{user.name}}')" class="action-button">
+                        <svg class="action-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="6" y="6" width="12" height="12" />
+                        </svg>
+                    </button>
+                    {% else %}
+                    <p id="start_time_{{user.name}}"></p>
+                    <button id="button_start_{{user.name}}" onclick="start('{{user.name}}')" class="action-button">
+                        <svg class="action-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M8 5v14l11-7z" />
+                        </svg>
+                    </button>
+                    {% endif %}
+                </div>
+                <!-- <a id="initialBucket" style="display: none">{{initial_bucket}}</a> -->
+                <canvas id="chart_{{user.name}}"></canvas>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {{ render_footer(version) }}
 </body>
-{{ render_footer(version) }}
+<script>
+    const socket = io();
+    const users = JSON.parse(document.getElementById('users').textContent.replace(/'/g, '"'));
+    const charts = {};
+
+    for (const user of users) {
+        const bucket = user.bucket.slice(user.bucket.length - 500);
+
+        const ctx = document.getElementById(`chart_${user.name}`).getContext('2d');
+        const myChart = new Chart(ctx, {
+            type: 'line', // Change this to 'bar' or other types if you prefer
+            data: {
+                labels: bucket.map((_, index) => index + 1), // Labels for X-axis (1, 2, 3, ...)
+                datasets: [{
+                    label: 'Values',
+                    data: bucket,
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1,
+                    pointRadius: 0,
+                }]
+            },
+            options: {
+                animations: {
+                    duration: 200
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 1
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+        charts[user.name] = myChart;
+    }
+
+    socket.on('user-start', (data) => {
+        const startTimeParagraph = document.getElementById(`start_time_${data.name}`);
+        if (startTimeParagraph !== null)
+            startTimeParagraph.textContent = `Start time: ${data['start_time']}`;
+
+        const startButton = document.getElementById(`button_start_${data.name}`);
+        if (startButton !== null) {
+            startButton.remove();
+
+            const header = document.getElementById(`header_${data.name}`);
+
+            const button = document.createElement('button');
+            button.setAttribute('class', 'action-button');
+            button.id = `button_stop_${data.name}`;
+            button.onclick = () => stop(data.name);
+
+            const svgNS = "http://www.w3.org/2000/svg";
+            const svg = document.createElementNS(svgNS, 'svg');
+            svg.setAttribute('class', 'action-icon');
+            svg.setAttribute('viewBox', '0 0 24 24');
+
+            // Create the rectangle inside the SVG
+            const rect = document.createElementNS(svgNS, 'rect');
+            rect.setAttribute('x', '6');
+            rect.setAttribute('y', '6');
+            rect.setAttribute('width', '12');
+            rect.setAttribute('height', '12');
+
+            svg.appendChild(rect);
+            button.appendChild(svg);
+
+            header.appendChild(button);
+        }
+    });
+
+    socket.on('user-stop', (data) => {
+        const item = document.getElementById(`item_${data.name}`);
+        item?.remove();
+    });
+
+    socket.on(`user-update`, (data) => {
+        const chart = charts[data.name];
+        if (chart === undefined)
+            return;
+
+        let bucket = data.bucket;
+        bucket = bucket.slice(bucket.length - 500);
+
+        chart.data.labels = bucket.map((_, index) => index + 1);
+        chart.data.datasets[0].data = bucket;
+
+        chart.update();
+    });
+
+    function start(userName) {
+        fetch('/start', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ user: userName })
+        });
+    }
+
+    function stop(userName) {
+        fetch('/stop', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ user: userName })
+        });
+    }
+
+</script>
+
 </html>

@@ -55,10 +55,44 @@ def create_app():
 
     @app.route('/states')
     def states():
+        users = []
+        for name, state in state_map.items():
+            if state.get('start_time') is not None:
+                users.append({
+                    "name": name,
+                    "start_time": state['start_time'].strftime('%d.%m.%Y %H:%M:%S'),
+                    "bucket": state['bucket']
+                })
+                continue
+
+            users.append({
+                "name": name,
+                "bucket": state['bucket']
+            })
+
         return render_template(
             "states.html",
-            users=state_map.keys()
+            users=users
         )
+
+    @app.route('/register', methods=['POST'])
+    def register():
+        global state_map
+        data = request.json
+
+        if 'user' not in data:
+            return 'Field \"user\" in request body is required', 400
+
+        user = data['user']
+
+        if user in state_map:
+            return 'This user is already registered.', 400
+
+        state_map[user] = {
+            'bucket': []
+        }
+
+        return f'Successfully registered {user}.', 200
 
     @app.route('/start', methods=['POST'])
     def start():
@@ -71,15 +105,20 @@ def create_app():
 
         user = data['user']
 
-        if user in state_map:
+        if user in state_map and state_map[user].get('start_time') is not None:
             return 'Recording for this user started already. Stop it first', 400
 
         now = datetime.datetime.now()
         state_map[user] = {
             'start_time': now,
             'bucket': [],
-            'raw_bucket': []
         }
+
+        socketio.emit('user-start', {
+            'name': user,
+            'start_time': now.strftime('%d.%m.%Y %H:%M:%S'),
+            'bucket': []
+        })
 
         return f'Successfully started data collection for {user}', 200
 
@@ -88,7 +127,7 @@ def create_app():
 
         global state_map
 
-        if user not in state_map:
+        if user not in state_map or state_map[user].get('start_time') is None:
             return f'The data collection for the user: {user} has not started yet', 400
 
         data = request.data
@@ -97,9 +136,10 @@ def create_app():
         user_bucket = user_bucket + wav_converter.parse_raw(data)
         state_map[user]['bucket'] = user_bucket
         socketio.emit(
-            f'update-{user}',
+            f'user-update',
             {
                 'bucket': user_bucket,
+                'name': user,
             }
         )
 
@@ -111,9 +151,8 @@ def create_app():
 
         data = request.json
         user = data['user']
-
-        if user not in state_map:
-            return 'Not recording in progress for this user.', 400
+        if user not in state_map or state_map[user].get('start_time') is None:
+            return 'No recording in progress for this user.', 400
 
         user_bucket = state_map[user]['bucket']
         start_time = state_map[user]['start_time']
@@ -136,6 +175,10 @@ def create_app():
         os.remove(file_path)
 
         del state_map[user]
+
+        socketio.emit('user-stop', {
+            'name': user
+        })
 
         return f'Data collection for user: {user} successfully stopped and file saved.', 200
 
@@ -160,7 +203,7 @@ def create_app():
         finally:
             log_size = len([name for name in os.listdir(app.config['AUDIO_DIR']) if
                             os.path.isfile(os.path.join(app.config['AUDIO_DIR'], name))])
-            if log_size >= app.config['LOG_THRESHOLD']:
+            if log_size >= int(app.config['LOG_THRESHOLD']):
                 os.remove(file_path)
 
         current_emotion = predictions['current_emotion']
@@ -184,14 +227,24 @@ def create_app():
         global state_map
 
         if user not in state_map:
-            return "No recording in progress for given user", 404
+            return render_template(
+                'empty_recording.html',
+                user=user
+            )
 
-        user_data = state_map[user] if user in state_map else None
+        user_data = state_map[user]
+
+        if user_data.get('start_time') is not None:
+            return render_template(
+                'user_state.html',
+                user=user,
+                start_time=user_data['start_time'],
+                initial_bucket=user_data['bucket']
+            )
 
         return render_template(
             'user_state.html',
             user=user,
-            start_time=user_data['start_time'],
             initial_bucket=user_data['bucket']
         )
 
@@ -207,7 +260,6 @@ def create_app():
 
         predictions = jakob_classifier.classify(file_path)
         os.remove(file_path)
-        print(predictions)
         return jsonify(predictions), 200
 
     return app
