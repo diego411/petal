@@ -1,44 +1,30 @@
-USER_NAME = "<<USER NAME>>"
-SERVER_IP = "<<SERVER IP>>"
+USER_NAME = "diego"
+SERVER_IP = "192.168.178.42"
 URL = "http://" + SERVER_IP + ":5000/"
-START_URL = URL + "start"
-STOP_URL = URL + "stop"
+REGISTER_URL = URL + "register"
 UPDATE_URL = URL + "update/" + USER_NAME
 
 const ADC_PIN = C_PIN_06        # ACD input on IN06
-const THRESHOLD = 50
+const THRESHOLD = 150
 const RECT_SIZE = 10
 
 collecting = false
 i = 0
-drawIndex = 0
-out:byte[200]
+out:byte[600]
 
-def onClick
-    collecting = not collecting
-    body = "{ \"user\": \""
-    body = body + USER_NAME
-    body = body + "\" }"
-    addRequestHeader("Content-Type", "application/json")
-    if collecting:
-        postRequest(START_URL, body)
-    else:
-        postRequest(STOP_URL, body)
-        i = 0
-    clearRequestHeaders()
+clear()
+drawText(50, 100, USER_NAME)
+update()
 
-def onDraw      
+body = "{ \"user\": \""
+body = body + USER_NAME
+body = body + "\" }"
+addRequestHeader("Content-Type", "application/json")
+postRequest(REGISTER_URL, body)
+clearRequestHeaders()
+
+while(true):      
     voltage = readADC(ADC_PIN, 1)
-
-    clear()
-    drawText(50, 50, voltage)
-    if collecting:
-        drawText(50, 100, "Collecting")
-        update()
-    else:
-        drawText(50, 100, "Paused")
-        update()
-        return
     
     hByte = byteToHex(voltage>>8)
     lByte = byteToHex(voltage&0xFF)
