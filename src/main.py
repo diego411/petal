@@ -227,14 +227,24 @@ def create_app():
         global state_map
 
         if user not in state_map:
-            return "No recording in progress for given user", 404
+            return render_template(
+                'empty_recording.html',
+                user=user
+            )
 
-        user_data = state_map[user] if user in state_map else None
+        user_data = state_map[user]
+
+        if user_data.get('start_time') is not None:
+            return render_template(
+                'user_state.html',
+                user=user,
+                start_time=user_data['start_time'],
+                initial_bucket=user_data['bucket']
+            )
 
         return render_template(
             'user_state.html',
             user=user,
-            start_time=user_data['start_time'],
             initial_bucket=user_data['bucket']
         )
 

@@ -97,7 +97,8 @@
                     <button id="button_start_{{user.name}}" onclick="start('{{user.name}}')" class="action-button">
                         <svg class="action-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path d="M8 5v14l11-7z" />
-                        </svg></button>
+                        </svg>
+                    </button>
                     {% endif %}
                 </div>
                 <!-- <a id="initialBucket" style="display: none">{{initial_bucket}}</a> -->
@@ -153,7 +154,7 @@
     socket.on('user-start', (data) => {
         const startTimeParagraph = document.getElementById(`start_time_${data.name}`);
         if (startTimeParagraph !== null)
-            startTimeParagraph.textContent = data['start_time'];
+            startTimeParagraph.textContent = `Start time: ${data['start_time']}`;
 
         const startButton = document.getElementById(`button_start_${data.name}`);
         if (startButton !== null) {
