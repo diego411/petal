@@ -36,6 +36,42 @@
             height: auto !important;
             max-height: calc(100vh - 120px);
         }
+
+        .header {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 2em;
+            font-size: 1em;
+            margin-bottom: 0.5em;
+        }
+
+        .header p {
+            padding: 0;
+            margin: 0;
+        }
+
+        .action-button {
+            width: 2em;
+            height: 2em;
+            background-color: #fcdd03;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background-color 0.3s, box-shadow 0.3s;
+            border: none;
+            outline: none;
+        }
+
+        .action-button:hover {
+            background-color: #fcdf03d5;
+        }
+
+        .action-icon {
+            fill: white;
+        }
     </style>
 </head>
 
@@ -43,8 +79,25 @@
     {% from "macros.html" import render_top_bar, render_footer %}
     <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
     {{ render_top_bar() }}
-    <main>
-        <p>Recording start time: {{start_time}}</p>
+    <main id="main">
+        <div id="header" class="header">
+            <p>User: {{user}}</a>
+            {% if start_time is defined %}
+            <p id="start_time">Recording start time: {{start_time}}</p>
+            <button id="button_stop" onclick="stop('{{user}}')" class="action-button">
+                <svg class="action-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="6" y="6" width="12" height="12" />
+                </svg>
+            </button>
+            {% else %}
+            <p id="start_time"></p>
+            <button id="button_start" onclick="start('{{user}}')" class="action-button">
+                <svg class="action-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M8 5v14l11-7z" />
+                </svg>
+            </button>
+            {% endif %}
+        </div>
         <a id="initialBucket" style="display: none">{{initial_bucket}}</a>
         <a id="userName" style="display: none">{{user}}</a>
         <canvas id="myChart"></canvas>
@@ -83,6 +136,45 @@
             }
         });
 
+        socket.on('user-start', (data) => {
+            const startTimeParagraph = document.getElementById(`start_time`);
+            if (startTimeParagraph !== null)
+                startTimeParagraph.textContent = `Recording start time: ${data['start_time']}`;
+
+            const startButton = document.getElementById(`button_start`);
+            if (startButton !== null) {
+                startButton.remove();
+
+                const header = document.getElementById(`header`);
+
+                const button = document.createElement('button');
+                button.setAttribute('class', 'action-button');
+                button.id = `button_stop`;
+                button.onclick = () => stop(data.name);
+
+                const svgNS = "http://www.w3.org/2000/svg";
+                const svg = document.createElementNS(svgNS, 'svg');
+                svg.setAttribute('class', 'action-icon');
+                svg.setAttribute('viewBox', '0 0 24 24');
+
+                // Create the rectangle inside the SVG
+                const rect = document.createElementNS(svgNS, 'rect');
+                rect.setAttribute('x', '6');
+                rect.setAttribute('y', '6');
+                rect.setAttribute('width', '12');
+                rect.setAttribute('height', '12');
+
+                svg.appendChild(rect);
+                button.appendChild(svg);
+
+                header.appendChild(button);
+            }
+        });
+
+        socket.on('user-stop', (data) => {
+            location.reload();
+        });
+
         socket.on(`user-update`, (data) => {
             if (data.name !== userName)
                 return;
@@ -94,6 +186,26 @@
 
             myChart.update();
         });
+
+        function start(userName) {
+            fetch('/start', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ user: userName })
+            });
+        }
+
+        function stop(userName) {
+            fetch('/stop', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ user: userName })
+            });
+        }
     </script>
 </body>
 
