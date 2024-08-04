@@ -188,6 +188,23 @@ def create_app():
 
         return f'Data collection for user: {user} successfully stopped and file saved.', 200
 
+    @app.route('/delete', methods=['POST'])
+    def delete():
+        global state_map
+        data = request.json
+        user = data['user']
+
+        if user not in state_map:
+            return 'Cannot delete non existent recording', 400
+
+        del state_map[user]
+
+        socketio.emit('user-delete', {
+            'name': user
+        })
+
+        return f'Deleted recording for: {user}', 200
+
     @app.route('/update', methods=['POST'])
     def update():
         global bucket
