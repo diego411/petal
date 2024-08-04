@@ -112,6 +112,7 @@ def create_app():
         state_map[user] = {
             'start_time': now,
             'bucket': [],
+            'last_update': now
         }
 
         socketio.emit('user-start', {
@@ -127,7 +128,12 @@ def create_app():
 
         global state_map
 
-        if user not in state_map or state_map[user].get('start_time') is None:
+        if user not in state_map:
+            state_map[user] = {
+                'bucket': []
+            }
+
+        if state_map[user].get('start_time') is None:
             return f'The data collection for the user: {user} has not started yet', 400
 
         data = request.data
@@ -135,6 +141,7 @@ def create_app():
         user_bucket = state_map[user]['bucket']
         user_bucket = user_bucket + wav_converter.parse_raw(data)
         state_map[user]['bucket'] = user_bucket
+        state_map[user]['last_update'] = datetime.datetime.now()
         socketio.emit(
             f'user-update',
             {
@@ -156,9 +163,8 @@ def create_app():
 
         user_bucket = state_map[user]['bucket']
         start_time = state_map[user]['start_time']
-        now = datetime.datetime.now()
-        delta_seconds = (now - start_time).seconds
-        sample_rate = int(len(user_bucket) / delta_seconds)
+        delta_seconds = (state_map[user]['last_update'] - start_time).seconds
+        sample_rate = int(len(user_bucket) / delta_seconds) if delta_seconds != 0 else 0
         file_name = f'{user}_{start_time.strftime("%d-%m-%Y_%H:%M:%S")}_{sample_rate}Hz.wav'
         file_path = wav_converter.convert(
             user_bucket,
