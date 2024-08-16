@@ -28,6 +28,8 @@ def create_app():
         app_secret=app.config['DROPBOX_APP_SECRET'],
         refresh_token=app.config['DROPBOX_REFRESH_TOKEN']
     )
+    augment_window = app.config['AUGMENT_WINDOW']
+    augment_padding = app.config['AUGMENT_PADDING']
 
     @app.context_processor
     def inject_version():
@@ -211,7 +213,7 @@ def create_app():
         global current_emotion
 
         data = request.data
-        bucket = bucket + wav_converter.augment(wav_converter.parse_raw(data))
+        bucket = bucket + wav_converter.augment(wav_converter.parse_raw(data), augment_window, augment_padding)
 
         if len(bucket) < 300_000:
             return jsonify({'current_emotion': current_emotion}), 200
