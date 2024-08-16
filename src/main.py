@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify, render_template, g
 from flask_socketio import SocketIO
 from src.service import wav_converter
+from src.service import labeler
 from src.controller import dropbox_controller
 from src.models.JakobPlantEmotionClassifier import JakobPlantEmotionClassifier
 from src.AppConfig import AppConfig
@@ -28,6 +29,8 @@ def create_app():
         app_secret=app.config['DROPBOX_APP_SECRET'],
         refresh_token=app.config['DROPBOX_REFRESH_TOKEN']
     )
+    augment_window = app.config['AUGMENT_WINDOW']
+    augment_padding = app.config['AUGMENT_PADDING']
 
     @app.context_processor
     def inject_version():
@@ -165,7 +168,7 @@ def create_app():
         start_time = state_map[user]['start_time']
         delta_seconds = (state_map[user]['last_update'] - start_time).seconds
         sample_rate = int(len(user_bucket) / delta_seconds) if delta_seconds != 0 else 0
-        file_name = f'{user}_{start_time.strftime("%d-%m-%Y_%H:%M:%S")}_{sample_rate}Hz.wav'
+        file_name = f'{user}_{start_time.strftime("%d-%m-%Y_%H:%M:%S")}_{sample_rate}Hz_{int(start_time.timestamp() * 1000)}.wav'
         file_path = wav_converter.convert(
             user_bucket,
             sample_rate=sample_rate,
@@ -175,7 +178,7 @@ def create_app():
         dropbox_controller.upload_file_to_dropbox(
             dropbox_client=dropbox_client,
             file_path=file_path,
-            dropbox_path=f'/Data/{user}/{file_name}'
+            dropbox_path=f'/PlantRecordings/{user}/{file_name}'
         )
 
         os.remove(file_path)
@@ -211,7 +214,7 @@ def create_app():
         global current_emotion
 
         data = request.data
-        bucket = bucket + wav_converter.augment(wav_converter.parse_raw(data))
+        bucket = bucket + wav_converter.augment(wav_converter.parse_raw(data), augment_window, augment_padding)
 
         if len(bucket) < 300_000:
             return jsonify({'current_emotion': current_emotion}), 200
@@ -284,6 +287,37 @@ def create_app():
         predictions = jakob_classifier.classify(file_path)
         os.remove(file_path)
         return jsonify(predictions), 200
+
+    @app.route('/labelRecordings', methods=['GET'])
+    def label_recordings():
+        return render_template(
+            'label.html'
+        )
+
+    @app.route('/label', methods=['POST'])
+    def label():
+        print(request.files)
+        if 'recording' not in request.files or 'moodyExport' not in request.files:
+            return jsonify({'error': 'Both the wav recording and the moody export file are required.'}), 400
+
+        recording = request.files['recording']
+        moody_export = request.files['moodyExport']
+
+        recording_path = f'label_dumps/{recording.filename}'
+        moody_export_path = f'label_dumps/{moody_export.filename}'
+        recording.save(recording_path)
+        moody_export.save(moody_export_path)
+
+        labeler.label_recording(
+            recording_path=recording_path,
+            observations_path=moody_export_path,
+            dropbox_client=dropbox_client
+        )
+
+        os.remove(recording_path)
+        os.remove(moody_export_path)
+
+        return "Successfully labeled data", 200
 
     return app
 

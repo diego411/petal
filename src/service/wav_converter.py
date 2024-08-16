@@ -2,9 +2,6 @@ import time
 import numpy as np
 import scipy.io.wavfile as wav
 
-augment_window = 3  # how many values are considered for augmenting a new value
-augment_padding = 100  # how many values are augmented from the window
-
 
 def parse_raw(data):
     data = data[:-1]
@@ -20,7 +17,7 @@ def parse_raw(data):
     return out
 
 
-def augment(voltages):
+def augment(voltages, augment_window, augment_padding):
     augmented_voltages = []
     n = len(voltages)
 
