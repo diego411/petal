@@ -9,12 +9,10 @@ def label_recording(recording_path: str, observations_path: str, dropbox_client:
     split_recording_path = recording_path.split('.')[0]
     split_recording_path = split_recording_path.split('_')
     recording_start_timestamp = int(split_recording_path[len(split_recording_path) - 1])
-    print(recording_start_timestamp)
     with open(observations_path, 'r') as file:
         observations = json.load(file)
 
     recording = AudioSegment.from_wav(recording_path)
-    print(recording)
 
     observations = sorted(observations, key=lambda x: x['timestamp'])
     for i in range(0, len(observations)):

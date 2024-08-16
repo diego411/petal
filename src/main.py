@@ -296,7 +296,6 @@ def create_app():
 
     @app.route('/label', methods=['POST'])
     def label():
-        print(request.files)
         if 'recording' not in request.files or 'moodyExport' not in request.files:
             return jsonify({'error': 'Both the wav recording and the moody export file are required.'}), 400
 
