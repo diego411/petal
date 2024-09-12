@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Record and Label</title>
+    <link rel="stylesheet" type="text/css" href="static/styles/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <style>
+        .container {
+            display: grid;
+            place-items: center;
+            width: 100%;
+            /* Adjust the size as needed */
+            max-width: 70em;
+            /* Ensure it does not exceed this width */
+            position: relative;
+            gap: 2em;
+        }
+
+        video,
+        canvas {
+            grid-area: 1 / 1;
+            /* Stack video and canvas on top of each other */
+            width: 100%;
+            height: 100%;
+        }
+
+        canvas {
+            z-index: 2;
+            /* Ensure canvas is on top of the video */
+            pointer-events: none;
+            /* Canvas shouldn't block video interactivity */
+        }
+
+        .action-button {
+            position: relative;
+            padding: 8px 16px;
+            background: #fcdd03;
+            border: none;
+            outline: none;
+            border-radius: 2px;
+            cursor: pointer;
+        }
+
+        .action-button:active {
+            background: #007a63;
+        }
+
+        .button__text {
+            color: #388e3c;
+            font-size: 2em;
+            transition: all 0.2s;
+        }
+
+        .unit {
+            grid-area: 1 / 2;
+            display: inline-block;
+            list-style-type: none;
+            margin: 1em;
+            border-radius: 5px;
+            background-color: white;
+            padding: 1em 1em;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 1em;
+            margin-bottom: 0.5em;
+        }
+
+        .header a {
+            text-decoration: none;
+            color: #388e3c;
+        }
+
+        .header p {
+            padding: 0;
+            margin: 0;
+        }
+
+        canvas {
+            min-height: 16em;
+        }
+    </style>
+</head>
+
+<body>
+    {% from "macros.html" import render_top_bar, render_footer %}
+    {{ render_top_bar('recordAndLabel') }}
+    <h2 id="sessionUUID">Session offline</h2>
+    <div class="container">
+        <video id="video" autoplay muted></video>
+        <canvas id="overlay"></canvas>
+        <select name="recordings" id="recordings" onchange="updateRecording()">
+            {% for recording in recordings %}
+            <option value="{{recording.name}}">{{recording.name}}</option>
+            {% endfor %}
+        </select>
+        <div class="unit">
+            <div class="header">
+                <a id="recording-name" href="/state/"></a>
+                <p id="start-time"></p>
+            </div>
+            <canvas id="chart"></canvas>
+        </div>
+        <button class="action-button" onclick="executeAction()" id="action-button">
+            <span class="button__text">Start</span>
+        </button>
+    </div>
+
+    <script src="static/face-api.js"></script>
+    <script>
+        const socket = io();
+
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('overlay');
+        const emotionDisplay = document.getElementById('emotion-display');
+        const recordings = document.getElementById('recordings');
+        const actionButton = document.getElementById('action-button');
+        const sessionUUID = document.getElementById('sessionUUID');
+        const recordingName = document.getElementById('recording-name');
+        let running = false;
+        let currentEmotion = undefined;
+        let currentUUID = undefined;
+        let output = [];
+
+        recordingName.textContent = recordings.value;
+
+        const ctx = document.getElementById('chart').getContext('2d');
+        const myChart = new Chart(ctx, {
+            type: 'line', // Change this to 'bar' or other types if you prefer
+            data: {
+                labels: [].map((_, index) => index + 1), // Labels for X-axis (1, 2, 3, ...)
+                datasets: [{
+                    label: 'Values',
+                    data: [],
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1,
+                    pointRadius: 0,
+                }]
+            },
+            options: {
+                animations: {
+                    duration: 200
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 1
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+
+        // Start the camera and play video
+        async function startVideo() {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: {} });
+            video.srcObject = stream;
+        }
+
+        // Load the models
+        async function loadModels() {
+            await faceapi.nets.tinyFaceDetector.loadFromUri('/static/models');
+            await faceapi.nets.faceExpressionNet.loadFromUri('/static/models'); // Load the emotion model
+        }
+
+        function drawResult(detection, displaySize) {
+            if (detection === undefined)
+                return;
+
+            const resizedDetection = faceapi.resizeResults(detection, displaySize);
+            canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw the bounding box around the face
+            faceapi.draw.drawDetections(canvas, resizedDetection);
+
+            if (detection && detection.expressions) {
+                const { expressions, detection: face } = detection;
+                const emotion = Object.keys(expressions).reduce((a, b) => expressions[a] > expressions[b] ? a : b);
+
+                const ctx = canvas.getContext('2d');
+                ctx.font = '18px Arial';
+                ctx.fillStyle = 'red';
+                ctx.fillText(emotion, face.box.x, face.box.y - 10); // Display emotion above the face
+            }
+        }
+
+        function updateOutput(detection) {
+            if (!detection || !detection.expressions)
+                return;
+            const { expressions, detection: face } = detection;
+            const emotion = Object.keys(expressions).reduce((a, b) => expressions[a] > expressions[b] ? a : b);
+
+            if (currentEmotion !== emotion) {
+                output.push({
+                    emotion: emotion,
+                    timestamp: Date.now(),
+                    id: currentUUID
+                })
+            }
+            currentEmotion = emotion;
+        }
+
+        // Start video and emotion detection
+        async function run() {
+            await loadModels();
+            startVideo();
+
+            video.addEventListener('play', () => {
+                // Adjust canvas size to match the video
+                canvas.width = video.width;
+                canvas.height = video.height;
+
+                const displaySize = { width: video.videoWidth, height: video.videoHeight };
+                faceapi.matchDimensions(canvas, displaySize);
+
+                // Detect the face and emotion every 100ms and draw results on the canvas
+                setInterval(async () => {
+                    const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceExpressions();
+                    drawResult(detection, displaySize);
+                    if (running)
+                        updateOutput(detection);
+                }, 100);
+            });
+        }
+
+        const executeAction = () => {
+            running = !running;
+            if (running) {
+                actionButton.textContent = "STOP";
+                currentUUID = crypto.randomUUID();
+                sessionUUID.textContent = `Session ID: ${currentUUID}`;
+                fetch(`/start`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ user: recordings.value })
+                });
+            } else {
+                actionButton.textContent = "START"
+                sessionUUID.textContent = `Session ${currentUUID} just stopped`;
+                currentUUID = undefined;
+                fetch(`/stopAndLabel`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ user: recordings.value, emotions: output })
+                });
+            }
+        }
+
+        socket.on('user-start', (data) => {
+            const startTimeParagraph = document.getElementById(`start-time`);
+            startTimeParagraph.textContent = `Start time: ${data['start_time']}`;
+        });
+
+        socket.on('user-stop', (data) => {
+            const startTimeParagraph = document.getElementById(`start-time`);
+            startTimeParagraph.textContent = "";
+            myChart.clear()
+        });
+
+        socket.on('user-delete', (data) => {
+            // TODO: ?
+        });
+
+        socket.on(`user-update`, (data) => {
+            if (!running)
+                return;
+
+            if (data.name !== recordings.value)
+                return;
+
+            let bucket = data.bucket;
+            bucket = bucket.slice(bucket.length - 500);
+            myChart.data.labels = bucket.map((_, index) => index + 1);
+            myChart.data.datasets[0].data = bucket;
+
+            myChart.update();
+        });
+
+        const updateRecording = () => {
+            const recordingName = document.getElementById('recording-name');
+            recordingName.textContent = recordings.value;
+        }
+
+        run();
+    </script>
+</body>
+{{ render_footer() }}
+
+</html>
