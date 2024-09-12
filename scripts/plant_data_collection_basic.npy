@@ -1,27 +1,17 @@
-USER_NAME = "diego"
+USER_NAME = "<USER_NAME>"
 SERVER_IP = "<IP_ADDRESS>"
 URL = "http://" + SERVER_IP + ":5000/"
-REGISTER_URL = URL + "register"
 UPDATE_URL = URL + "update/" + USER_NAME
 
 const ADC_PIN = C_PIN_06        # ACD input on IN06
 const THRESHOLD = 150
-const RECT_SIZE = 10
 
-collecting = false
 i = 0
 out:byte[600]
 
 clear()
 drawText(50, 100, USER_NAME)
 update()
-
-body = "{ \"user\": \""
-body = body + USER_NAME
-body = body + "\" }"
-addRequestHeader("Content-Type", "application/json")
-postRequest(REGISTER_URL, body)
-clearRequestHeaders()
 
 while(true):      
     voltage = readADC(ADC_PIN, 1)

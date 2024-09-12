@@ -4,7 +4,8 @@ import scipy.io.wavfile as wav
 
 
 def parse_raw(data):
-    data = data[:-1]
+    offset = len(data) % 4
+    data = data[: -1 * offset if offset != 0 else len(data)]
     chunks = [data[i:i + 4] for i in range(0, len(data), 4)]
     out = []
     for chunk in chunks:
@@ -39,12 +40,11 @@ def augment(voltages, augment_window, augment_padding):
     return augmented_voltages
 
 
-def convert(voltages, sample_rate=10_000, path=None) -> str:
+def convert(voltages, sample_rate=10_000, path=None):
     # Assuming the voltage measurements range from 0 to 1, map them to audio samples (-1 to 1)
     audio_samples = np.array(voltages) * 2 - 1
-
     # Scale the audio samples to fit within the valid range for 16-bit audio (-32768 to 32767)
-    scaled_audio_samples = (audio_samples * 32767).astype(np.int16)
+    # scaled_audio_samples = (audio_samples * 32767).astype(np.int16)
 
     # Write audio data to a WAV file
     extension = 'wav'
@@ -52,6 +52,6 @@ def convert(voltages, sample_rate=10_000, path=None) -> str:
     if file_path is None:
         date = time.ctime(time.time())
         file_path = f'audio/plant_audio_{date}.{extension}'
-    wav.write(file_path, sample_rate, scaled_audio_samples)
+    wav.write(file_path, sample_rate, audio_samples.astype(np.float32))
 
     return file_path

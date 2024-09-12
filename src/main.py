@@ -128,7 +128,6 @@ def create_app():
 
     @app.route('/update/<user>', methods=['POST'])
     def update_by_name(user):
-
         global state_map
 
         if user not in state_map:
@@ -142,7 +141,8 @@ def create_app():
         data = request.data
 
         user_bucket = state_map[user]['bucket']
-        user_bucket = user_bucket + wav_converter.parse_raw(data)
+        parsed_data = wav_converter.parse_raw(data)
+        user_bucket = user_bucket + parsed_data
         state_map[user]['bucket'] = user_bucket
         state_map[user]['last_update'] = datetime.datetime.now()
         socketio.emit(
@@ -182,7 +182,6 @@ def create_app():
         )
 
         os.remove(file_path)
-
         del state_map[user]
 
         socketio.emit('user-stop', {
@@ -294,9 +293,72 @@ def create_app():
             'label.html'
         )
 
+    @app.route('/stopAndLabel', methods=['POST'])
+    def stopAndLabel():
+        global state_map
+
+        data = request.json
+        user = data['user']
+        if user not in state_map or state_map[user].get('start_time') is None:
+            return 'No recording in progress for this user.', 400
+
+        user_bucket = state_map[user]['bucket']
+        start_time = state_map[user]['start_time']
+        delta_seconds = (state_map[user]['last_update'] - start_time).seconds
+        sample_rate = int(len(user_bucket) / delta_seconds) if delta_seconds != 0 else 0
+        file_name = f'{user}_{start_time.strftime("%d-%m-%Y_%H:%M:%S")}_{sample_rate}Hz_{int(start_time.timestamp() * 1000)}.wav'
+        file_path = wav_converter.convert(
+            user_bucket,
+            sample_rate=sample_rate,
+            path=f'audio/{file_name}'
+        )
+
+        emotions = data['emotions']
+        labeler.label_recording(
+            recording_path=file_path,
+            observations_path='',
+            observations=emotions,
+            dropbox_client=dropbox_client
+        )
+
+        dropbox_controller.upload_file_to_dropbox(
+            dropbox_client=dropbox_client,
+            file_path=file_path,
+            dropbox_path=f'/PlantRecordings/{user}/{file_name}'
+        )
+
+        os.remove(file_path)
+        del state_map[user]
+
+        socketio.emit('user-stop', {
+            'name': user
+        })
+
+        return "Sucecssfully stopped recording and labeled data", 200
+
+    @app.route('/recordAndLabel', methods=['GET'])
+    def record_and_label():
+        users = []
+        for name, state in state_map.items():
+            if state.get('start_time') is not None:
+                users.append({
+                    "name": name,
+                    "start_time": state['start_time'].strftime('%d.%m.%Y %H:%M:%S'),
+                    "bucket": state['bucket']
+                })
+                continue
+
+            users.append({
+                "name": name,
+                "bucket": state['bucket']
+            })
+        return render_template(
+            'record_and_label.html',
+            recordings=users
+        )
+
     @app.route('/label', methods=['POST'])
     def label():
-        print(request.files)
         if 'recording' not in request.files or 'moodyExport' not in request.files:
             return jsonify({'error': 'Both the wav recording and the moody export file are required.'}), 400
 

@@ -5,16 +5,16 @@ from src.controller import dropbox_controller
 import dropbox
 
 
-def label_recording(recording_path: str, observations_path: str, dropbox_client: dropbox.Dropbox):
+def label_recording(recording_path: str, observations_path: str, observations: dict, dropbox_client: dropbox.Dropbox):
     split_recording_path = recording_path.split('.')[0]
     split_recording_path = split_recording_path.split('_')
     recording_start_timestamp = int(split_recording_path[len(split_recording_path) - 1])
-    print(recording_start_timestamp)
-    with open(observations_path, 'r') as file:
-        observations = json.load(file)
+
+    if observations is None:
+        with open(observations_path, 'r') as file:
+            observations = json.load(file)
 
     recording = AudioSegment.from_wav(recording_path)
-    print(recording)
 
     observations = sorted(observations, key=lambda x: x['timestamp'])
     for i in range(0, len(observations)):
@@ -24,7 +24,10 @@ def label_recording(recording_path: str, observations_path: str, dropbox_client:
         start = observation['timestamp']
         end = next_observation['timestamp'] if next_observation is not None else None
 
-        emotion = max({key: observation[key] for key in
+        if 'emotion' in observation:
+            emotion = observation['emotion']
+        else:
+            emotion = max({key: observation[key] for key in
                        ['happy', 'surprised', 'neutral', 'sad', 'angry', 'disgusted', 'fearful']}, key=observation.get)
         print(f'From {start} to {end} this emotion was predicted: {emotion}')
 
@@ -55,3 +58,5 @@ def label_recording(recording_path: str, observations_path: str, dropbox_client:
             file_path=file_path,
             dropbox_path=f"/PlantRecordings/Labeled/{emotion}/{observation['id']}.wav"
         )
+
+        os.remove(file_path)

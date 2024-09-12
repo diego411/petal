@@ -2,5 +2,5 @@ venv
 .env
 data
 model
-/audio/*.wav
+/audio/**.wav
 __pycache__
