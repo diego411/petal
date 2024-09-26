@@ -10,6 +10,7 @@ import datetime
 import os
 import traceback
 import logging
+import threading
 
 state_map = {}
 bucket = []
@@ -31,6 +32,23 @@ def create_app():
     )
     augment_window = app.config['AUGMENT_WINDOW']
     augment_padding = app.config['AUGMENT_PADDING']
+
+    if not os.path.exists('logs'):
+        os.makedirs('logs')
+
+    log_file = os.path.join('logs', 'app.log')
+    logging.basicConfig(
+        filename=log_file,
+        level=logging.DEBUG,  # Log level can be changed as needed
+        format='%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+    )
+
+    file_handler = logging.FileHandler(log_file)
+    file_handler.setLevel(logging.DEBUG)  # Set log level
+    formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]')
+    file_handler.setFormatter(formatter)
+
+    app.logger.addHandler(file_handler)
 
     @app.context_processor
     def inject_version():
@@ -126,20 +144,8 @@ def create_app():
 
         return f'Successfully started data collection for {user}', 200
 
-    @app.route('/update/<user>', methods=['POST'])
-    def update_by_name(user):
+    def run_update_by_name(user, data):
         global state_map
-
-        if user not in state_map:
-            state_map[user] = {
-                'bucket': []
-            }
-
-        if state_map[user].get('start_time') is None:
-            return f'The data collection for the user: {user} has not started yet', 400
-
-        data = request.data
-
         user_bucket = state_map[user]['bucket']
         parsed_data = wav_converter.parse_raw(data)
         user_bucket = user_bucket + parsed_data
@@ -153,7 +159,22 @@ def create_app():
             }
         )
 
-        return f'Successful update for: {user}', 200
+    @app.route('/update/<user>', methods=['POST'])
+    def update_by_name(user):
+        global state_map
+
+        if user not in state_map:
+            state_map[user] = {
+                'bucket': []
+            }
+
+        if state_map[user].get('start_time') is None:
+            return f'The data collection for the user: {user} has not started yet', 400
+
+        data = request.data
+        thread = threading.Thread(target=run_update_by_name(user, data))
+        thread.start()
+        return f'Successfully started update for: {user}', 200
 
     @app.route('/stop', methods=['POST'])
     def stop():
@@ -166,8 +187,15 @@ def create_app():
 
         user_bucket = state_map[user]['bucket']
         start_time = state_map[user]['start_time']
+        app.logger.info(f"Start time: {start_time}")
+        app.logger.info(f"Last update: {state_map[user]['last_update']}")
+
         delta_seconds = (state_map[user]['last_update'] - start_time).seconds
-        sample_rate = int(len(user_bucket) / delta_seconds) if delta_seconds != 0 else 0
+        app.logger.info(f"Delta seconds: {delta_seconds}")
+        app.logger.info(f"Bucket length: {len(user_bucket)}")
+        app.logger.info(f"Calculated sample rate: {int(len(user_bucket) / delta_seconds) if delta_seconds != 0 else 0}")
+
+        sample_rate = 142
         file_name = f'{user}_{start_time.strftime("%d-%m-%Y_%H:%M:%S")}_{sample_rate}Hz_{int(start_time.timestamp() * 1000)}.wav'
         file_path = wav_converter.convert(
             user_bucket,
