@@ -4,6 +4,7 @@ from src.service import wav_converter
 from src.service import labeler
 from src.controller import dropbox_controller
 from src.models.JakobPlantEmotionClassifier import JakobPlantEmotionClassifier
+from src.database import db
 from src.AppConfig import AppConfig
 import time
 import datetime
@@ -24,6 +25,7 @@ def create_app():
     app.config.from_object(AppConfig)
     socketio.init_app(app)
 
+    db.init()
     jakob_classifier = JakobPlantEmotionClassifier()
     dropbox_client = dropbox_controller.create_dropbox_client(
         app_key=app.config['DROPBOX_APP_KEY'],
@@ -105,6 +107,13 @@ def create_app():
             return 'Field \"user\" in request body is required', 400
 
         user = data['user']
+        sample_rate = data['sample_rate']
+        threshold = data['threshold']
+
+        # TODO: build mapper for this
+        db.create_user(user)
+        db.set_sample_rate(user, sample_rate)
+        db.set_threshold(user, threshold)
 
         if user in state_map:
             return 'This user is already registered.', 400
@@ -144,23 +153,36 @@ def create_app():
 
         return f'Successfully started data collection for {user}', 200
 
-    def run_update_by_name(user, data):
+    def run_update_by_name(user, data, now):
         global state_map
+        sample_rate = db.get_user_by_name(user).get('sample_rate') or 142
         user_bucket = state_map[user]['bucket']
+        start_time = state_map[user]['start_time']
         parsed_data = wav_converter.parse_raw(data)
-        user_bucket = user_bucket + parsed_data
-        state_map[user]['bucket'] = user_bucket
-        state_map[user]['last_update'] = datetime.datetime.now()
+
+        seconds_since_start = (now - start_time).seconds
+        expected_measurement_count = int(seconds_since_start * sample_rate)
+        diff_number_measurements = expected_measurement_count - (len(user_bucket) + len(parsed_data))
+        if len(user_bucket) == 0:
+            parsed_data = parsed_data[:expected_measurement_count]
+        elif diff_number_measurements > 0:
+            parsed_data += [parsed_data[-1]] * diff_number_measurements
+
+        updated_bucket = user_bucket + parsed_data
+        state_map[user]['bucket'] = updated_bucket
+        state_map[user]['last_update'] = now
         socketio.emit(
             f'user-update',
             {
-                'bucket': user_bucket,
+                'bucket': updated_bucket,
                 'name': user,
+                'threshold': db.get_user_by_name(user).get('threshold') or 9000
             }
         )
 
     @app.route('/update/<user>', methods=['POST'])
     def update_by_name(user):
+        now = datetime.datetime.now()
         global state_map
 
         if user not in state_map:
@@ -172,7 +194,7 @@ def create_app():
             return f'The data collection for the user: {user} has not started yet', 400
 
         data = request.data
-        thread = threading.Thread(target=run_update_by_name(user, data))
+        thread = threading.Thread(target=run_update_by_name(user, data, now))
         thread.start()
         return f'Successfully started update for: {user}', 200
 
@@ -195,8 +217,8 @@ def create_app():
         app.logger.info(f"Bucket length: {len(user_bucket)}")
         app.logger.info(f"Calculated sample rate: {int(len(user_bucket) / delta_seconds) if delta_seconds != 0 else 0}")
 
-        sample_rate = 142
-        file_name = f'{user}_{start_time.strftime("%d-%m-%Y_%H:%M:%S")}_{sample_rate}Hz_{int(start_time.timestamp() * 1000)}.wav'
+        sample_rate = db.get_user_by_name(user).get('sample_rate') or 142
+        file_name = f'{user}_{sample_rate}Hz_{int(start_time.timestamp() * 1000)}.wav'
         file_path = wav_converter.convert(
             user_bucket,
             sample_rate=sample_rate,
@@ -292,7 +314,8 @@ def create_app():
                 'user_state.html',
                 user=user,
                 start_time=user_data['start_time'],
-                initial_bucket=user_data['bucket']
+                threshold=db.get_user_by_name(user).get('threshold'),
+                initial_bucket=user_data['bucket'],
             )
 
         return render_template(

@@ -232,7 +232,8 @@
             return;
 
         let bucket = data.bucket;
-        bucket = bucket.slice(bucket.length - 500);
+        const threshold = data.threshold * 2;
+        bucket = bucket.slice(bucket.length - threshold);
 
         chart.data.labels = bucket.map((_, index) => index + 1);
         chart.data.datasets[0].data = bucket;
