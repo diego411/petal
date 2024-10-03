@@ -6,12 +6,14 @@ from src.controller import dropbox_controller
 from src.models.JakobPlantEmotionClassifier import JakobPlantEmotionClassifier
 from src.database import db
 from src.AppConfig import AppConfig
+from pathlib import Path
 import time
 import datetime
 import os
 import traceback
 import logging
 import threading
+import json
 
 state_map = {}
 bucket = []
@@ -431,6 +433,32 @@ def create_app():
         os.remove(moody_export_path)
 
         return "Successfully labeled data", 200
+
+    @app.route('/scripts', methods=['GET'])
+    def get_scripts():
+        scripts = []
+        path = Path('scripts')
+        for item in path.iterdir():
+            if item.is_dir():
+                script = {"name": item.name, "versions": []}
+                versions = []
+                for version in item.iterdir():
+                    if not version.is_dir() and version.suffix == '.npy':
+                        content = ''
+                        with version.open('r') as file:
+                            content = file.read()#.replace('"', '\\"').replace("'", "\\'")
+                        versions.append({"identifier": version.name.split('.')[0], "content": content})
+
+                sorted(versions, key=lambda version: version['identifier'])
+                versions[-1]['identifier'] += " (latest)"
+                script['versions'] = versions
+                scripts.append(script)
+        print(scripts)
+        return render_template(
+            'scripts.html',
+            scripts=scripts,
+            parsed_scripts=json.dumps(scripts)
+        )
 
     return app
 
