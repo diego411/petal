@@ -453,7 +453,6 @@ def create_app():
                 versions[-1]['identifier'] += " (latest)"
                 script['versions'] = versions
                 scripts.append(script)
-        print(scripts)
         return render_template(
             'scripts.html',
             scripts=scripts,
