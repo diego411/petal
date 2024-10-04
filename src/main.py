@@ -4,12 +4,16 @@ from src.service import wav_converter
 from src.service import labeler
 from src.controller import dropbox_controller
 from src.models.JakobPlantEmotionClassifier import JakobPlantEmotionClassifier
+from src.database import db
 from src.AppConfig import AppConfig
+from pathlib import Path
 import time
 import datetime
 import os
 import traceback
 import logging
+import threading
+import json
 
 state_map = {}
 bucket = []
@@ -23,6 +27,7 @@ def create_app():
     app.config.from_object(AppConfig)
     socketio.init_app(app)
 
+    db.init()
     jakob_classifier = JakobPlantEmotionClassifier()
     dropbox_client = dropbox_controller.create_dropbox_client(
         app_key=app.config['DROPBOX_APP_KEY'],
@@ -31,6 +36,23 @@ def create_app():
     )
     augment_window = app.config['AUGMENT_WINDOW']
     augment_padding = app.config['AUGMENT_PADDING']
+
+    if not os.path.exists('logs'):
+        os.makedirs('logs')
+
+    log_file = os.path.join('logs', 'app.log')
+    logging.basicConfig(
+        filename=log_file,
+        level=logging.DEBUG,  # Log level can be changed as needed
+        format='%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+    )
+
+    file_handler = logging.FileHandler(log_file)
+    file_handler.setLevel(logging.DEBUG)  # Set log level
+    formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]')
+    file_handler.setFormatter(formatter)
+
+    app.logger.addHandler(file_handler)
 
     @app.context_processor
     def inject_version():
@@ -87,6 +109,13 @@ def create_app():
             return 'Field \"user\" in request body is required', 400
 
         user = data['user']
+        sample_rate = data['sample_rate']
+        threshold = data['threshold']
+
+        # TODO: build mapper for this
+        db.create_user(user)
+        db.set_sample_rate(user, sample_rate)
+        db.set_threshold(user, threshold)
 
         if user in state_map:
             return 'This user is already registered.', 400
@@ -126,8 +155,36 @@ def create_app():
 
         return f'Successfully started data collection for {user}', 200
 
+    def run_update_by_name(user, data, now):
+        global state_map
+        sample_rate = db.get_user_by_name(user).get('sample_rate') or 142
+        user_bucket = state_map[user]['bucket']
+        start_time = state_map[user]['start_time']
+        parsed_data = wav_converter.parse_raw(data)
+
+        seconds_since_start = (now - start_time).seconds
+        expected_measurement_count = int(seconds_since_start * sample_rate)
+        diff_number_measurements = expected_measurement_count - (len(user_bucket) + len(parsed_data))
+        if len(user_bucket) == 0:
+            parsed_data = parsed_data[:expected_measurement_count]
+        elif diff_number_measurements > 0:
+            parsed_data += [parsed_data[-1]] * diff_number_measurements
+
+        updated_bucket = user_bucket + parsed_data
+        state_map[user]['bucket'] = updated_bucket
+        state_map[user]['last_update'] = now
+        socketio.emit(
+            f'user-update',
+            {
+                'bucket': updated_bucket,
+                'name': user,
+                'threshold': db.get_user_by_name(user).get('threshold') or 9000
+            }
+        )
+
     @app.route('/update/<user>', methods=['POST'])
     def update_by_name(user):
+        now = datetime.datetime.now()
         global state_map
 
         if user not in state_map:
@@ -139,21 +196,9 @@ def create_app():
             return f'The data collection for the user: {user} has not started yet', 400
 
         data = request.data
-
-        user_bucket = state_map[user]['bucket']
-        parsed_data = wav_converter.parse_raw(data)
-        user_bucket = user_bucket + parsed_data
-        state_map[user]['bucket'] = user_bucket
-        state_map[user]['last_update'] = datetime.datetime.now()
-        socketio.emit(
-            f'user-update',
-            {
-                'bucket': user_bucket,
-                'name': user,
-            }
-        )
-
-        return f'Successful update for: {user}', 200
+        thread = threading.Thread(target=run_update_by_name(user, data, now))
+        thread.start()
+        return f'Successfully started update for: {user}', 200
 
     @app.route('/stop', methods=['POST'])
     def stop():
@@ -166,9 +211,16 @@ def create_app():
 
         user_bucket = state_map[user]['bucket']
         start_time = state_map[user]['start_time']
+        app.logger.info(f"Start time: {start_time}")
+        app.logger.info(f"Last update: {state_map[user]['last_update']}")
+
         delta_seconds = (state_map[user]['last_update'] - start_time).seconds
-        sample_rate = int(len(user_bucket) / delta_seconds) if delta_seconds != 0 else 0
-        file_name = f'{user}_{start_time.strftime("%d-%m-%Y_%H:%M:%S")}_{sample_rate}Hz_{int(start_time.timestamp() * 1000)}.wav'
+        app.logger.info(f"Delta seconds: {delta_seconds}")
+        app.logger.info(f"Bucket length: {len(user_bucket)}")
+        app.logger.info(f"Calculated sample rate: {int(len(user_bucket) / delta_seconds) if delta_seconds != 0 else 0}")
+
+        sample_rate = db.get_user_by_name(user).get('sample_rate') or 142
+        file_name = f'{user}_{sample_rate}Hz_{int(start_time.timestamp() * 1000)}.wav'
         file_path = wav_converter.convert(
             user_bucket,
             sample_rate=sample_rate,
@@ -264,7 +316,8 @@ def create_app():
                 'user_state.html',
                 user=user,
                 start_time=user_data['start_time'],
-                initial_bucket=user_data['bucket']
+                threshold=db.get_user_by_name(user).get('threshold'),
+                initial_bucket=user_data['bucket'],
             )
 
         return render_template(
@@ -380,6 +433,31 @@ def create_app():
         os.remove(moody_export_path)
 
         return "Successfully labeled data", 200
+
+    @app.route('/scripts', methods=['GET'])
+    def get_scripts():
+        scripts = []
+        path = Path('scripts')
+        for item in path.iterdir():
+            if item.is_dir():
+                script = {"name": item.name, "versions": []}
+                versions = []
+                for version in item.iterdir():
+                    if not version.is_dir() and version.suffix == '.npy':
+                        content = ''
+                        with version.open('r') as file:
+                            content = file.read()#.replace('"', '\\"').replace("'", "\\'")
+                        versions.append({"identifier": version.name.split('.')[0], "content": content})
+
+                sorted(versions, key=lambda version: version['identifier'])
+                versions[-1]['identifier'] += " (latest)"
+                script['versions'] = versions
+                scripts.append(script)
+        return render_template(
+            'scripts.html',
+            scripts=scripts,
+            parsed_scripts=json.dumps(scripts)
+        )
 
     return app
 

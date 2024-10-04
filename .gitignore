@@ -4,3 +4,5 @@ data
 model
 /audio/**.wav
 __pycache__
+logs
+/dbs/**.db
