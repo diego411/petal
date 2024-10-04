@@ -130,6 +130,7 @@
         </div>
         <a id="initialBucket" style="display: none">{{initial_bucket}}</a>
         <a id="userName" style="display: none">{{user}}</a>
+        <a id="threshold" style="display: none">{{threshold}}</a>
         <canvas id="myChart"></canvas>
     </main>
     {{ render_footer(version) }}
@@ -137,7 +138,8 @@
         const socket = io();
         const userName = document.getElementById('userName').textContent;
         let initialData = JSON.parse(document.getElementById('initialBucket').textContent);
-        initialData = initialData.slice(initialData.length - 500);
+        const threshold = Number(document.getElementById('threshold').textContent) * 2;
+        initialData = initialData.slice(initialData.length - threshold);
 
         const ctx = document.getElementById('myChart').getContext('2d');
         const myChart = new Chart(ctx, {
@@ -214,7 +216,8 @@
                 return;
 
             let bucket = data.bucket;
-            bucket = bucket.slice(bucket.length - 500);
+            const threshold = data.threshold * 2;
+            bucket = bucket.slice(bucket.length - threshold);
             myChart.data.labels = bucket.map((_, index) => index + 1);
             myChart.data.datasets[0].data = bucket;
 
