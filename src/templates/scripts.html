@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Scripts</title>
+    <link rel="stylesheet" type="text/css" href="static/styles/styles.css">
+    <style>
+        /* textarea {
+            overflow-y: scroll;
+            width: 70%;
+            height: 70%;
+        } */
+
+        .wrapper {
+            display: flex;
+            gap: 1em;
+            width: 90%;
+            height: 75vh;
+            font-size: 2em;
+            /* Adjust based on your need */
+        }
+
+        .wrapper ul {
+            margin: 0.3em 0;
+            padding: 0;
+            list-style: none;
+            background: transparent;
+            /* Optional styling */
+        }
+
+        .wrapper ul li {
+            margin-bottom: 10px;
+        }
+
+        button {
+            padding: 8px 16px;
+            background: #fcdd03;
+            border: none;
+            outline: none;
+            border-radius: 2px;
+            cursor: pointer;
+        }
+
+        .button-text {
+            color: #388e3c;
+            font-size: 1.5em;
+        }
+
+        .wrapper ul button {
+            width: 100%;
+            /* Make buttons fill the li */
+            padding: 10px;
+        }
+
+        .content {
+            width: 80%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #versionSelect {
+            margin-bottom: 10px;
+        }
+
+        .textarea-container {
+            height: 100%;
+            position: relative;
+            display: inline-block;
+        }
+
+        textarea {
+            overflow-y: scroll;
+            /* This will make the textarea grow to fill remaining space */
+            width: 100%;
+            height: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            font-size: 16px;
+            resize: none;
+        }
+
+        .copy-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            font-size: 14px;
+            cursor: pointer;
+            background-color: #388e3c;
+            color: white;
+            border: none;
+            border-radius: 3px;
+        }
+
+        .copy-button:hover {
+            background-color: #45a049;
+        }
+
+        .white-background {
+            background: white;
+        }
+
+        #versionSelect {
+            width: 10em;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #f8f8f8;
+            color: #333;
+            appearance: none;
+            /* Remove default styling on most browsers */
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+            margin-bottom: 2em;
+        }
+
+        #versionSelect:hover {
+            border-color: #888;
+        }
+
+        #versionSelect:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+        }
+
+        label {
+            margin-bottom: 0.3em;
+        }
+    </style>
+</head>
+
+<body>
+    {% from "macros.html" import render_top_bar, render_footer %}
+    {{ render_top_bar('scripts') }}
+    <p id="parsedScripts" style="display: none;">{{parsed_scripts}}</p>
+    <div class="wrapper">
+        <div>
+            <label for="scriptList">Use Cases</label>
+            <ul id="scriptList">
+                {% for script in scripts %}
+                <li>
+                    <button id="button-{{script.name}}" onclick="handleClick('{{script.name}}')">
+                        <span class="button-text">{{script.name}}</span>
+                    </button>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="content">
+            <label for="versionSelect">Version</label>
+            <select name="versionSelect" id="versionSelect" onchange="updateSelection()">
+            </select>
+            <label for="scriptContent">Script</label>
+            <div class="textarea-container">
+                <textarea id="scriptContent" readonly></textarea>
+                <button id="copyButton" class="copy-button" onclick="copy()">Copy</button>
+            </div>
+        </div>
+    </div>
+
+    {{ render_footer(version) }}
+</body>
+<script>
+    const handleSelect = (script) => {
+        const name = script.name
+        select(name);
+        for (const script of scripts.filter(script => script.name !== name)) {
+            deSelect(script.name);
+        }
+
+        const versions = script.versions;
+        const latestVersion = versions.find(version => version.identifier.includes('latest'));
+        scriptContent.textContent = latestVersion.content;
+
+        while (versionSelect.firstChild) {
+            versionSelect.removeChild(versionSelect.firstChild);
+        }
+        for (version of versions) {
+            const option = document.createElement('option');
+            option.value = version.identifier;
+            option.textContent = version.identifier;
+            versionSelect.appendChild(option);
+        }
+        versionSelect.value = latestVersion.identifier;
+
+    }
+
+    const select = (name) => {
+        const button = document.getElementById(`button-${name}`);
+
+        button.classList.add('white-background');
+    }
+
+    const deSelect = (name) => {
+        const button = document.getElementById(`button-${name}`);
+
+        button.classList.remove('white-background');
+    }
+
+    const scripts = JSON.parse(document.getElementById('parsedScripts').textContent);
+    const scriptContent = document.getElementById('scriptContent');
+    const versionSelect = document.getElementById('versionSelect');
+
+    let selectedScript = scripts[0];
+    const versions = selectedScript.versions;
+    handleSelect(selectedScript);
+
+    const handleClick = (name) => {
+        selectedScript = scripts.find(script => script.name === name);
+        handleSelect(selectedScript);
+    }
+
+    const updateSelection = () => {
+        const selectedVersion = selectedScript.versions.find(version => version.identifier === versionSelect.value);
+        scriptContent.textContent = selectedVersion.content;
+    }
+
+    const copy = () => {
+        scriptContent.select();
+        document.execCommand("copy");
+    }
+
+</script>
+
+</html>
