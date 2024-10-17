@@ -161,6 +161,7 @@ def create_app():
         user_bucket = state_map[user]['bucket']
         start_time = state_map[user]['start_time']
         parsed_data = wav_converter.parse_raw(data)
+        print(parsed_data)
 
         seconds_since_start = (now - start_time).seconds
         expected_measurement_count = int(seconds_since_start * sample_rate)
