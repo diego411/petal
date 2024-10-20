@@ -1,2 +1,3 @@
 logs
 /dbs/**.db
+/dbs/**.db-journal

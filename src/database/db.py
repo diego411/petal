@@ -14,9 +14,7 @@ def init():
         '''
             CREATE TABLE IF NOT EXISTS user (
                 id INTEGER PRIMARY KEY,
-                name TEXT NOT NULL,
-                sample_rate INTEGER,
-                threshold INTEGER
+                name TEXT NOT NULL
             );
         '''
     )
@@ -29,7 +27,9 @@ def init():
                 user INTEGER NOT NULL,
                 state TEXT NOT NULL,
                 sample_rate INTEGER NOT NULL,
-                start_time DATETIME NOT NULL,
+                threshold INTEGER NOT NULL,
+                start_time DATETIME,
+                last_update DATETIME,
                 FOREIGN KEY (user) REFERENCES user (id)
             );
         '''
@@ -41,7 +41,8 @@ def init():
                 id INTEGER PRIMARY KEY,
                 value REAL,
                 recording INTEGER NOT NULL,
-                FOREIGN KEY (recording) REFERENCES recording(id)
+                created_at DATETIME,
+                FOREIGN KEY (recording) REFERENCES recording(id) ON DELETE CASCADE
             );
         '''
     )
@@ -51,10 +52,6 @@ def init():
 
 
 def create_user(name: str):
-    user = get_user_by_name(name)
-    if user is not None:
-        return
-
     connection = get_connection()
     cursor = connection.cursor()
 
@@ -66,74 +63,115 @@ def create_user(name: str):
         {'name': name}
     )
 
+    user_id = cursor.lastrowid
+
     connection.commit()
     connection.close()
 
+    return user_id
 
-def create_recording(name: str, state: str, sample_rate: int, start_time: datetime.datetime):
+
+def create_recording(name: str, user: int, state: str, sample_rate: int, threshold: int):
     connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute(
         '''
-            INSERT INTO recording (name, state, sample_rate, start_time)
-            VALUES (:name, :state, :start_time);
+            INSERT INTO recording (name, user, state, sample_rate, threshold)
+            VALUES (:name, :user, :state, :sample_rate, :threshold);
         ''',
-        {'name': name, 'state': state, 'sample_rate': sample_rate, 'start_time': start_time}
+        {'name': name, 'user': user, 'state': state, 'sample_rate': sample_rate, 'threshold': threshold}
+    )
+
+    recording_id = cursor.lastrowid
+
+    connection.commit()
+    connection.close()
+
+    return recording_id
+
+
+def set_last_update(recording: int, date: datetime.datetime):
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    cursor.execute(
+        '''
+            UPDATE recording
+            SET last_update=:last_update
+            WHERE id=:id
+        ''',
+        {'id': recording, 'last_update': date}
+    )
+    connection.commit()
+    connection.close()
+
+
+def set_start_time(recording: int, date: datetime.datetime):
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    cursor.execute(
+        '''
+            UPDATE recording
+            SET start_time=:start_time
+            WHERE id=:id
+        ''',
+        {'id': recording, 'start_time': date}
     )
 
     connection.commit()
     connection.close()
 
 
-def create_measurement(value: float, recording: int):
+def set_state(recording: int, state: str):
     connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute(
-        '''
-            INSERT INTO measurement (value, recording)
-            VALUES (:value, :recording);
-        ''',
-        {'value': value, 'recording': recording}
+        """
+            UPDATE recording
+            SET state=:state
+            WHERE id=:id;
+        """,
+        {'id': recording, 'state': state}
     )
 
     connection.commit()
     connection.close()
 
 
-def set_sample_rate(name: str, sample_rate: int):
+def get_or_create_user(name: str):
+    user = get_user_by_name(name)
+    if user is not None:
+        return user
+
+    user_id = create_user(name)
+    return get_user_by_id(user_id)
+
+
+def get_user_by_id(user_id: int):
     connection = get_connection()
     cursor = connection.cursor()
 
     cursor.execute(
         '''
-            UPDATE user
-            SET sample_rate=:sample_rate
-            WHERE name=:name;
+            SELECT *
+            FROM user
+            WHERE id=:id;
         ''',
-        {'name': name, 'sample_rate': sample_rate}
+        {'id': user_id}
     )
 
-    connection.commit()
+    result = cursor.fetchone()
+    if result is None:
+        return
+
     connection.close()
-
-
-def set_threshold(name: str, threshold: int):
-    connection = get_connection()
-    cursor = connection.cursor()
-
-    cursor.execute(
-        '''
-            UPDATE user
-            SET threshold=:threshold
-            WHERE name=:name;
-        ''',
-        {'name': name, 'threshold': threshold}
-    )
-
-    connection.commit()
-    connection.close()
+    return {
+        'id': result[0],
+        'name': result[1]
+    }
 
 
 def get_user_by_name(name: str):
@@ -156,9 +194,101 @@ def get_user_by_name(name: str):
     return {
         'id': result[0],
         'name': result[1],
-        'sample_rate': result[2],
-        'threshold': result[3]
     }
+
+
+def get_recording_by_id(recording_id: int):
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    cursor.execute(
+        '''
+            SELECT *
+            FROM recording
+            WHERE id=:id;
+        ''',
+        {'id': recording_id}
+    )
+
+    result = cursor.fetchone()
+    if result is None:
+        return
+
+    connection.close()
+    return {
+        'id': result[0],
+        'name': result[1],
+        'user': result[2],
+        'state': result[3],
+        'sample_rate': result[4],
+        'threshold': result[5],
+        'start_time': parse_sql_date(result[6]),
+        'last_update': parse_sql_date(result[7])
+    }
+
+
+def get_recording(user: int, name: str):
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    cursor.execute(
+        '''
+            SELECT *
+            FROM recording
+            WHERE user=:user AND name=:name
+        ''',
+        {'user': user, 'name': name}
+    )
+
+    result = cursor.fetchone()
+    if result is None:
+        return
+
+    connection.close()
+    return {
+        'id': result[0],
+        'name': result[1],
+        'user': result[2],
+        'state': result[3],
+        'sample_rate': result[4],
+        'threshold': result[5],
+        'start_time': parse_sql_date(result[6]),
+        'last_update': parse_sql_date(result[7])
+    }
+
+
+def get_recordings_by_state(state: str) -> list:
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    cursor.execute(
+        '''
+            SELECT *
+            FROM recording
+            WHERE state=:state
+        ''',
+        {'state': state}
+    )
+
+    result = cursor.fetchall()
+    connection.close()
+
+    if result is None:
+        return []
+
+    return list(map(
+        lambda recording: {
+            'id': recording[0],
+            'name': recording[1],
+            'user': recording[2],
+            'state': recording[3],
+            'sample_rate': recording[4],
+            'threshold': recording[5],
+            'start_time': parse_sql_date(recording[6]),
+            'last_update': parse_sql_date(recording[7])
+        },
+        result
+    ))
 
 
 def get_recordings_for_user(user: int):
@@ -186,7 +316,74 @@ def get_recordings_for_user(user: int):
             'user': recording[2],
             'state': recording[3],
             'sample_rate': recording[4],
-            'start_time': recording[5]
+            'threshold': recording[5],
+            'start_time': parse_sql_date(recording[6]),
+            'last_update': parse_sql_date(recording[7])
         },
         result
     )
+
+
+def get_measurements_for_recording(recording: int) -> list:
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    cursor.execute(
+        '''
+            SELECT * 
+            FROM measurement
+            WHERE recording=:recording; 
+        ''',
+        {'recording': recording}
+    )
+    result = cursor.fetchall()
+
+    if result is None:
+        return []
+
+    return list(map(
+        lambda measurement: {
+            'id': measurement[0],
+            'value': measurement[1],
+            'recording': measurement[2],
+        },
+        result
+    ))
+
+
+def add_measurements(recording: int, measurements: list, created_at: datetime.datetime):
+    datetime.datetime.now()
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    for measurement in measurements:
+        cursor.execute(
+        '''
+                INSERT INTO measurement (value, recording, created_at)
+                VALUES (:value, :recording, :created_at);
+            ''',
+            {'value': measurement, 'recording': recording, 'created_at': created_at}
+        )
+
+    connection.commit()
+    connection.close()
+
+
+def delete_recording(recording: int):
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+            DELETE FROM recording
+            WHERE id=:id;
+        """,
+        {'id': recording}
+    )
+
+    connection.commit()
+    connection.close()
+
+
+def parse_sql_date(date: str) -> datetime.datetime:
+    return datetime.datetime.strptime(date, '%Y-%m-%d %H:%M:%S.%f')
