@@ -5,7 +5,7 @@ load_dotenv()
 
 
 class AppConfig:
-    VERSION = '0.0.14'
+    VERSION = '0.0.15'
     AUDIO_DIR = os.environ.get('AUDIO_DIR') or 'audio'
     LOG_THRESHOLD = os.environ.get('LOG_THRESHOLD') or 20
     DROPBOX_APP_KEY = os.environ.get('DROPBOX_APP_KEY')
