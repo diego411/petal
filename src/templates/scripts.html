@@ -137,6 +137,7 @@
     {% from "macros.html" import render_top_bar, render_footer %}
     {{ render_top_bar('scripts') }}
     <p id="parsedScripts" style="display: none;">{{parsed_scripts}}</p>
+    <h2 id="scriptHeader"></h2>
     <div class="wrapper">
         <div>
             <label for="scriptList">Use Cases</label>
@@ -187,6 +188,7 @@
         }
         versionSelect.value = latestVersion.identifier;
 
+        scriptHeader.textContent = name;
     }
 
     const select = (name) => {
@@ -204,6 +206,7 @@
     const scripts = JSON.parse(document.getElementById('parsedScripts').textContent);
     const scriptContent = document.getElementById('scriptContent');
     const versionSelect = document.getElementById('versionSelect');
+    const scriptHeader = document.getElementById('scriptHeader');
 
     let selectedScript = scripts[0];
     const versions = selectedScript.versions;
