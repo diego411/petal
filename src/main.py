@@ -82,18 +82,16 @@ def create_app():
     def states():
         users = []
         for name, state in state_map.items():
-            if state.get('start_time') is not None:
-                users.append({
-                    "name": name,
-                    "start_time": state['start_time'].strftime('%d.%m.%Y %H:%M:%S'),
-                    "bucket": state['bucket']
-                })
-                continue
+            user = db.get_user_by_name(name)
+            user["bucket"] = state['bucket']
 
-            users.append({
-                "name": name,
-                "bucket": state['bucket']
-            })
+            if state.get('start_time') is not None:
+                user["start_time"] = state['start_time'].strftime('%d.%m.%Y %H:%M:%S')
+
+            if state.get('last_update') is not None:
+                user["last_update"] = int(state['last_update'].timestamp()) * 1000
+
+            users.append(user)
 
         return render_template(
             "states.html",
@@ -178,7 +176,8 @@ def create_app():
             {
                 'bucket': updated_bucket,
                 'name': user,
-                'threshold': db.get_user_by_name(user).get('threshold') or 9000
+                'threshold': db.get_user_by_name(user).get('threshold') or 9000,
+                'last_update': int(now.timestamp()) * 1000
             }
         )
 
