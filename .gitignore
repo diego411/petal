@@ -6,3 +6,4 @@ model
 __pycache__
 logs
 /dbs/**.db
+/dbs/**.db-journal
