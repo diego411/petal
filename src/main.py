@@ -214,15 +214,17 @@ def create_app():
         app.logger.info(f"Last update: {state_map[user]['last_update']}")
 
         delta_seconds = (state_map[user]['last_update'] - start_time).seconds
+        calculated_sample_rate = int(len(user_bucket) / delta_seconds) if delta_seconds != 0 else 0
+
         app.logger.info(f"Delta seconds: {delta_seconds}")
         app.logger.info(f"Bucket length: {len(user_bucket)}")
-        app.logger.info(f"Calculated sample rate: {int(len(user_bucket) / delta_seconds) if delta_seconds != 0 else 0}")
+        app.logger.info(f"Calculated sample rate: {calculated_sample_rate}")
 
-        sample_rate = db.get_user_by_name(user).get('sample_rate') or 142
-        file_name = f'{user}_{sample_rate}Hz_{int(start_time.timestamp() * 1000)}.wav'
+        # sample_rate = db.get_user_by_name(user).get('sample_rate') or 142
+        file_name = f'{user}_{calculated_sample_rate}Hz_{int(start_time.timestamp() * 1000)}.wav'
         file_path = wav_converter.convert(
             user_bucket,
-            sample_rate=sample_rate,
+            sample_rate=calculated_sample_rate,
             path=f'audio/{file_name}'
         )
 
