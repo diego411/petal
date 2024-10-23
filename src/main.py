@@ -83,6 +83,9 @@ def create_app():
         users = []
         for name, state in state_map.items():
             user = db.get_user_by_name(name)
+            if user is None:
+                user = {'name': name}
+
             user["bucket"] = state['bucket']
 
             if state.get('start_time') is not None:
