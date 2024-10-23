@@ -78,15 +78,18 @@ def create_app():
             "audio_classification.html"
         )
 
+    @app.route('/recording/<recording_id>', methods=['GET'])
+    def get_recording(recording_id):
+        recording = db.get_recording_by_id(recording_id)
+        recording['measurements'] = db.get_measurements_for_recording(recording_id)
+        return recording, 200
+
     @app.route('/states')
     def states():
         recordings = db.get_recordings_by_state('REGISTERED') + db.get_recordings_by_state('RUNNING')
         recording_dtos = []
         for recording in recordings:
-            measurements = list(map(
-                lambda measurement: measurement.get('value'),
-                db.get_measurements_for_recording(recording.get('id'))
-            ))[:recording.get('threshold') * 2]
+            measurements = db.get_measurements_for_recording(recording.get('id'), recording.get('threshold') * 2)
 
             recording_dto = {
                 'id': recording.get('id'),
@@ -160,6 +163,7 @@ def create_app():
 
         socketio.emit('user-start', {
             'name': recording.get('name'),
+            'id': recording.get('id'),
             'start_time': now.strftime('%d.%m.%Y %H:%M:%S'),
         })
 
@@ -167,14 +171,14 @@ def create_app():
 
     def run_update_by_name(recording, data, now):
         sample_rate = recording.get('sample_rate') or 142
-        persisted_measurements = db.get_measurements_for_recording(recording.get('id'))
+        number_of_persisted_measurements = db.get_number_of_measurements_for_recording(recording.get('id'))
         start_time = recording.get('start_time')
         parsed_data = wav_converter.parse_raw(data)
 
         seconds_since_start = (now - start_time).seconds
         expected_measurement_count = int(seconds_since_start * sample_rate)
-        diff_number_measurements = expected_measurement_count - (len(persisted_measurements) + len(parsed_data))
-        if len(persisted_measurements) == 0:
+        diff_number_measurements = expected_measurement_count - (number_of_persisted_measurements + len(parsed_data))
+        if number_of_persisted_measurements == 0:
             parsed_data = parsed_data[:expected_measurement_count]
         elif diff_number_measurements > 0:
             parsed_data += [parsed_data[-1]] * diff_number_measurements
@@ -182,10 +186,7 @@ def create_app():
         db.add_measurements(recording.get('id'), parsed_data, now)
         db.set_last_update(recording.get('id'), now)
 
-        measurement_dtos = list(map(
-            lambda measurement: measurement.get('value'),
-            db.get_measurements_for_recording(recording.get('id'))
-        ))[:recording.get('threshold') * 2]
+        measurement_dtos = db.get_measurements_for_recording(recording.get('id'), recording.get('threshold') * 2)
         socketio.emit(
             f'user-update',
             {
@@ -195,12 +196,19 @@ def create_app():
             }
         )
 
+        app.logger.info(
+            f'Update for recording with id {recording.get("id")} took {(datetime.datetime.now() - now).seconds}sec.'
+        )
+
     @app.route('/recording/<recording_id>/update', methods=['POST'])
     def update_recording(recording_id):
         now = datetime.datetime.now()
 
         recording = db.get_recording_by_id(recording_id)
         print(recording)
+        if recording is None:
+            return f"Recording with id {recording_id} not found.", 404
+
         if recording.get('state') != 'RUNNING':
             return f'The data collection for the recording has not started yet', 400
 
@@ -242,7 +250,7 @@ def create_app():
         sample_rate = recording.get('sample_rate') or 142
         file_name = f'{recording.get("name")}_{sample_rate}Hz_{int(start_time.timestamp() * 1000)}.wav'
         file_path = wav_converter.convert(
-            list(map(lambda measurement: measurement.get('value'), measurements)),
+            measurements,
             sample_rate=sample_rate,
             path=f'audio/{file_name}'
         )

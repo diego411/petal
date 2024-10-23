@@ -324,31 +324,54 @@ def get_recordings_for_user(user: int):
     )
 
 
-def get_measurements_for_recording(recording: int) -> list:
+def get_measurements_for_recording(recording: int, limit: int = None) -> list:
     connection = get_connection()
     cursor = connection.cursor()
 
-    cursor.execute(
-        '''
-            SELECT * 
-            FROM measurement
-            WHERE recording=:recording; 
-        ''',
-        {'recording': recording}
-    )
+    if limit is None:
+        cursor.execute(
+            '''
+                SELECT value
+                FROM measurement
+                ORDER BY created_at DESC
+                WHERE recording=:recording; 
+            ''',
+            {'recording': recording}
+        )
+    else:
+        cursor.execute(
+            f'''
+                SELECT value
+                FROM measurement
+                WHERE recording=:recording
+                ORDER BY created_at DESC
+                LIMIT {limit}; 
+            ''',
+            {'recording': recording}
+        )
+
     result = cursor.fetchall()
 
     if result is None:
         return []
 
-    return list(map(
-        lambda measurement: {
-            'id': measurement[0],
-            'value': measurement[1],
-            'recording': measurement[2],
-        },
-        result
-    ))
+    return [row[0] for row in result]
+
+
+def get_number_of_measurements_for_recording(recording: int):
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    cursor.execute(
+        '''
+            SELECT COUNT(*)
+            FROM measurement
+            WHERE recording=:recording;
+        ''',
+        {'recording': recording}
+    )
+
+    return cursor.fetchone()[0]
 
 
 def add_measurements(recording: int, measurements: list, created_at: datetime.datetime):
@@ -358,7 +381,7 @@ def add_measurements(recording: int, measurements: list, created_at: datetime.da
 
     for measurement in measurements:
         cursor.execute(
-        '''
+            '''
                 INSERT INTO measurement (value, recording, created_at)
                 VALUES (:value, :recording, :created_at);
             ''',
@@ -386,4 +409,7 @@ def delete_recording(recording: int):
 
 
 def parse_sql_date(date: str) -> datetime.datetime:
+    if date is None:
+        return None
+
     return datetime.datetime.strptime(date, '%Y-%m-%d %H:%M:%S.%f')
