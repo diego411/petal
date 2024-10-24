@@ -327,14 +327,14 @@ def get_recordings_for_user(user: int):
 def get_measurements_for_recording(recording: int, limit: int = None) -> list:
     connection = get_connection()
     cursor = connection.cursor()
-
+    print(limit)
     if limit is None:
         cursor.execute(
             '''
                 SELECT value
                 FROM measurement
-                ORDER BY created_at DESC
-                WHERE recording=:recording; 
+                WHERE recording=:recording 
+                ORDER BY created_at DESC;
             ''',
             {'recording': recording}
         )
@@ -402,6 +402,14 @@ def delete_recording(recording: int):
             WHERE id=:id;
         """,
         {'id': recording}
+    )
+
+    cursor.execute( # TODO: why doesn't cascade work for this?
+        '''
+            DELETE FROM measurement
+            WHERE recording=:recording;
+        ''',
+        {'recording': recording}
     )
 
     connection.commit()

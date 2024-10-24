@@ -1,21 +1,22 @@
-from flask import Flask, request, jsonify, render_template, g
-from flask_socketio import SocketIO
-from src.service import wav_converter
-from src.service import labeler
-from src.controller import dropbox_controller
-from src.models.JakobPlantEmotionClassifier import JakobPlantEmotionClassifier
-from src.database import db
-from src.AppConfig import AppConfig
-from pathlib import Path
-import time
 import datetime
-import os
-import traceback
-import logging
-import threading
 import json
+import logging
+import os
+import threading
+import time
+import traceback
+from pathlib import Path
 
-state_map = {}
+from flask import Flask, request, jsonify, render_template
+from flask_socketio import SocketIO
+
+from src.AppConfig import AppConfig
+from src.controller import dropbox_controller
+from src.database import db
+from src.models.JakobPlantEmotionClassifier import JakobPlantEmotionClassifier
+from src.service import labeler
+from src.service import wav_converter
+
 bucket = []
 current_emotion = "none"
 
@@ -78,12 +79,6 @@ def create_app():
             "audio_classification.html"
         )
 
-    @app.route('/recording/<recording_id>', methods=['GET'])
-    def get_recording(recording_id):
-        recording = db.get_recording_by_id(recording_id)
-        recording['measurements'] = db.get_measurements_for_recording(recording_id)
-        return recording, 200
-
     @app.route('/states')
     def states():
         recordings = db.get_recordings_by_state('REGISTERED') + db.get_recordings_by_state('RUNNING')
@@ -125,7 +120,6 @@ def create_app():
             return 'User-Name header needs to be provided', 400
 
         user = db.get_or_create_user(user_name)
-        print(user)
 
         sample_rate = data['sample_rate']
         threshold = data['threshold']
@@ -133,7 +127,7 @@ def create_app():
         recording = db.get_recording(user.get('id'), recording_name)
 
         if recording is not None and (recording.get('state') == 'RUNNING' or recording.get('state') == 'REGISTERED'):
-            return 'There is already a running recording with this name. Please stop that recording first before registering it again.', 400
+            return {'id': recording['id']}, 201
 
         recording_id = db.create_recording(
             recording_name,
@@ -142,8 +136,6 @@ def create_app():
             sample_rate,
             threshold,
         )
-
-        print(recording_id)
 
         return {'id': str(recording_id)}, 201
 
@@ -192,6 +184,7 @@ def create_app():
             {
                 'bucket': measurement_dtos,
                 'name': recording.get('name'),
+                'id': recording.get('id'),
                 'threshold': recording.get('threshold') or 9000
             }
         )
@@ -321,31 +314,21 @@ def create_app():
     def state():
         return jsonify({'current_emotion': current_emotion})
 
-    @app.route('/state/<user>', methods=['GET'])
-    def user_state(user):
-        global state_map
-
-        if user not in state_map:
+    @app.route('/recording/<recording_id>', methods=['GET'])
+    def user_state(recording_id):
+        recording = db.get_recording_by_id(recording_id)
+        if recording is None:
             return render_template(
                 'empty_recording.html',
-                user=user
+                id=recording_id  # TODO: fix naming
             )
 
-        user_data = state_map[user]
-
-        if user_data.get('start_time') is not None:
-            return render_template(
-                'user_state.html',
-                user=user,
-                start_time=user_data['start_time'],
-                threshold=db.get_user_by_name(user).get('threshold'),
-                initial_bucket=user_data['bucket'],
-            )
+        threshold = recording.get('threshold')
 
         return render_template(
             'user_state.html',
-            user=user,
-            initial_bucket=user_data['bucket']
+            recording=recording,
+            initial_bucket=db.get_measurements_for_recording(recording_id, threshold * 2),
         )
 
     @app.route('/classify', methods=['POST'])
@@ -368,27 +351,30 @@ def create_app():
             'label.html'
         )
 
-    @app.route('/stopAndLabel', methods=['POST'])
-    def stopAndLabel():
-        global state_map
+    @app.route('/recording/<recording_id>/stopAndLabel', methods=['POST'])
+    def stopAndLabel(recording_id):
+        recording = db.get_recording_by_id(recording_id)
+        if recording is None:
+            return "Recording not found.", 404
 
-        data = request.json
-        user = data['user']
-        if user not in state_map or state_map[user].get('start_time') is None:
-            return 'No recording in progress for this user.', 400
+        emotions = request.json
+        if emotions is None:
+            return 'No emotion data supplied.', 400
 
-        user_bucket = state_map[user]['bucket']
-        start_time = state_map[user]['start_time']
-        delta_seconds = (state_map[user]['last_update'] - start_time).seconds
-        sample_rate = int(len(user_bucket) / delta_seconds) if delta_seconds != 0 else 0
-        file_name = f'{user}_{start_time.strftime("%d-%m-%Y_%H:%M:%S")}_{sample_rate}Hz_{int(start_time.timestamp() * 1000)}.wav'
+        if recording.get('state') != "RUNNING":
+            return f'The data collection for the recording has not started yet', 400
+
+        start_time = recording.get('start_time')
+        delta_seconds = (recording.get('last_update') - start_time).seconds
+        measurements = db.get_measurements_for_recording(recording_id)
+        sample_rate = int(len(measurements) / delta_seconds) if delta_seconds != 0 else 0
+        file_name = f'{recording.get("name")}_{sample_rate}Hz_{int(start_time.timestamp() * 1000)}.wav'
         file_path = wav_converter.convert(
-            user_bucket,
+            measurements,
             sample_rate=sample_rate,
             path=f'audio/{file_name}'
         )
 
-        emotions = data['emotions']
         labeler.label_recording(
             recording_path=file_path,
             observations_path='',
@@ -399,37 +385,27 @@ def create_app():
         dropbox_controller.upload_file_to_dropbox(
             dropbox_client=dropbox_client,
             file_path=file_path,
-            dropbox_path=f'/PlantRecordings/{user}/{file_name}'
+            dropbox_path=f'/PlantRecordings/{recording.get("name")}/{file_name}'
         )
 
         os.remove(file_path)
-        del state_map[user]
+        db.set_state(recording_id, "STOPPED")
 
         socketio.emit('user-stop', {
-            'name': user
+            'name': recording.get('name')
         })
 
-        return "Sucecssfully stopped recording and labeled data", 200
+        return "Successfully stopped recording and labeled data", 200
 
     @app.route('/recordAndLabel', methods=['GET'])
     def record_and_label():
-        users = []
-        for name, state in state_map.items():
-            if state.get('start_time') is not None:
-                users.append({
-                    "name": name,
-                    "start_time": state['start_time'].strftime('%d.%m.%Y %H:%M:%S'),
-                    "bucket": state['bucket']
-                })
-                continue
+        recordings = db.get_recordings_by_state('REGISTERED') + db.get_recordings_by_state('RUNNING')
+        for recording in recordings:
+            recording['measurements'] = db.get_measurements_for_recording(recording.get('id'), recording['threshold'] * 2)
 
-            users.append({
-                "name": name,
-                "bucket": state['bucket']
-            })
         return render_template(
             'record_and_label.html',
-            recordings=users
+            recordings=recordings
         )
 
     @app.route('/label', methods=['POST'])
@@ -468,13 +444,14 @@ def create_app():
                     if not version.is_dir() and version.suffix == '.npy':
                         content = ''
                         with version.open('r') as file:
-                            content = file.read()#.replace('"', '\\"').replace("'", "\\'")
+                            content = file.read()  # .replace('"', '\\"').replace("'", "\\'")
                         versions.append({"identifier": version.name.split('.')[0], "content": content})
 
-                sorted(versions, key=lambda version: version['identifier'])
+                sorted(versions, key=lambda element: element['identifier'])
                 versions[-1]['identifier'] += " (latest)"
                 script['versions'] = versions
                 scripts.append(script)
+
         return render_template(
             'scripts.html',
             scripts=scripts,

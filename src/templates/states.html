@@ -98,7 +98,7 @@
             {% for recording in recordings %}
             <li id="item_{{recording.name}}">
                 <div id="header_{{recording.name}}" class="header">
-                    <a href="/state/{{recording.name}}">{{recording.name}}</a>
+                    <a href="/recording/{{recording.id}}">{{recording.name}}</a>
                     {% if recording.start_time is defined %}
                     <p id="start_time_{{recording.name}}">Start time: {{recording.start_time}}</p>
                     {% else %}

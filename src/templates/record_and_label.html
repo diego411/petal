@@ -96,7 +96,7 @@
         <canvas id="overlay"></canvas>
         <select name="recordings" id="recordings" onchange="updateRecording()">
             {% for recording in recordings %}
-            <option value="{{recording.name}}">{{recording.name}}</option>
+            <option value="{{recording.id}}">{{recording.name}}</option>
             {% endfor %}
         </select>
         <div class="unit">
@@ -127,7 +127,8 @@
         let currentUUID = undefined;
         let output = [];
 
-        recordingName.textContent = recordings.value;
+        recordingName.textContent = recordings.textContent;
+        recordingName.href = `recording/${recordings.value}`;
 
         const ctx = document.getElementById('chart').getContext('2d');
         const myChart = new Chart(ctx, {
@@ -235,27 +236,27 @@
 
         const executeAction = () => {
             running = !running;
+            id = recordings.value;
             if (running) {
                 actionButton.textContent = "STOP";
                 currentUUID = crypto.randomUUID();
                 sessionUUID.textContent = `Session ID: ${currentUUID}`;
-                fetch(`/start`, {
+                fetch(`/recording/${id}/start`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ user: recordings.value })
                 });
             } else {
                 actionButton.textContent = "START"
                 sessionUUID.textContent = `Session ${currentUUID} just stopped`;
                 currentUUID = undefined;
-                fetch(`/stopAndLabel`, {
+                fetch(`/recording/${id}/stopAndLabel`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ user: recordings.value, emotions: output })
+                    body: JSON.stringify(output)
                 });
             }
         }
@@ -279,7 +280,7 @@
             if (!running)
                 return;
 
-            if (data.name !== recordings.value)
+            if (data.id != recordings.value)
                 return;
 
             let bucket = data.bucket;
