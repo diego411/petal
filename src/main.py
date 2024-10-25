@@ -16,6 +16,11 @@ from src.database import db
 from src.models.JakobPlantEmotionClassifier import JakobPlantEmotionClassifier
 from src.service import labeler
 from src.service import wav_converter
+from src.service import user_service
+from src.service import recording_service
+from src.service import measurement_service
+from src.entity.Recording import Recording
+from src.entity.RecordingState import RecordingState
 
 bucket = []
 current_emotion = "none"
@@ -81,29 +86,12 @@ def create_app():
 
     @app.route('/states')
     def states():
-        recordings = db.get_recordings_by_state('REGISTERED') + db.get_recordings_by_state('RUNNING')
-        recording_dtos = []
-        for recording in recordings:
-            measurements = db.get_measurements_for_recording(recording.get('id'), recording.get('threshold') * 2)
-
-            recording_dto = {
-                'id': recording.get('id'),
-                'name': recording.get('name'),
-                'measurements': measurements,
-            }
-
-            start_time: datetime.datetime = recording.get('start_time')
-            if start_time is not None:
-                recording_dto['start_time'] = start_time.strftime('%Y-%m-%d %H:%M:%S')
-            last_update: datetime.datetime = recording.get('last_update')
-            if last_update is not None:
-                recording_dto['last_update'] = last_update.strftime('%Y-%m-%d %H:%M:%S')
-
-            recording_dtos.append(recording_dto)
+        recordings = recording_service.find_by_state(RecordingState.REGISTERED) + recording_service.find_by_state(
+            RecordingState.RUNNING)
 
         return render_template(
             "states.html",
-            recordings=recording_dtos
+            recordings=recording_service.to_dtos(recordings)
         )
 
     @app.route('/register', methods=['POST'])
@@ -119,20 +107,20 @@ def create_app():
         if user_name is None:
             return 'User-Name header needs to be provided', 400
 
-        user = db.get_or_create_user(user_name)
+        user = user_service.get_or_create(user_name)
 
         sample_rate = data['sample_rate']
         threshold = data['threshold']
 
-        recording = db.get_recording(user.get('id'), recording_name)
+        recording = recording_service.find_not_stopped_by_user_and_name(user.id, recording_name)
+        if recording is not None and (
+                recording.state == RecordingState.RUNNING or recording.state == RecordingState.REGISTERED):
+            return {'id': recording.id}, 201
 
-        if recording is not None and (recording.get('state') == 'RUNNING' or recording.get('state') == 'REGISTERED'):
-            return {'id': recording['id']}, 201
-
-        recording_id = db.create_recording(
+        recording_id = recording_service.create(
             recording_name,
-            user.get('id'),
-            'REGISTERED',
+            user.id,
+            RecordingState.REGISTERED,
             sample_rate,
             threshold,
         )
@@ -141,30 +129,28 @@ def create_app():
 
     @app.route('/recording/<recording_id>/start', methods=['POST'])
     def start(recording_id):
-        recording = db.get_recording_by_id(recording_id)
+        recording = recording_service.find_by_id(recording_id)
 
-        recording_state = recording.get('state')
-
-        if recording_state == 'RUNNING':
+        if recording.state == RecordingState.RUNNING:
             return 'Recording for this user started already. Stop it first', 400
 
         now = datetime.datetime.now()
-        db.set_last_update(recording_id, now)
-        db.set_start_time(recording_id, now)
-        db.set_state(recording_id, "RUNNING")
+        recording_service.set_last_update(recording_id, now)
+        recording_service.set_start_time(recording_id, now)
+        recording_service.set_state(recording_id, RecordingState.RUNNING)
 
         socketio.emit('user-start', {
-            'name': recording.get('name'),
-            'id': recording.get('id'),
+            'name': recording.name,
+            'id': recording.id,
             'start_time': now.strftime('%d.%m.%Y %H:%M:%S'),
         })
 
         return f'Successfully started data collection for recording', 200
 
-    def run_update_by_name(recording, data, now):
-        sample_rate = recording.get('sample_rate') or 142
-        number_of_persisted_measurements = db.get_number_of_measurements_for_recording(recording.get('id'))
-        start_time = recording.get('start_time')
+    def run_update_by_name(recording: Recording, data, now):
+        sample_rate = recording.sample_rate or 142
+        number_of_persisted_measurements = measurement_service.get_count(recording.id)
+        start_time = recording.start_time
         parsed_data = wav_converter.parse_raw(data)
 
         seconds_since_start = (now - start_time).seconds
@@ -175,58 +161,56 @@ def create_app():
         elif diff_number_measurements > 0:
             parsed_data += [parsed_data[-1]] * diff_number_measurements
 
-        db.add_measurements(recording.get('id'), parsed_data, now)
-        db.set_last_update(recording.get('id'), now)
+        measurement_service.insert_many(recording.id, parsed_data, now)
+        recording_service.set_last_update(recording.id, now)
 
-        measurement_dtos = db.get_measurements_for_recording(recording.get('id'), recording.get('threshold') * 2)
+        measurement_dtos = measurement_service.get_values_for_recording(recording.id, recording.threshold * 2)
         socketio.emit(
             f'user-update',
             {
                 'bucket': measurement_dtos,
-                'name': recording.get('name'),
-                'id': recording.get('id'),
-                'threshold': recording.get('threshold') or 9000
+                'name': recording.name,
+                'id': recording.id,
+                'threshold': recording.threshold or 9000
             }
         )
 
         app.logger.info(
-            f'Update for recording with id {recording.get("id")} took {(datetime.datetime.now() - now).seconds}sec.'
+            f'Update for recording with id {recording.id} took {(datetime.datetime.now() - now).seconds}sec.'
         )
 
     @app.route('/recording/<recording_id>/update', methods=['POST'])
     def update_recording(recording_id):
         now = datetime.datetime.now()
 
-        recording = db.get_recording_by_id(recording_id)
-        print(recording)
+        recording = recording_service.find_by_id(recording_id)
         if recording is None:
             return f"Recording with id {recording_id} not found.", 404
 
-        if recording.get('state') != 'RUNNING':
+        if recording.state != RecordingState.RUNNING:
             return f'The data collection for the recording has not started yet', 400
 
         data = request.data
         thread = threading.Thread(target=run_update_by_name(recording, data, now))
         thread.start()
-        return f'Successfully started update for: {recording.get("name")}', 200
+        return f'Successfully started update for: {recording.name}', 200
 
     @app.route('/recording/<recording_id>/stop', methods=['POST'])
     def stop(recording_id):
-        recording = db.get_recording_by_id(recording_id)
-        user = db.get_user_by_id(recording.get('user'))
+        recording = recording_service.find_by_id(recording_id)
+        user = user_service.find_by_id(recording.user)
 
-        recording_state = recording.get('state')
-
-        if recording_state == 'REGISTERED':
+        recording_state = recording.state
+        if recording_state == RecordingState.REGISTERED:
             return 'This recording has not been started yet. It cannot be stopped.', 400
 
-        if recording_state == 'STOPPED':
+        if recording_state == RecordingState.STOPPED:
             return 'This recording is already stopped.', 400
 
-        measurements = db.get_measurements_for_recording(recording_id)
+        measurements = measurement_service.get_values_for_recording(recording_id)
         len_measurements = len(measurements)
-        start_time = recording.get('start_time')
-        last_update = recording.get('last_update')
+        start_time = recording.start_time
+        last_update = recording.last_update
         delta_seconds = (last_update - start_time).seconds
         calculated_sample_rate = int(len_measurements / delta_seconds) if delta_seconds != 0 else 0
         app.logger.info(
@@ -240,8 +224,8 @@ def create_app():
             """
         )
 
-        sample_rate = recording.get('sample_rate') or 142
-        file_name = f'{recording.get("name")}_{sample_rate}Hz_{int(start_time.timestamp() * 1000)}.wav'
+        sample_rate = recording.sample_rate or 142
+        file_name = f'{recording.name}_{sample_rate}Hz_{int(start_time.timestamp() * 1000)}.wav'
         file_path = wav_converter.convert(
             measurements,
             sample_rate=sample_rate,
@@ -251,25 +235,25 @@ def create_app():
         dropbox_controller.upload_file_to_dropbox(
             dropbox_client=dropbox_client,
             file_path=file_path,
-            dropbox_path=f'/PlantRecordings/{user.get("name")}/{file_name}'
+            dropbox_path=f'/PlantRecordings/{user.name}/{file_name}'
         )
 
         os.remove(file_path)
 
-        db.set_state(recording_id, "STOPPED")
+        recording_service.set_state(recording_id, RecordingState.STOPPED)
         socketio.emit('user-stop', {
-            'name': recording.get('name')
+            'name': recording.name
         })
 
         return f'Data collection for recording with id {recording_id} successfully stopped and file saved.', 200
 
     @app.route('/recording/<recording_id>/delete', methods=['POST'])
     def delete(recording_id):
-        recording = db.get_recording_by_id(recording_id)
-        db.delete_recording(recording_id)
+        recording = recording_service.find_by_id(recording_id)
+        recording_service.delete(recording_id)
 
         socketio.emit('user-delete', {
-            'name': recording.get('name')
+            'name': recording.name
         })
 
         return f'Deleted recording with id {recording_id}', 200
@@ -316,19 +300,16 @@ def create_app():
 
     @app.route('/recording/<recording_id>', methods=['GET'])
     def user_state(recording_id):
-        recording = db.get_recording_by_id(recording_id)
+        recording = recording_service.find_by_id(recording_id)
         if recording is None:
             return render_template(
                 'empty_recording.html',
                 id=recording_id  # TODO: fix naming
             )
 
-        threshold = recording.get('threshold')
-
         return render_template(
             'user_state.html',
-            recording=recording,
-            initial_bucket=db.get_measurements_for_recording(recording_id, threshold * 2),
+            recording=recording_service.to_dto(recording),
         )
 
     @app.route('/classify', methods=['POST'])
@@ -353,7 +334,7 @@ def create_app():
 
     @app.route('/recording/<recording_id>/stopAndLabel', methods=['POST'])
     def stopAndLabel(recording_id):
-        recording = db.get_recording_by_id(recording_id)
+        recording = recording_service.find_by_id(recording_id)
         if recording is None:
             return "Recording not found.", 404
 
@@ -361,14 +342,14 @@ def create_app():
         if emotions is None:
             return 'No emotion data supplied.', 400
 
-        if recording.get('state') != "RUNNING":
+        if recording.state != RecordingState.RUNNING:
             return f'The data collection for the recording has not started yet', 400
 
-        start_time = recording.get('start_time')
-        delta_seconds = (recording.get('last_update') - start_time).seconds
-        measurements = db.get_measurements_for_recording(recording_id)
+        start_time = recording.start_time
+        delta_seconds = (recording.last_update - start_time).seconds
+        measurements = measurement_service.get_values_for_recording(recording_id)
         sample_rate = int(len(measurements) / delta_seconds) if delta_seconds != 0 else 0
-        file_name = f'{recording.get("name")}_{sample_rate}Hz_{int(start_time.timestamp() * 1000)}.wav'
+        file_name = f'{recording.name}_{sample_rate}Hz_{int(start_time.timestamp() * 1000)}.wav'
         file_path = wav_converter.convert(
             measurements,
             sample_rate=sample_rate,
@@ -385,27 +366,26 @@ def create_app():
         dropbox_controller.upload_file_to_dropbox(
             dropbox_client=dropbox_client,
             file_path=file_path,
-            dropbox_path=f'/PlantRecordings/{recording.get("name")}/{file_name}'
+            dropbox_path=f'/PlantRecordings/{recording.name}/{file_name}'
         )
 
         os.remove(file_path)
-        db.set_state(recording_id, "STOPPED")
+        recording_service.set_state(recording_id, RecordingState.STOPPED)
 
         socketio.emit('user-stop', {
-            'name': recording.get('name')
+            'name': recording.name
         })
 
         return "Successfully stopped recording and labeled data", 200
 
     @app.route('/recordAndLabel', methods=['GET'])
     def record_and_label():
-        recordings = db.get_recordings_by_state('REGISTERED') + db.get_recordings_by_state('RUNNING')
-        for recording in recordings:
-            recording['measurements'] = db.get_measurements_for_recording(recording.get('id'), recording['threshold'] * 2)
+        recordings = recording_service.find_by_state(RecordingState.REGISTERED) + recording_service.find_by_state(
+            RecordingState.RUNNING)
 
         return render_template(
             'record_and_label.html',
-            recordings=recordings
+            recordings=recording_service.to_dtos(recordings)
         )
 
     @app.route('/label', methods=['POST'])

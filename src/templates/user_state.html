@@ -96,24 +96,26 @@
     <main id="main">
         <div id="header" class="header">
             <p>Recording: {{recording.name}}</a>
-            {% if recording.start_time is defined %}
+            {% if recording.start_time is defined and recording.start_time is not none %}
             <p id="start_time">Recording start time: {{recording.start_time}}</p>
             {% else %}
             <p id="start_time"></p>
             {% endif %}
             <div id="action_container" class="action-container">
-                {% if recording.start_time is defined %}
-                <button id="button_stop" onclick="executeAction('stop', '{{recording.id}}')" class="action-button">
-                    <svg class="action-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="6" y="6" width="12" height="12" />
-                    </svg>
-                </button>
-                {% else %}
-                <button id="button_start" onclick="executeAction('start', '{{recording.id}}')" class="action-button">
-                    <svg class="action-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M8 5v14l11-7z" />
-                    </svg>
-                </button>
+                {% if recording.state != "STOPPED" %}
+                    {% if recording.start_time is defined and recording.start_time is not none %}
+                    <button id="button_stop" onclick="executeAction('stop', '{{recording.id}}')" class="action-button">
+                        <svg class="action-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="6" y="6" width="12" height="12" />
+                        </svg>
+                    </button>
+                    {% else %}
+                    <button id="button_start" onclick="executeAction('start', '{{recording.id}}')" class="action-button">
+                        <svg class="action-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M8 5v14l11-7z" />
+                        </svg>
+                    </button>
+                    {% endif %}
                 {% endif %}
                 <button class="action-button delete" onclick="executeAction('delete', '{{recording.id}}')">
                     <svg viewBox="0 0 1024 1024" fill="#000000" class="action-icon" version="1.1"
@@ -128,7 +130,7 @@
                 </button>
             </div>
         </div>
-        <a id="initialBucket" style="display: none">{{initial_bucket}}</a>
+        <a id="initialBucket" style="display: none">{{recording.measurements}}</a>
         <a id="userName" style="display: none">{{recording.name}}</a>
         <a id="threshold" style="display: none">{{recording.threshold}}</a>
         <canvas id="myChart"></canvas>

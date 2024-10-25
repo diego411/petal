@@ -141,7 +141,6 @@
 </body>
 <script>
     const socket = io();
-    console.log(document.getElementById('recordings').textContent.replace(/'/g, '"'));
     const recordings = JSON.parse(document.getElementById('recordings').textContent.replace(/'/g, '"'));
     const charts = {};
 
