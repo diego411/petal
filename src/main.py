@@ -94,7 +94,7 @@ def create_app():
             recordings=recording_service.to_dtos(recordings)
         )
 
-    @app.route('/register', methods=['POST'])
+    @app.route('/recording/register', methods=['POST'])
     def register():
         data = request.json
 
@@ -147,7 +147,7 @@ def create_app():
 
         return f'Successfully started data collection for recording', 200
 
-    def run_update_by_name(recording: Recording, data, now):
+    def run_update(recording: Recording, data: bytes, now: datetime.datetime):
         sample_rate = recording.sample_rate or 142
         number_of_persisted_measurements = measurement_service.get_count(recording.id)
         start_time = recording.start_time
@@ -161,22 +161,21 @@ def create_app():
         elif diff_number_measurements > 0:
             parsed_data += [parsed_data[-1]] * diff_number_measurements
 
-        measurement_service.insert_many(recording.id, parsed_data, now)
-        recording_service.set_last_update(recording.id, now)
-
-        measurement_dtos = measurement_service.get_values_for_recording(recording.id, recording.threshold * 2)
         socketio.emit(
             f'user-update',
             {
-                'bucket': measurement_dtos,
+                'bucket': parsed_data,
                 'name': recording.name,
                 'id': recording.id,
                 'threshold': recording.threshold or 9000
             }
         )
 
+        measurement_service.insert_many(recording.id, parsed_data, now)
+        recording_service.set_last_update(recording.id, now)
+
         app.logger.info(
-            f'Update for recording with id {recording.id} took {(datetime.datetime.now() - now).seconds}sec.'
+            f'Entire update for recording with id {recording.id} took {int((datetime.datetime.now() - now).total_seconds() * 1000)}ms.'
         )
 
     @app.route('/recording/<recording_id>/update', methods=['POST'])
@@ -190,8 +189,8 @@ def create_app():
         if recording.state != RecordingState.RUNNING:
             return f'The data collection for the recording has not started yet', 400
 
-        data = request.data
-        thread = threading.Thread(target=run_update_by_name(recording, data, now))
+        data: bytes = request.data
+        thread = threading.Thread(target=run_update(recording, data, now))
         thread.start()
         return f'Successfully started update for: {recording.name}', 200
 
@@ -299,7 +298,7 @@ def create_app():
         return jsonify({'current_emotion': current_emotion})
 
     @app.route('/recording/<recording_id>', methods=['GET'])
-    def user_state(recording_id):
+    def get_recording(recording_id):
         recording = recording_service.find_by_id(recording_id)
         if recording is None:
             return render_template(

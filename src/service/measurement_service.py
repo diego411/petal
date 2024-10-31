@@ -52,11 +52,15 @@ def get_count(cursor: Cursor, recording: int) -> int:
 
 @transactional()
 def insert_many(cursor: Cursor, recording: int, measurements: list, created_at: datetime):
-    for measurement in measurements:
-        cursor.execute(  # TODO: exeutemany
-            '''
-                INSERT INTO measurement (value, recording, created_at)
-                VALUES (:value, :recording, :created_at);
-            ''',
-            {'value': measurement, 'recording': recording, 'created_at': created_at}
-        )
+    data = list(map(
+        lambda measurement: {'value': measurement, 'recording': recording, 'created_at': created_at},
+        measurements
+    ))
+
+    cursor.executemany(
+        '''
+            INSERT INTO measurement (value, recording, created_at)
+            VALUES (:value, :recording, :created_at);
+        ''',
+        data
+    )
