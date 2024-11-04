@@ -1,5 +1,5 @@
 from src.database.db import transactional
-from sqlite3 import Cursor
+from psycopg2.extensions import cursor as Cursor
 from datetime import datetime
 from typing import List
 
@@ -11,7 +11,7 @@ def get_values_for_recording(cursor: Cursor, recording: int, limit: int = None) 
             '''
                 SELECT value
                 FROM measurement
-                WHERE recording=:recording 
+                WHERE recording=%(recording)s 
                 ORDER BY created_at DESC;
             ''',
             {'recording': recording}
@@ -21,7 +21,7 @@ def get_values_for_recording(cursor: Cursor, recording: int, limit: int = None) 
             f'''
                 SELECT value
                 FROM measurement
-                WHERE recording=:recording
+                WHERE recording=%(recording)s
                 ORDER BY created_at DESC
                 LIMIT {limit}; 
             ''',
@@ -42,7 +42,7 @@ def get_count(cursor: Cursor, recording: int) -> int:
         '''
             SELECT COUNT(*)
             FROM measurement
-            WHERE recording=:recording;
+            WHERE recording=%(recording)s;
         ''',
         {'recording': recording}
     )
@@ -60,7 +60,7 @@ def insert_many(cursor: Cursor, recording: int, measurements: list, created_at: 
     cursor.executemany(
         '''
             INSERT INTO measurement (value, recording, created_at)
-            VALUES (:value, :recording, :created_at);
+            VALUES (%(value)s, %(recording)s, %(created_at)s);
         ''',
         data
     )

@@ -6,6 +6,7 @@ import threading
 import time
 import traceback
 from pathlib import Path
+from apscheduler.schedulers.background import BackgroundScheduler
 
 from flask import Flask, request, jsonify, render_template
 from flask_socketio import SocketIO
@@ -22,8 +23,8 @@ from src.service import measurement_service
 from src.entity.Recording import Recording
 from src.entity.RecordingState import RecordingState
 
-bucket = []
-current_emotion = "none"
+bucket = [] # TODO: persists this
+current_emotion = "none" # TODO: persist this
 
 socketio = SocketIO()
 
@@ -33,7 +34,9 @@ def create_app():
     app.config.from_object(AppConfig)
     socketio.init_app(app)
 
-    db.init()
+    db.init_tables()
+    db.create_measurement_partition()
+    db.create_measurement_partition(offset=1)
     jakob_classifier = JakobPlantEmotionClassifier()
     dropbox_client = dropbox_controller.create_dropbox_client(
         app_key=app.config['DROPBOX_APP_KEY'],
@@ -59,6 +62,10 @@ def create_app():
     file_handler.setFormatter(formatter)
 
     app.logger.addHandler(file_handler)
+
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(db.create_measurement_partition, 'cron', args=[1], hour=23, minute=52)
+    scheduler.start()
 
     @app.context_processor
     def inject_version():
@@ -108,6 +115,7 @@ def create_app():
             return 'User-Name header needs to be provided', 400
 
         user = user_service.get_or_create(user_name)
+        print(user)
 
         sample_rate = data['sample_rate']
         threshold = data['threshold']
@@ -125,7 +133,7 @@ def create_app():
             threshold,
         )
 
-        return {'id': str(recording_id)}, 201
+        return jsonify({'id': recording_id}), 201
 
     @app.route('/recording/<recording_id>/start', methods=['POST'])
     def start(recording_id):
@@ -164,7 +172,7 @@ def create_app():
         socketio.emit(
             f'user-update',
             {
-                'bucket': parsed_data,
+                'bucket': parsed_data, # TODO: rename bucket
                 'name': recording.name,
                 'id': recording.id,
                 'threshold': recording.threshold or 9000
@@ -180,6 +188,7 @@ def create_app():
 
     @app.route('/recording/<recording_id>/update', methods=['POST'])
     def update_recording(recording_id):
+        recording_id = int(recording_id)
         now = datetime.datetime.now()
 
         recording = recording_service.find_by_id(recording_id)

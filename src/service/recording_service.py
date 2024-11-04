@@ -1,5 +1,5 @@
 from src.database.db import transactional
-from sqlite3 import Cursor
+from psycopg2.extensions import cursor as Cursor
 from datetime import datetime
 from src.entity.Recording import Recording
 from src.entity.RecordingState import RecordingState
@@ -43,7 +43,7 @@ def find_by_id(cursor: Cursor, recording_id: int) -> Optional[Recording]:
         '''
             SELECT *
             FROM recording
-            WHERE id=:id;
+            WHERE id=%(id)s;
         ''',
         {'id': recording_id}
     )
@@ -51,7 +51,6 @@ def find_by_id(cursor: Cursor, recording_id: int) -> Optional[Recording]:
     result = cursor.fetchone()
     if result is None:
         return None
-
     return Recording.from_(result)
 
 
@@ -61,9 +60,9 @@ def find_not_stopped_by_user_and_name(cursor: Cursor, user: int, name: str) -> O
         '''
             SELECT *
             FROM recording
-            WHERE user=:user AND name=:name AND state != "STOPPED"
+            WHERE user_id=%(user_id)s AND name=%(name)s AND state != %(state)s
         ''',
-        {'user': user, 'name': name}
+        {'user_id': user, 'name': name, 'state': RecordingState.STOPPED.value}
     )
 
     result = cursor.fetchone()
@@ -79,7 +78,7 @@ def find_by_state(cursor: Cursor, state: RecordingState) -> List[Recording]:
         '''
             SELECT *
             FROM recording
-            WHERE state=:state
+            WHERE state=%(state)s
         ''',
         {'state': state.value}
     )
@@ -101,9 +100,9 @@ def find_by_user(cursor: Cursor, user: int) -> List[Recording]:
         '''
             SELECT *
             FROM recording
-            WHERE user=:user;
+            WHERE user_id=%(user_id)s;
         ''',
-        {'user': user}
+        {'user_id': user}
     )
 
     result = cursor.fetchall()
@@ -120,12 +119,13 @@ def find_by_user(cursor: Cursor, user: int) -> List[Recording]:
 def create(cursor: Cursor, name: str, user: int, state: RecordingState, sample_rate: int, threshold: int):
     cursor.execute(
         '''
-            INSERT INTO recording (name, user, state, sample_rate, threshold)
-            VALUES (:name, :user, :state, :sample_rate, :threshold);
+            INSERT INTO recording (name, user_id, state, sample_rate, threshold)
+            VALUES (%(name)s, %(user_id)s, %(state)s, %(sample_rate)s, %(threshold)s)
+            RETURNING id;
         ''',
-        {'name': name, 'user': user, 'state': state.value, 'sample_rate': sample_rate, 'threshold': threshold}
+        {'name': name, 'user_id': user, 'state': state.value, 'sample_rate': sample_rate, 'threshold': threshold}
     )
-    return cursor.lastrowid
+    return cursor.fetchone()[0]
 
 
 @transactional()
@@ -133,7 +133,7 @@ def delete(cursor: Cursor, recording: int):
     cursor.execute(
         """
             DELETE FROM recording
-            WHERE id=:id;
+            WHERE id=%(id)s;
         """,
         {'id': recording}
     )
@@ -141,7 +141,7 @@ def delete(cursor: Cursor, recording: int):
     cursor.execute(  # TODO: why doesn't cascade work for this?
         '''
             DELETE FROM measurement
-            WHERE recording=:recording;
+            WHERE recording=%(recording)s;
         ''',
         {'recording': recording}
     )
@@ -152,8 +152,8 @@ def set_last_update(cursor: Cursor, recording: int, date: datetime):
     cursor.execute(
         '''
             UPDATE recording
-            SET last_update=:last_update
-            WHERE id=:id
+            SET last_update=%(last_update)s
+            WHERE id=%(id)s
         ''',
         {'id': recording, 'last_update': date}
     )
@@ -164,8 +164,8 @@ def set_start_time(cursor: Cursor, recording: int, date: datetime):
     cursor.execute(
         '''
             UPDATE recording
-            SET start_time=:start_time
-            WHERE id=:id
+            SET start_time=%(start_time)s
+            WHERE id=%(id)s
         ''',
         {'id': recording, 'start_time': date}
     )
@@ -176,8 +176,8 @@ def set_state(cursor: Cursor, recording: int, state: RecordingState):
     cursor.execute(
         """
             UPDATE recording
-            SET state=:state
-            WHERE id=:id;
+            SET state=%(state)s
+            WHERE id=%(id)s;
         """,
         {'id': recording, 'state': state.value}
     )

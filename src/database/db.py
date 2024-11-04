@@ -1,23 +1,37 @@
-import sqlite3
-from sqlite3 import Cursor
-import datetime
+import psycopg2
+from psycopg2.extensions import cursor as Cursor
 from functools import wraps
+from src.AppConfig import AppConfig
+
+
+def get_connection():
+    return psycopg2.connect(
+        dbname=AppConfig.POSTGRES_DB,
+        user=AppConfig.POSTGRES_USER,
+        password=AppConfig.POSTGRES_PASSWORD,
+        host='postgres',
+        port='5432'
+    )
 
 
 def transactional():
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            with sqlite3.connect('dbs/plant.db') as conn:
-                cursor = conn.cursor()
-                try:
-                    result = func(cursor, *args, **kwargs)
-                    conn.commit()
-                except Exception as e:
-                    print(f"An error occurred: {e}")
-                    raise e
+            conn = get_connection()
+            cursor = conn.cursor()
+            try:
+                result = func(cursor, *args, **kwargs)
+                conn.commit()
+            except Exception as e:
+                conn.rollback()
+                print(f"An error occurred: {e}")
+                raise e
+            finally:
+                cursor.close()
+                conn.close()
 
-                return result
+            return result
 
         return wrapper
 
@@ -25,11 +39,11 @@ def transactional():
 
 
 @transactional()
-def init(cursor: Cursor):
+def init_tables(cursor: Cursor):
     cursor.execute(
         '''
-            CREATE TABLE IF NOT EXISTS user (
-                id INTEGER PRIMARY KEY,
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
                 name TEXT NOT NULL
             );
         '''
@@ -38,15 +52,15 @@ def init(cursor: Cursor):
     cursor.execute(
         '''
             CREATE TABLE IF NOT EXISTS recording (
-                id INTEGER PRIMARY KEY,
+                id SERIAL PRIMARY KEY,
                 name TEXT NOT NULL,
-                user INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
                 state INTEGER NOT NULL,
                 sample_rate INTEGER NOT NULL,
                 threshold INTEGER NOT NULL,
-                start_time DATETIME,
-                last_update DATETIME,
-                FOREIGN KEY (user) REFERENCES user (id)
+                start_time TIMESTAMP,
+                last_update TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id)
             );
         '''
     )
@@ -54,18 +68,36 @@ def init(cursor: Cursor):
     cursor.execute(
         '''
             CREATE TABLE IF NOT EXISTS measurement (
-                id INTEGER PRIMARY KEY,
+                id SERIAL,
                 value REAL,
                 recording INTEGER NOT NULL,
-                created_at DATETIME,
-                FOREIGN KEY (recording) REFERENCES recording(id) ON DELETE CASCADE
-            );
+                created_at TIMESTAMP NOT NULL,
+                FOREIGN KEY (recording) REFERENCES recording(id) ON DELETE CASCADE,
+                PRIMARY KEY (id, created_at)
+            ) PARTITION BY RANGE (created_at);
         '''
     )
 
 
-def parse_sql_date(date: str) -> datetime.datetime:
-    if date is None:
-        return None
-
-    return datetime.datetime.strptime(date, '%Y-%m-%d %H:%M:%S.%f')
+@transactional()
+def create_measurement_partition(cursor, offset: int = None):
+    interval = ''
+    if offset is not None:
+        interval = f"+ INTERVAL '{offset} day'"
+    cursor.execute(
+        f'''
+            DO $$
+            DECLARE
+                partition_name TEXT;
+                partition_date DATE;
+            BEGIN
+                partition_date := CURRENT_DATE {interval};
+                partition_name := 'measurements_' || to_char(partition_date, 'YYYY_MM_DD');
+                EXECUTE format('CREATE TABLE IF NOT EXISTS %I PARTITION OF measurement FOR VALUES FROM (%L) TO (%L)',
+                           partition_name,
+                           partition_date,
+                           partition_date + INTERVAL '1 day');
+        END $$;
+        '''
+    )
+    print("Creating partition with offset", offset)

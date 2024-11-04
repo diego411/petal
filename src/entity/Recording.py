@@ -1,4 +1,3 @@
-from src.database.db import parse_sql_date
 from datetime import datetime
 from dataclasses import dataclass
 from src.entity.RecordingState import RecordingState
@@ -26,6 +25,6 @@ class Recording:
             state=RecordingState(_state),
             sample_rate=_sample_rate,
             threshold=_threshold,
-            start_time=parse_sql_date(_start_time),
-            last_update=parse_sql_date(_last_update)
+            start_time=_start_time,
+            last_update=_last_update
         )

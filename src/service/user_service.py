@@ -1,5 +1,5 @@
 from src.database.db import transactional
-from sqlite3 import Cursor
+from psycopg2.extensions import cursor as Cursor
 from src.entity.User import User
 from typing import Optional
 
@@ -18,8 +18,8 @@ def find_by_id(cursor: Cursor, user_id: int) -> Optional[User]:
     cursor.execute(
         '''
             SELECT *
-            FROM user
-            WHERE id=:id;
+            FROM users
+            WHERE id=%(id)s;
         ''',
         {'id': user_id}
     )
@@ -27,7 +27,6 @@ def find_by_id(cursor: Cursor, user_id: int) -> Optional[User]:
     result = cursor.fetchone()
     if result is None:
         return None
-
     return User.from_(result)
 
 
@@ -36,8 +35,8 @@ def find_by_name(cursor: Cursor, name: str) -> Optional[User]:
     cursor.execute(
         '''
             SELECT *
-            FROM user
-            WHERE name=:name;
+            FROM users
+            WHERE name=%(name)s;
         ''',
         {'name': name}
     )
@@ -52,10 +51,12 @@ def find_by_name(cursor: Cursor, name: str) -> Optional[User]:
 def create(cursor: Cursor, name: str) -> int:
     cursor.execute(
         '''
-            INSERT INTO user (name)
-            VALUES (:name);
+            INSERT INTO users (name)
+            VALUES (%(name)s)
+            RETURNING id;
         ''',
         {'name': name}
     )
-    user_id = cursor.lastrowid
+    user_id = cursor.fetchone()[0]
+    print(user_id)
     return user_id
