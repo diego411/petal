@@ -175,7 +175,8 @@ def create_app():
                 'bucket': parsed_data, # TODO: rename bucket
                 'name': recording.name,
                 'id': recording.id,
-                'threshold': recording.threshold or 9000
+                'threshold': recording.threshold or 9000,
+                'last_update': int(now.timestamp()) * 1000
             }
         )
 

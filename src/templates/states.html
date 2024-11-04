@@ -31,7 +31,7 @@
         }
 
         canvas {
-            min-height: 16em;
+            min-height: 20em;
         }
 
         .header {
@@ -104,6 +104,9 @@
                     {% else %}
                     <p id="start_time_{{recording.name}}"></p>
                     {% endif %}
+
+                    <p id="expected_update_{{user.name}}"></p>
+
                     <div id="action_container_{{recording.name}}" class="action-container">
                         {% if recording.start_time is defined %}
                         <button id="button_stop_{{recording.name}}" onclick="executeAction('stop', '{{recording.id}}')" class="action-button">
@@ -146,6 +149,12 @@
 
     for (const recording of recordings) {
         const measurements = recording.measurements.slice(recording.measurements.length - 500);
+        const expectedUpdateParagraph = document.getElementById(`expected_update_${recording.name}`);
+        expectedUpdate = calculateExpectedUpdate(recording['last_update'], recording['threshold'], recording['sample_rate']);
+        if (!isNaN(expectedUpdate))
+            expectedUpdateParagraph.textContent = `Expecting update in: ${expectedUpdate}s`
+
+        const bucket = recording.bucket.slice(recording.bucket.length - 500);
 
         const ctx = document.getElementById(`chart_${recording.name}`).getContext('2d');
         const myChart = new Chart(ctx, {
@@ -214,6 +223,9 @@
 
             actionContainer.insertBefore(button, actionContainer.firstChild);
         }
+
+        const userIndex = users.findIndex(user => user.name === data.name);
+        users[userIndex]['last_update'] = Date.now()
     });
 
     socket.on('user-stop', (data) => {
@@ -239,6 +251,9 @@
         chart.data.datasets[0].data = bucket;
 
         chart.update();
+
+        const userIndex = users.findIndex(user => user.name === data.name);
+        users[userIndex]['last_update'] = data['last_update'];
     });
 
     function executeAction(action, id) {
@@ -249,6 +264,25 @@
             }
         });
     }
+
+    function calculateExpectedUpdate(lastUpdate, threshold, sampleRate) {
+        const secondsForOneUpdate = threshold / sampleRate;
+
+        const secondsPassed = (Date.now() - lastUpdate) / 1000;
+
+        return Math.floor(secondsForOneUpdate - secondsPassed);
+    }
+
+    function updateExpectedUpdate() {
+        for(user of users) {            
+            const expectedUpdateParagraph = document.getElementById(`expected_update_${user.name}`);
+            const expectedUpdate = calculateExpectedUpdate(user['last_update'], user['threshold'], user['sample_rate']);
+            if (!isNaN(expectedUpdate))
+                expectedUpdateParagraph.textContent = `Expecting update in: ${expectedUpdate}s`
+        }
+    }
+
+    setInterval(updateExpectedUpdate, 1000);
 
 </script>
 
