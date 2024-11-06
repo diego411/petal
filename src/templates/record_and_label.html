@@ -7,34 +7,48 @@
     <link rel="stylesheet" type="text/css" href="static/styles/styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <script src="https://player.vimeo.com/api/player.js"></script>
     <style>
         .container {
             display: grid;
-            place-items: center;
-            width: 100%;
-            /* Adjust the size as needed */
-            max-width: 70em;
-            /* Ensure it does not exceed this width */
+            grid-template-columns: 14vw 14vw 14vw 14vw 14vw 14vw;
+            grid-template-rows: auto;
+            grid-template-areas:
+                ". . select button . ."
+                "video video video video camera camera"
+                "video video video video camera camera"
+                "video video video video chart chart"
+                "video video video video chart chart"
+            ;
             position: relative;
-            gap: 2em;
+            gap: 1em;
+        }
+
+        .select {
+            grid-area: select;
+        }
+
+        iframe {
+            grid-area: video;
+            height: 100%;
+            width: 100%;
+            border: none;
         }
 
         video,
         canvas {
-            grid-area: 1 / 1;
-            /* Stack video and canvas on top of each other */
+            grid-area: camera;
             width: 100%;
             height: 100%;
         }
 
         canvas {
             z-index: 2;
-            /* Ensure canvas is on top of the video */
             pointer-events: none;
-            /* Canvas shouldn't block video interactivity */
         }
 
         .action-button {
+            grid-area: button;
             position: relative;
             padding: 8px 16px;
             background: #fcdd03;
@@ -55,7 +69,7 @@
         }
 
         .unit {
-            grid-area: 1 / 2;
+            grid-area: chart;
             display: inline-block;
             list-style-type: none;
             margin: 1em;
@@ -90,42 +104,54 @@
 <body>
     {% from "macros.html" import render_top_bar, render_footer %}
     {{ render_top_bar('recordAndLabel') }}
+    <p id="recording-data" style="display: none">{{recordings}}</p>
     <h2 id="sessionUUID">Session offline</h2>
     <div class="container">
-        <video id="video" autoplay muted></video>
-        <canvas id="overlay"></canvas>
-        <select name="recordings" id="recordings" onchange="updateRecording()">
+        <select class="select" name="recordings" id="recordings" onchange="updateRecording()">
             {% for recording in recordings %}
             <option value="{{recording.name}}">{{recording.name}}</option>
             {% endfor %}
         </select>
+        <button class="action-button" onclick="executeAction()" id="action-button">
+            <span id="button-text" class="button__text">Start</span>
+        </button>
+
+        <iframe id="iframe" src="https://player.vimeo.com/video/495184503"></iframe>
+
+        <video id="video" autoplay muted></video>
+        <canvas id="overlay"></canvas>
+
         <div class="unit">
             <div class="header">
                 <a id="recording-name" href="/state/"></a>
                 <p id="start-time"></p>
+                <p id="expected-update"></p>
             </div>
             <canvas id="chart"></canvas>
         </div>
-        <button class="action-button" onclick="executeAction()" id="action-button">
-            <span class="button__text">Start</span>
-        </button>
     </div>
 
     <script src="static/face-api.js"></script>
     <script>
         const socket = io();
 
+        const recordingsData = JSON.parse(document.getElementById('recording-data').textContent.replace(/'/g, '"'));
+        const iframe = document.getElementById('iframe');
+        const player = new Vimeo.Player(iframe);
         const video = document.getElementById('video');
         const canvas = document.getElementById('overlay');
         const emotionDisplay = document.getElementById('emotion-display');
         const recordings = document.getElementById('recordings');
-        const actionButton = document.getElementById('action-button');
+        const buttonText = document.getElementById('button-text');
         const sessionUUID = document.getElementById('sessionUUID');
         const recordingName = document.getElementById('recording-name');
+        const expectedUpdateParagraph = document.getElementById(`expected-update`);
         let running = false;
         let currentEmotion = undefined;
         let currentUUID = undefined;
         let output = [];
+
+        updateExpectedUpdate();
 
         recordingName.textContent = recordings.value;
 
@@ -236,9 +262,12 @@
         const executeAction = () => {
             running = !running;
             if (running) {
-                actionButton.textContent = "STOP";
+                buttonText.textContent = "STOP";
                 currentUUID = crypto.randomUUID();
                 sessionUUID.textContent = `Session ID: ${currentUUID}`;
+                player.play().catch(function (error) {
+                    console.error('Error starting video:', error);
+                });
                 fetch(`/start`, {
                     method: 'POST',
                     headers: {
@@ -247,9 +276,13 @@
                     body: JSON.stringify({ user: recordings.value })
                 });
             } else {
-                actionButton.textContent = "START"
+                buttonText.textContent = "START"
                 sessionUUID.textContent = `Session ${currentUUID} just stopped`;
                 currentUUID = undefined;
+                player.pause().catch(function (error) {
+                    console.error('Error stopping video:', error);
+                });
+                expectedUpdateParagraph.textContent = undefined;
                 fetch(`/stopAndLabel`, {
                     method: 'POST',
                     headers: {
@@ -263,6 +296,8 @@
         socket.on('user-start', (data) => {
             const startTimeParagraph = document.getElementById(`start-time`);
             startTimeParagraph.textContent = `Start time: ${data['start_time']}`;
+            const index = recordingsData.findIndex(recording => recording.name === recordings.value);
+            recordingsData[index]['last_update'] = Date.now();
         });
 
         socket.on('user-stop', (data) => {
@@ -282,6 +317,13 @@
             if (data.name !== recordings.value)
                 return;
 
+            const index = recordingsData.findIndex(recording => recording.name === recordings.value);
+            console.log(data['last_update']);
+            console.log(index);
+
+
+            recordingsData[index]['last_update'] = data['last_update'];
+
             let bucket = data.bucket;
             const threshold = data.threshold * 2;
             bucket = bucket.slice(bucket.length - threshold);
@@ -295,6 +337,28 @@
             const recordingName = document.getElementById('recording-name');
             recordingName.textContent = recordings.value;
         }
+
+        function calculateExpectedUpdate(lastUpdate, threshold, sampleRate) {
+            const secondsForOneUpdate = threshold / sampleRate;
+
+            const secondsPassed = (Date.now() - lastUpdate) / 1000;
+
+            return Math.floor(secondsForOneUpdate - secondsPassed);
+        }
+
+        function updateExpectedUpdate() {
+            if (!running)
+                return;
+
+            const recording = recordingsData.find(recording => recording.name === recordings.value);
+            console.log(recording);
+
+            const expectedUpdate = calculateExpectedUpdate(recording['last_update'], recording['threshold'], recording['sample_rate']);
+            if (!isNaN(expectedUpdate))
+                expectedUpdateParagraph.textContent = `Expecting update in: ${expectedUpdate}s`
+        }
+
+        setInterval(updateExpectedUpdate, 1000);
 
         run();
     </script>
