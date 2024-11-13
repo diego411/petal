@@ -361,9 +361,18 @@ def create_app():
 
         user_bucket = state_map[user]['bucket']
         start_time = state_map[user]['start_time']
+        app.logger.info(f"Start time: {start_time}")
+        app.logger.info(f"Last update: {state_map[user]['last_update']}")
+
         delta_seconds = (state_map[user]['last_update'] - start_time).seconds
         sample_rate = int(len(user_bucket) / delta_seconds) if delta_seconds != 0 else 0
-        file_name = f'{user}_{start_time.strftime("%d-%m-%Y_%H:%M:%S")}_{sample_rate}Hz_{int(start_time.timestamp() * 1000)}.wav'
+
+        app.logger.info(f"Delta seconds: {delta_seconds}")
+        app.logger.info(f"Bucket length: {len(user_bucket)}")
+        app.logger.info(f"Calculated sample rate: {sample_rate}")
+
+        file_name_prefix = f'{user}_{sample_rate}Hz_{int(start_time.timestamp() * 1000)}'
+        file_name = f'{file_name_prefix}.wav'
         file_path = wav_converter.convert(
             user_bucket,
             sample_rate=sample_rate,
@@ -375,7 +384,8 @@ def create_app():
             recording_path=file_path,
             observations_path='',
             observations=emotions,
-            dropbox_client=dropbox_client
+            dropbox_client=dropbox_client,
+            dropbox_path_prefix=file_name_prefix
         )
 
         dropbox_controller.upload_file_to_dropbox(
@@ -398,6 +408,9 @@ def create_app():
         users = []
         for name, state in state_map.items():
             user = db.get_user_by_name(name)
+            if user is None:
+                user = {'name': name}
+
             user["bucket"] = state['bucket']
 
             if state.get('start_time') is not None:

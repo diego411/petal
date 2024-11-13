@@ -5,7 +5,8 @@ from src.controller import dropbox_controller
 import dropbox
 
 
-def label_recording(recording_path: str, observations_path: str, observations: dict, dropbox_client: dropbox.Dropbox):
+def label_recording(recording_path: str, observations_path: str, observations: dict, dropbox_client: dropbox.Dropbox,
+                    dropbox_path_prefix: str = None):
     split_recording_path = recording_path.split('.')[0]
     split_recording_path = split_recording_path.split('_')
     recording_start_timestamp = int(split_recording_path[len(split_recording_path) - 1])
@@ -28,7 +29,8 @@ def label_recording(recording_path: str, observations_path: str, observations: d
             emotion = observation['emotion']
         else:
             emotion = max({key: observation[key] for key in
-                       ['happy', 'surprised', 'neutral', 'sad', 'angry', 'disgusted', 'fearful']}, key=observation.get)
+                           ['happy', 'surprised', 'neutral', 'sad', 'angry', 'disgusted', 'fearful']},
+                          key=observation.get)
         print(f'From {start} to {end} this emotion was predicted: {emotion}')
 
         # Convert these to milliseconds
@@ -53,10 +55,14 @@ def label_recording(recording_path: str, observations_path: str, observations: d
         file_path = f"{directory}/{observation['id']}.wav"
         snippet.export(file_path, format="wav")
 
+        dropbox_file_name = f"{observation['id']}_{i}"
+        if dropbox_path_prefix:
+            dropbox_file_name = f"{dropbox_path_prefix}_{dropbox_file_name}"
+        # TODO: can you do a bulk upload somehow?
         dropbox_controller.upload_file_to_dropbox(
             dropbox_client=dropbox_client,
             file_path=file_path,
-            dropbox_path=f"/PlantRecordings/Labeled/{emotion}/{observation['id']}.wav"
+            dropbox_path=f"/PlantRecordings/Labeled/{emotion}/{dropbox_file_name}.wav"
         )
 
         os.remove(file_path)
