@@ -176,7 +176,7 @@ def create_app():
                 'name': recording.name,
                 'id': recording.id,
                 'threshold': recording.threshold or 9000,
-                'last_update': int(now.timestamp()) * 1000
+                'last_update': now.strftime('%Y-%m-%d %H:%M:%S')
             }
         )
 
@@ -254,6 +254,7 @@ def create_app():
             recording_service.delete(recording_id)
 
         socketio.emit('user-stop', {
+            'id': recording.id,
             'name': recording.name
         })
 
@@ -265,6 +266,7 @@ def create_app():
         recording_service.delete(recording_id)
 
         socketio.emit('user-delete', {
+            'id': recording.id,
             'name': recording.name
         })
 
@@ -361,7 +363,9 @@ def create_app():
         delta_seconds = (recording.last_update - start_time).seconds
         measurements = measurement_service.get_values_for_recording(recording_id)
         sample_rate = int(len(measurements) / delta_seconds) if delta_seconds != 0 else 0
-        file_name = f'{recording.name}_{sample_rate}Hz_{int(start_time.timestamp() * 1000)}.wav'
+
+        file_name_prefix = f'{recording.name}_{sample_rate}Hz_{int(start_time.timestamp() * 1000)}'
+        file_name = f'{file_name_prefix}.wav'
         file_path = wav_converter.convert(
             measurements,
             sample_rate=sample_rate,
@@ -389,6 +393,7 @@ def create_app():
             recording_service.delete(recording_id)
 
         socketio.emit('user-stop', {
+            'id': recording.id,
             'name': recording.name
         })
 

@@ -96,7 +96,7 @@
         <p style="display: none;" id="recordings">{{recordings}}</p>
         <ul>
             {% for recording in recordings %}
-            <li id="item_{{recording.name}}">
+            <li id="item_{{recording.id}}">
                 <div id="header_{{recording.name}}" class="header">
                     <a href="/recording/{{recording.id}}">{{recording.name}}</a>
                     {% if recording.start_time is defined %}
@@ -109,21 +109,23 @@
 
                     <div id="action_container_{{recording.name}}" class="action-container">
                         {% if recording.start_time is defined %}
-                        <button id="button_stop_{{recording.name}}" onclick="executeAction('stop', '{{recording.id}}')" class="action-button">
+                        <button id="button_stop_{{recording.name}}" onclick="executeAction('stop', '{{recording.id}}')"
+                            class="action-button">
                             <svg class="action-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                 <rect x="6" y="6" width="12" height="12" />
                             </svg>
                         </button>
                         {% else %}
-                        <button id="button_start_{{recording.name}}" onclick="executeAction('start', '{{recording.id}}')" class="action-button">
+                        <button id="button_start_{{recording.name}}"
+                            onclick="executeAction('start', '{{recording.id}}')" class="action-button">
                             <svg class="action-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M8 5v14l11-7z" />
                             </svg>
                         </button>
                         {% endif %}
                         <button class="action-button delete" onclick="executeAction('delete', '{{recording.id}}')">
-                            <svg viewBox="0 0 1024 1024" fill="#000000" class="action-icon"
-                                version="1.1" xmlns="http://www.w3.org/2000/svg">
+                            <svg viewBox="0 0 1024 1024" fill="#000000" class="action-icon" version="1.1"
+                                xmlns="http://www.w3.org/2000/svg">
                                 <path
                                     d="M32 241.6c-11.2 0-20-8.8-20-20s8.8-20 20-20l940 1.6c11.2 0 20 8.8 20 20s-8.8 20-20 20L32 241.6zM186.4 282.4c0-11.2 8.8-20 20-20s20 8.8 20 20v688.8l585.6-6.4V289.6c0-11.2 8.8-20 20-20s20 8.8 20 20v716.8l-666.4 7.2V282.4z"
                                     fill="" />
@@ -225,17 +227,19 @@
         }
 
         const recordingIndex = recordings.findIndex(recording => recording.name === data.name);
-        recordings[recordingIndex]['last_update'] = Date.now()
+        recordings[recordingIndex]['last_update'] = getNowFormatted();
     });
 
     socket.on('user-stop', (data) => {
-        const item = document.getElementById(`item_${data.name}`);
+        const item = document.getElementById(`item_${data.id}`);
         item?.remove();
+        recordings.splice(recordings.findIndex(recording => recording.id === data.id), 1);
     });
 
     socket.on('user-delete', (data) => {
-        const item = document.getElementById(`item_${data.name}`);
+        const item = document.getElementById(`item_${data.id}`);        
         item?.remove();
+        recordings.splice(recordings.findIndex(recording => recording.id === data.id), 1);
     });
 
     socket.on(`user-update`, (data) => {
@@ -265,16 +269,32 @@
         });
     }
 
+    function getNowFormatted() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0'); // Local hour
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
+
+        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    }
+
     function calculateExpectedUpdate(lastUpdate, threshold, sampleRate) {
+        if (lastUpdate === undefined)
+            return NaN;
+
         const secondsForOneUpdate = threshold / sampleRate;
 
-        const secondsPassed = (Date.now() - lastUpdate) / 1000;
+        const lastUpdateTimestamp = new Date(lastUpdate.replace(" ", "T")).getTime();
+        const secondsPassed = (Date.now() - lastUpdateTimestamp) / 1000;
 
         return Math.floor(secondsForOneUpdate - secondsPassed);
     }
 
     function updateExpectedUpdate() {
-        for(recording of recordings) {            
+        for (recording of recordings) {
             const expectedUpdateParagraph = document.getElementById(`expected_update_${recording.name}`);
             const expectedUpdate = calculateExpectedUpdate(recording['last_update'], recording['threshold'], recording['sample_rate']);
             if (!isNaN(expectedUpdate))
