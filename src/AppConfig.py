@@ -5,7 +5,7 @@ load_dotenv()
 
 
 class AppConfig:
-    VERSION = '0.0.18'
+    VERSION = '0.1.0'
     PROFILE = os.environ.get('PROFILE') or 'dev'
     POSTGRES_USER = os.environ.get('POSTGRES_USER')
     POSTGRES_PASSWORD = os.environ.get('POSTGRES_PASSWORD')
