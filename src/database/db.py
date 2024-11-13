@@ -5,11 +5,12 @@ from src.AppConfig import AppConfig
 
 
 def get_connection():
+    host = 'localhost' if AppConfig.PROFILE == 'dev' else 'postgres'
     return psycopg2.connect(
         dbname=AppConfig.POSTGRES_DB,
         user=AppConfig.POSTGRES_USER,
         password=AppConfig.POSTGRES_PASSWORD,
-        host='postgres',
+        host=host,
         port='5432'
     )
 
