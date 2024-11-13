@@ -93,37 +93,39 @@
     {% from "macros.html" import render_top_bar, render_footer %}
     {{ render_top_bar('states') }}
     <div class="wrapper">
-        <p style="display: none;" id="users">{{users}}</p>
+        <p style="display: none;" id="recordings">{{recordings}}</p>
         <ul>
-            {% for user in users %}
-            <li id="item_{{user.name}}">
-                <div id="header_{{user.name}}" class="header">
-                    <a href="/state/{{user.name}}">{{user.name}}</a>
-                    {% if user.start_time is defined %}
-                    <p id="start_time_{{user.name}}">Start time: {{user.start_time}}</p>
+            {% for recording in recordings %}
+            <li id="item_{{recording.id}}">
+                <div id="header_{{recording.name}}" class="header">
+                    <a href="/recording/{{recording.id}}">{{recording.name}}</a>
+                    {% if recording.start_time is defined %}
+                    <p id="start_time_{{recording.name}}">Start time: {{recording.start_time}}</p>
                     {% else %}
-                    <p id="start_time_{{user.name}}"></p>
+                    <p id="start_time_{{recording.name}}"></p>
                     {% endif %}
 
-                    <p id="expected_update_{{user.name}}"></p>
+                    <p id="expected_update_{{recording.name}}"></p>
 
-                    <div id="action_container_{{user.name}}" class="action-container">
-                        {% if user.start_time is defined %}
-                        <button id="button_stop_{{user.name}}" onclick="executeAction('stop', '{{user.name}}')" class="action-button">
+                    <div id="action_container_{{recording.name}}" class="action-container">
+                        {% if recording.start_time is defined %}
+                        <button id="button_stop_{{recording.name}}" onclick="executeAction('stop', '{{recording.id}}')"
+                            class="action-button">
                             <svg class="action-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                 <rect x="6" y="6" width="12" height="12" />
                             </svg>
                         </button>
                         {% else %}
-                        <button id="button_start_{{user.name}}" onclick="executeAction('start', '{{user.name}}')" class="action-button">
+                        <button id="button_start_{{recording.name}}"
+                            onclick="executeAction('start', '{{recording.id}}')" class="action-button">
                             <svg class="action-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M8 5v14l11-7z" />
                             </svg>
                         </button>
                         {% endif %}
-                        <button class="action-button delete" onclick="executeAction('delete', '{{user.name}}')">
-                            <svg viewBox="0 0 1024 1024" fill="#000000" class="action-icon"
-                                version="1.1" xmlns="http://www.w3.org/2000/svg">
+                        <button class="action-button delete" onclick="executeAction('delete', '{{recording.id}}')">
+                            <svg viewBox="0 0 1024 1024" fill="#000000" class="action-icon" version="1.1"
+                                xmlns="http://www.w3.org/2000/svg">
                                 <path
                                     d="M32 241.6c-11.2 0-20-8.8-20-20s8.8-20 20-20l940 1.6c11.2 0 20 8.8 20 20s-8.8 20-20 20L32 241.6zM186.4 282.4c0-11.2 8.8-20 20-20s20 8.8 20 20v688.8l585.6-6.4V289.6c0-11.2 8.8-20 20-20s20 8.8 20 20v716.8l-666.4 7.2V282.4z"
                                     fill="" />
@@ -135,7 +137,7 @@
                     </div>
                 </div>
                 <!-- <a id="initialBucket" style="display: none">{{initial_bucket}}</a> -->
-                <canvas id="chart_{{user.name}}"></canvas>
+                <canvas id="chart_{{recording.name}}"></canvas>
             </li>
             {% endfor %}
         </ul>
@@ -144,25 +146,26 @@
 </body>
 <script>
     const socket = io();
-    const users = JSON.parse(document.getElementById('users').textContent.replace(/'/g, '"'));
+    const recordings = JSON.parse(document.getElementById('recordings').textContent.replace(/'/g, '"'));
     const charts = {};
 
-    for (const user of users) {
-        const expectedUpdateParagraph = document.getElementById(`expected_update_${user.name}`);
-        expectedUpdate = calculateExpectedUpdate(user['last_update'], user['threshold'], user['sample_rate']);
+    for (const recording of recordings) {
+        const measurements = recording.measurements.slice(recording.measurements.length - 500);
+        const expectedUpdateParagraph = document.getElementById(`expected_update_${recording.name}`);
+        expectedUpdate = calculateExpectedUpdate(recording['last_update'], recording['threshold'], recording['sample_rate']);
         if (!isNaN(expectedUpdate))
             expectedUpdateParagraph.textContent = `Expecting update in: ${expectedUpdate}s`
 
-        const bucket = user.bucket.slice(user.bucket.length - 500);
+        const bucket = recording.measurements;
 
-        const ctx = document.getElementById(`chart_${user.name}`).getContext('2d');
+        const ctx = document.getElementById(`chart_${recording.name}`).getContext('2d');
         const myChart = new Chart(ctx, {
             type: 'line', // Change this to 'bar' or other types if you prefer
             data: {
-                labels: bucket.map((_, index) => index + 1), // Labels for X-axis (1, 2, 3, ...)
+                labels: measurements.map((_, index) => index + 1), // Labels for X-axis (1, 2, 3, ...)
                 datasets: [{
                     label: 'Values',
-                    data: bucket,
+                    data: measurements,
                     backgroundColor: 'rgba(75, 192, 192, 0.2)',
                     borderColor: 'rgba(75, 192, 192, 1)',
                     borderWidth: 1,
@@ -186,7 +189,7 @@
                 }
             }
         });
-        charts[user.name] = myChart;
+        charts[recording.name] = myChart;
     }
 
     socket.on('user-start', (data) => {
@@ -203,7 +206,7 @@
             const button = document.createElement('button');
             button.setAttribute('class', 'action-button');
             button.id = `button_stop_${data.name}`;
-            button.onclick = () => executeAction('stop', data.name);
+            button.onclick = () => executeAction('stop', data.id);
 
             const svgNS = "http://www.w3.org/2000/svg";
             const svg = document.createElementNS(svgNS, 'svg');
@@ -223,18 +226,20 @@
             actionContainer.insertBefore(button, actionContainer.firstChild);
         }
 
-        const userIndex = users.findIndex(user => user.name === data.name);
-        users[userIndex]['last_update'] = Date.now()
+        const recordingIndex = recordings.findIndex(recording => recording.name === data.name);
+        recordings[recordingIndex]['last_update'] = getNowFormatted();
     });
 
     socket.on('user-stop', (data) => {
-        const item = document.getElementById(`item_${data.name}`);
+        const item = document.getElementById(`item_${data.id}`);
         item?.remove();
+        recordings.splice(recordings.findIndex(recording => recording.id === data.id), 1);
     });
 
     socket.on('user-delete', (data) => {
-        const item = document.getElementById(`item_${data.name}`);
+        const item = document.getElementById(`item_${data.id}`);        
         item?.remove();
+        recordings.splice(recordings.findIndex(recording => recording.id === data.id), 1);
     });
 
     socket.on(`user-update`, (data) => {
@@ -251,32 +256,47 @@
 
         chart.update();
 
-        const userIndex = users.findIndex(user => user.name === data.name);
-        users[userIndex]['last_update'] = data['last_update'];
+        const recordingIndex = recordings.findIndex(recording => recording.name === data.name);
+        recordings[recordingIndex]['last_update'] = data['last_update'];
     });
 
-    function executeAction(action, userName) {
-        fetch(`/${action}`, {
+    function executeAction(action, id) {
+        fetch(`/recording/${id}/${action}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ user: userName })
+            }
         });
     }
 
+    function getNowFormatted() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0'); // Local hour
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
+
+        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    }
+
     function calculateExpectedUpdate(lastUpdate, threshold, sampleRate) {
+        if (lastUpdate === undefined)
+            return NaN;
+
         const secondsForOneUpdate = threshold / sampleRate;
 
-        const secondsPassed = (Date.now() - lastUpdate) / 1000;
+        const lastUpdateTimestamp = new Date(lastUpdate.replace(" ", "T")).getTime();
+        const secondsPassed = (Date.now() - lastUpdateTimestamp) / 1000;
 
         return Math.floor(secondsForOneUpdate - secondsPassed);
     }
 
     function updateExpectedUpdate() {
-        for(user of users) {            
-            const expectedUpdateParagraph = document.getElementById(`expected_update_${user.name}`);
-            const expectedUpdate = calculateExpectedUpdate(user['last_update'], user['threshold'], user['sample_rate']);
+        for (recording of recordings) {
+            const expectedUpdateParagraph = document.getElementById(`expected_update_${recording.name}`);
+            const expectedUpdate = calculateExpectedUpdate(recording['last_update'], recording['threshold'], recording['sample_rate']);
             if (!isNaN(expectedUpdate))
                 expectedUpdateParagraph.textContent = `Expecting update in: ${expectedUpdate}s`
         }

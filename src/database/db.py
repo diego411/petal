@@ -1,103 +1,104 @@
-import sqlite3
+import psycopg2
+from psycopg2.extensions import cursor as Cursor
+from functools import wraps
+from src.AppConfig import AppConfig
 
 
-def get_connection() -> sqlite3.Connection:
-    return sqlite3.connect('dbs/plant.db')
+def get_connection():
+    host = 'localhost' if AppConfig.PROFILE == 'dev' else 'postgres'
+    return psycopg2.connect(
+        dbname=AppConfig.POSTGRES_DB,
+        user=AppConfig.POSTGRES_USER,
+        password=AppConfig.POSTGRES_PASSWORD,
+        host=host,
+        port='5432'
+    )
 
 
-def init():
-    connection = get_connection()
-    cursor = connection.cursor()
+def transactional():
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            conn = get_connection()
+            cursor = conn.cursor()
+            try:
+                result = func(cursor, *args, **kwargs)
+                conn.commit()
+            except Exception as e:
+                conn.rollback()
+                print(f"An error occurred: {e}")
+                raise e
+            finally:
+                cursor.close()
+                conn.close()
 
+            return result
+
+        return wrapper
+
+    return decorator
+
+
+@transactional()
+def init_tables(cursor: Cursor):
     cursor.execute(
         '''
             CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY,
+                id SERIAL PRIMARY KEY,
+                name TEXT NOT NULL
+            );
+        '''
+    )
+
+    cursor.execute(
+        '''
+            CREATE TABLE IF NOT EXISTS recording (
+                id SERIAL PRIMARY KEY,
                 name TEXT NOT NULL,
-                sample_rate INTEGER,
-                threshold INTEGER
-            )
+                user_id INTEGER NOT NULL,
+                state INTEGER NOT NULL,
+                sample_rate INTEGER NOT NULL,
+                threshold INTEGER NOT NULL,
+                start_time TIMESTAMP,
+                last_update TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id)
+            );
         '''
     )
-
-    connection.commit()
-    connection.close()
-
-
-def create_user(name: str):
-    user = get_user_by_name(name)
-    if user is not None:
-        return
-
-    connection = get_connection()
-    cursor = connection.cursor()
 
     cursor.execute(
         '''
-            INSERT INTO users (name)
-            VALUES (:name)
-        ''',
-        {'name': name}
-    )
-
-    connection.commit()
-    connection.close()
-
-
-def set_sample_rate(name: str, sample_rate: int):
-    connection = get_connection()
-    cursor = connection.cursor()
-
-    cursor.execute(
+            CREATE TABLE IF NOT EXISTS measurement (
+                id SERIAL,
+                value REAL,
+                recording INTEGER NOT NULL,
+                created_at TIMESTAMP NOT NULL,
+                FOREIGN KEY (recording) REFERENCES recording(id) ON DELETE CASCADE,
+                PRIMARY KEY (id, created_at)
+            ) PARTITION BY RANGE (created_at);
         '''
-            UPDATE users
-            SET sample_rate=:sample_rate
-            WHERE name=:name
-        ''',
-        {'name': name, 'sample_rate': sample_rate}
     )
 
-    connection.commit()
-    connection.close()
 
-
-def set_threshold(name: str, threshold: int):
-    connection = get_connection()
-    cursor = connection.cursor()
-
+@transactional()
+def create_measurement_partition(cursor, offset: int = None):
+    interval = ''
+    if offset is not None:
+        interval = f"+ INTERVAL '{offset} day'"
     cursor.execute(
+        f'''
+            DO $$
+            DECLARE
+                partition_name TEXT;
+                partition_date DATE;
+            BEGIN
+                partition_date := CURRENT_DATE {interval};
+                partition_name := 'measurements_' || to_char(partition_date, 'YYYY_MM_DD');
+                EXECUTE format('CREATE TABLE IF NOT EXISTS %I PARTITION OF measurement FOR VALUES FROM (%L) TO (%L)',
+                           partition_name,
+                           partition_date,
+                           partition_date + INTERVAL '1 day');
+        END $$;
         '''
-            UPDATE users
-            SET threshold=:threshold
-            WHERE name=:name
-        ''',
-        {'name': name, 'threshold': threshold}
     )
-
-    connection.commit()
-    connection.close()
-
-
-def get_user_by_name(name: str):
-    connection = get_connection()
-    cursor = connection.cursor()
-
-    cursor.execute(
-        '''
-            SELECT *
-            FROM users
-            WHERE name=:name
-        ''',
-        {'name': name}
-    )
-    result = cursor.fetchone()
-    if result is None:
-        return
-
-    connection.close()
-    return {
-        'id': result[0],
-        'name': result[1],
-        'sample_rate': result[2],
-        'threshold': result[3]
-    }
+    print("Creating partition with offset", offset)

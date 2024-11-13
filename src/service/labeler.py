@@ -15,7 +15,10 @@ def label_recording(recording_path: str, observations_path: str, observations: d
         with open(observations_path, 'r') as file:
             observations = json.load(file)
 
-    recording = AudioSegment.from_wav(recording_path)
+    try:
+        recording = AudioSegment.from_wav(recording_path)
+    except Exception:
+        return  # TODO throw bad request exception or something (user feedback)
 
     observations = sorted(observations, key=lambda x: x['timestamp'])
     for i in range(0, len(observations)):
