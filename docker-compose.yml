@@ -1,6 +1,18 @@
 version: "3.9"
 services:
 
+  postgres:
+    container_name: "postgres"
+    image: "postgres:17"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - database-volume:/var/lib/postgresql/data
+
   plant-server:
     container_name: "plant-server"
     image: "diego411/plant_emotion_server:latest"
@@ -8,7 +20,12 @@ services:
       - DROPBOX_APP_KEY=${DROPBOX_APP_KEY}
       - DROPBOX_APP_SECRET=${DROPBOX_APP_SECRET}
       - DROPBOX_REFRESH_TOKEN=${DROPBOX_REFRESH_TOKEN}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
       - TZ=Europe/Berlin
+    depends_on:
+      - postgres
     ports:
       - "5000:5000"
 
@@ -21,3 +38,6 @@ services:
       - ./nginx/ssl:/etc/nginx/ssl
     depends_on:
       - server
+
+volumes:
+  database-volume:

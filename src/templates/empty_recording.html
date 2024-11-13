@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>State of: {{user}}</title>
+    <title>Not found</title>
     <link rel="stylesheet" type="text/css" href="../static/styles/styles.css">
 </head>
 <body>
     {% from "macros.html" import render_top_bar, render_footer %}
     {{ render_top_bar() }}
-    <h1>There is no recording in progress for {{user}}</h1>
+    <h1>There is no recording in progress with id: {{id}}</h1>
     {{ render_footer(version) }}
 </body>
 </html>

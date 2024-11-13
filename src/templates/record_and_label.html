@@ -62,6 +62,13 @@
             background: #007a63;
         }
 
+        .disabled {
+            background-color: #c0c0c0;
+            color: #666666;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
         .button__text {
             color: #388e3c;
             font-size: 2em;
@@ -109,7 +116,7 @@
     <div class="container">
         <select class="select" name="recordings" id="recordings" onchange="updateRecording()">
             {% for recording in recordings %}
-            <option value="{{recording.name}}">{{recording.name}}</option>
+            <option value="{{recording.id}}">{{recording.name}}</option>
             {% endfor %}
         </select>
         <button class="action-button" onclick="executeAction()" id="action-button">
@@ -146,14 +153,20 @@
         const sessionUUID = document.getElementById('sessionUUID');
         const recordingName = document.getElementById('recording-name');
         const expectedUpdateParagraph = document.getElementById(`expected-update`);
+        const actionButton = document.getElementById('action-button');
         let running = false;
         let currentEmotion = undefined;
         let currentUUID = undefined;
         let output = [];
 
+        recordingName.textContent = recordings.textContent;
+        recordingName.href = `recording/${recordings.value}`;
         updateExpectedUpdate();
 
-        recordingName.textContent = recordings.value;
+        if (!recordings.value) {
+            actionButton.disabled = true;
+            actionButton.classList.add('disabled');
+        }
 
         const ctx = document.getElementById('chart').getContext('2d');
         const myChart = new Chart(ctx, {
@@ -261,6 +274,7 @@
 
         const executeAction = () => {
             running = !running;
+            id = recordings.value;
             if (running) {
                 buttonText.textContent = "STOP";
                 currentUUID = generateUUID();//crypto.randomUUID();
@@ -268,12 +282,11 @@
                 player.play().catch(function (error) {
                     console.error('Error starting video:', error);
                 });
-                fetch(`/start`, {
+                fetch(`/recording/${id}/start`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ user: recordings.value })
                 });
             } else {
                 buttonText.textContent = "START"
@@ -283,21 +296,33 @@
                     console.error('Error stopping video:', error);
                 });
                 expectedUpdateParagraph.textContent = undefined;
-                fetch(`/stopAndLabel`, {
+                fetch(`/recording/${id}/stopAndLabel`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ user: recordings.value, emotions: output })
+                    body: JSON.stringify(output)
                 });
             }
+        }
+
+        function getNowFormatted() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hours = String(now.getHours()).padStart(2, '0'); // Local hour
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+
+            return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
         }
 
         socket.on('user-start', (data) => {
             const startTimeParagraph = document.getElementById(`start-time`);
             startTimeParagraph.textContent = `Start time: ${data['start_time']}`;
-            const index = recordingsData.findIndex(recording => recording.name === recordings.value);
-            recordingsData[index]['last_update'] = Date.now();
+            const index = recordingsData.findIndex(recording => Number(recording.id) === Number(recordings.value));
+            recordingsData[index]['last_update'] = getNowFormatted();
         });
 
         socket.on('user-stop', (data) => {
@@ -314,14 +339,10 @@
             if (!running)
                 return;
 
-            if (data.name !== recordings.value)
+            if (data.id != recordings.value)
                 return;
 
-            const index = recordingsData.findIndex(recording => recording.name === recordings.value);
-            console.log(data['last_update']);
-            console.log(index);
-
-
+            const index = recordingsData.findIndex(recording => Number(recording.id) === Number(recordings.value));
             recordingsData[index]['last_update'] = data['last_update'];
 
             let bucket = data.bucket;
@@ -336,12 +357,21 @@
         const updateRecording = () => {
             const recordingName = document.getElementById('recording-name');
             recordingName.textContent = recordings.value;
+
+            if (recordings.value) {
+                actionButton.disabled = false;
+                actionButton.classList.remove('disabled');
+            }
         }
 
         function calculateExpectedUpdate(lastUpdate, threshold, sampleRate) {
+            if (lastUpdate === undefined)
+                return NaN;
+
             const secondsForOneUpdate = threshold / sampleRate;
 
-            const secondsPassed = (Date.now() - lastUpdate) / 1000;
+            const lastUpdateTimestamp = new Date(lastUpdate.replace(" ", "T")).getTime();
+            const secondsPassed = (Date.now() - lastUpdateTimestamp) / 1000;
 
             return Math.floor(secondsForOneUpdate - secondsPassed);
         }
@@ -358,8 +388,7 @@
             if (!running)
                 return;
 
-            const recording = recordingsData.find(recording => recording.name === recordings.value);
-            console.log(recording);
+            const recording = recordingsData.find(recording => Number(recording.id) === Number(recordings.value));
 
             const expectedUpdate = calculateExpectedUpdate(recording['last_update'], recording['threshold'], recording['sample_rate']);
             if (!isNaN(expectedUpdate))
