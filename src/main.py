@@ -233,11 +233,10 @@ def create_app():
             """
         )
 
-        sample_rate = recording.sample_rate or 142
-        file_name = f'{recording.name}_{sample_rate}Hz_{int(start_time.timestamp() * 1000)}.wav'
+        file_name = f'{recording.name}_{calculated_sample_rate}Hz_{int(start_time.timestamp() * 1000)}.wav'
         file_path = wav_converter.convert(
             measurements,
-            sample_rate=sample_rate,
+            sample_rate=calculated_sample_rate,
             path=f'audio/{file_name}'
         )
 
@@ -373,7 +372,8 @@ def create_app():
             recording_path=file_path,
             observations_path='',
             observations=emotions,
-            dropbox_client=dropbox_client
+            dropbox_client=dropbox_client,
+            dropbox_path_prefix=file_name_prefix
         )
 
         dropbox_controller.upload_file_to_dropbox(
