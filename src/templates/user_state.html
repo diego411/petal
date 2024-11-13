@@ -170,7 +170,7 @@
             }
         });
 
-        socket.on('user-start', (data) => {
+        socket.on('recording-start', (data) => {
             const startTimeParagraph = document.getElementById(`start_time`);
             if (startTimeParagraph !== null)
                 startTimeParagraph.textContent = `Recording start time: ${data['start_time']}`;
@@ -205,15 +205,15 @@
             }
         });
 
-        socket.on('user-stop', (data) => {
+        socket.on('recording-stop', (data) => {
             location.reload();
         });
 
-        socket.on('user-delete', (data) => {
+        socket.on('recording-delete', (data) => {
             location.reload();
         });
 
-        socket.on(`user-update`, (data) => {
+        socket.on(`recording-update`, (data) => {
             if (data.name !== userName)
                 return;
 

@@ -192,7 +192,7 @@
         charts[recording.name] = myChart;
     }
 
-    socket.on('user-start', (data) => {
+    socket.on('recording-start', (data) => {
         const startTimeParagraph = document.getElementById(`start_time_${data.name}`);
         if (startTimeParagraph !== null)
             startTimeParagraph.textContent = `Start time: ${data['start_time']}`;
@@ -230,19 +230,19 @@
         recordings[recordingIndex]['last_update'] = getNowFormatted();
     });
 
-    socket.on('user-stop', (data) => {
+    socket.on('recording-stop', (data) => {
         const item = document.getElementById(`item_${data.id}`);
         item?.remove();
         recordings.splice(recordings.findIndex(recording => recording.id === data.id), 1);
     });
 
-    socket.on('user-delete', (data) => {
+    socket.on('recording-delete', (data) => {
         const item = document.getElementById(`item_${data.id}`);        
         item?.remove();
         recordings.splice(recordings.findIndex(recording => recording.id === data.id), 1);
     });
 
-    socket.on(`user-update`, (data) => {
+    socket.on(`recording-update`, (data) => {
         const chart = charts[data.name];
         if (chart === undefined)
             return;

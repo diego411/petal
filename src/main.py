@@ -115,7 +115,6 @@ def create_app():
             return 'User-Name header needs to be provided', 400
 
         user = user_service.get_or_create(user_name)
-        print(user)
 
         sample_rate = data['sample_rate']
         threshold = data['threshold']
@@ -147,7 +146,7 @@ def create_app():
         recording_service.set_start_time(recording_id, now)
         recording_service.set_state(recording_id, RecordingState.RUNNING)
 
-        socketio.emit('user-start', {
+        socketio.emit('recording-start', {
             'name': recording.name,
             'id': recording.id,
             'start_time': now.strftime('%d.%m.%Y %H:%M:%S'),
@@ -170,7 +169,7 @@ def create_app():
             parsed_data += [parsed_data[-1]] * diff_number_measurements
 
         socketio.emit(
-            f'user-update',
+            f'recording-update',
             {
                 'bucket': parsed_data,  # TODO: rename bucket
                 'name': recording.name,
@@ -253,7 +252,7 @@ def create_app():
         if app.config['DELETE_AFTER_STOP']:
             recording_service.delete(recording_id)
 
-        socketio.emit('user-stop', {
+        socketio.emit('recording-stop', {
             'id': recording.id,
             'name': recording.name
         })
@@ -265,7 +264,7 @@ def create_app():
         recording = recording_service.find_by_id(recording_id)
         recording_service.delete(recording_id)
 
-        socketio.emit('user-delete', {
+        socketio.emit('recording-delete', {
             'id': recording.id,
             'name': recording.name
         })
@@ -392,7 +391,7 @@ def create_app():
         if app.config['DELETE_AFTER_STOP']:
             recording_service.delete(recording_id)
 
-        socketio.emit('user-stop', {
+        socketio.emit('recording-stop', {
             'id': recording.id,
             'name': recording.name
         })

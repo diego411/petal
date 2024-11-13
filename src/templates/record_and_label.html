@@ -318,24 +318,24 @@
             return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
         }
 
-        socket.on('user-start', (data) => {
+        socket.on('recording-start', (data) => {
             const startTimeParagraph = document.getElementById(`start-time`);
             startTimeParagraph.textContent = `Start time: ${data['start_time']}`;
             const index = recordingsData.findIndex(recording => Number(recording.id) === Number(recordings.value));
             recordingsData[index]['last_update'] = getNowFormatted();
         });
 
-        socket.on('user-stop', (data) => {
+        socket.on('recording-stop', (data) => {
             const startTimeParagraph = document.getElementById(`start-time`);
             startTimeParagraph.textContent = "";
             myChart.clear()
         });
 
-        socket.on('user-delete', (data) => {
+        socket.on('recording-delete', (data) => {
             // TODO: ?
         });
 
-        socket.on(`user-update`, (data) => {
+        socket.on(`recording-update`, (data) => {
             if (!running)
                 return;
 
