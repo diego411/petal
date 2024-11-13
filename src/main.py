@@ -23,8 +23,8 @@ from src.service import measurement_service
 from src.entity.Recording import Recording
 from src.entity.RecordingState import RecordingState
 
-bucket = [] # TODO: persists this
-current_emotion = "none" # TODO: persist this
+bucket = []  # TODO: persists this
+current_emotion = "none"  # TODO: persist this
 
 socketio = SocketIO()
 
@@ -172,7 +172,7 @@ def create_app():
         socketio.emit(
             f'user-update',
             {
-                'bucket': parsed_data, # TODO: rename bucket
+                'bucket': parsed_data,  # TODO: rename bucket
                 'name': recording.name,
                 'id': recording.id,
                 'threshold': recording.threshold or 9000,
@@ -250,6 +250,10 @@ def create_app():
         os.remove(file_path)
 
         recording_service.set_state(recording_id, RecordingState.STOPPED)
+
+        if app.config['DELETE_AFTER_STOP']:
+            recording_service.delete(recording_id)
+
         socketio.emit('user-stop', {
             'name': recording.name
         })
@@ -380,6 +384,9 @@ def create_app():
 
         os.remove(file_path)
         recording_service.set_state(recording_id, RecordingState.STOPPED)
+
+        if app.config['DELETE_AFTER_STOP']:
+            recording_service.delete(recording_id)
 
         socketio.emit('user-stop', {
             'name': recording.name

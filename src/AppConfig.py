@@ -17,3 +17,4 @@ class AppConfig:
     DROPBOX_REFRESH_TOKEN = os.environ.get('DROPBOX_REFRESH_TOKEN')
     AUGMENT_WINDOW = int(os.environ.get('AUGMENT_WINDOW')) or 1
     AUGMENT_PADDING = int(os.environ.get('AUGMENT_PADDING')) or 1
+    DELETE_AFTER_STOP = os.environ.get('DELETE_AFTER_STOP') or True
