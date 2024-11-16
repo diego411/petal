@@ -345,11 +345,11 @@
             const index = recordingsData.findIndex(recording => Number(recording.id) === Number(recordings.value));
             recordingsData[index]['last_update'] = data['last_update'];
 
-            let bucket = data.bucket;
+            let measurements = data.measurements;
             const threshold = data.threshold * 2;
-            bucket = bucket.slice(bucket.length - threshold);
-            myChart.data.labels = bucket.map((_, index) => index + 1);
-            myChart.data.datasets[0].data = bucket;
+            measurements = measurements.slice(measurements.length - threshold);
+            myChart.data.labels = measurements.map((_, index) => index + 1);
+            myChart.data.datasets[0].data = measurements;
 
             myChart.update();
         });

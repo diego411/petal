@@ -136,7 +136,6 @@
                         </button>
                     </div>
                 </div>
-                <!-- <a id="initialBucket" style="display: none">{{initial_bucket}}</a> -->
                 <canvas id="chart_{{recording.name}}"></canvas>
             </li>
             {% endfor %}
@@ -150,13 +149,11 @@
     const charts = {};
 
     for (const recording of recordings) {
-        const measurements = recording.measurements.slice(recording.measurements.length - 500);
+        const measurements = recording.measurements.slice(recording.measurements.length);
         const expectedUpdateParagraph = document.getElementById(`expected_update_${recording.name}`);
         expectedUpdate = calculateExpectedUpdate(recording['last_update'], recording['threshold'], recording['sample_rate']);
         if (!isNaN(expectedUpdate))
             expectedUpdateParagraph.textContent = `Expecting update in: ${expectedUpdate}s`
-
-        const bucket = recording.measurements;
 
         const ctx = document.getElementById(`chart_${recording.name}`).getContext('2d');
         const myChart = new Chart(ctx, {
@@ -247,12 +244,12 @@
         if (chart === undefined)
             return;
 
-        let bucket = data.bucket;
+        let measurements = data.measurements;
         const threshold = data.threshold * 2;
-        bucket = bucket.slice(bucket.length - threshold);
+        measurements = measurements.slice(measurements.length - threshold);
 
-        chart.data.labels = bucket.map((_, index) => index + 1);
-        chart.data.datasets[0].data = bucket;
+        chart.data.labels = measurements.map((_, index) => index + 1);
+        chart.data.datasets[0].data = measurements;
 
         chart.update();
 

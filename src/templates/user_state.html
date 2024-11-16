@@ -130,7 +130,7 @@
                 </button>
             </div>
         </div>
-        <a id="initialBucket" style="display: none">{{recording.measurements}}</a>
+        <a id="initialData" style="display: none">{{recording.measurements}}</a>
         <a id="userName" style="display: none">{{recording.name}}</a>
         <a id="threshold" style="display: none">{{recording.threshold}}</a>
         <canvas id="myChart"></canvas>
@@ -139,7 +139,7 @@
     <script>
         const socket = io();
         const userName = document.getElementById('userName').textContent;
-        let initialData = JSON.parse(document.getElementById('initialBucket').textContent);
+        let initialData = JSON.parse(document.getElementById('initialData').textContent);
         const threshold = Number(document.getElementById('threshold').textContent) * 2;
         initialData = initialData.slice(initialData.length - threshold);
 
@@ -217,11 +217,11 @@
             if (data.name !== userName)
                 return;
 
-            let bucket = data.bucket;
+            let measurements = data.measurements;
             const threshold = data.threshold * 2;
-            bucket = bucket.slice(bucket.length - threshold);
-            myChart.data.labels = bucket.map((_, index) => index + 1);
-            myChart.data.datasets[0].data = bucket;
+            measurements = measurements.slice(measurements.length - threshold);
+            myChart.data.labels = measurements.map((_, index) => index + 1);
+            myChart.data.datasets[0].data = measurements;
 
             myChart.update();
         });

@@ -77,7 +77,7 @@ def create_app():
             "index.html",
         )
 
-    @app.route('/liveEmotion')
+    @app.route('/live-emotion')
     def live_emotion():
         return render_template(
             "live_emotion.html",
@@ -85,7 +85,7 @@ def create_app():
             initial_image_src=os.path.join('static', f"{current_emotion}.svg")
         )
 
-    @app.route('/audioClassification')
+    @app.route('/audio-classification')
     def audio_classification():
         return render_template(
             "audio_classification.html"
@@ -171,7 +171,7 @@ def create_app():
         socketio.emit(
             f'recording-update',
             {
-                'bucket': parsed_data,  # TODO: rename bucket
+                'measurements': parsed_data,
                 'name': recording.name,
                 'id': recording.id,
                 'threshold': recording.threshold or 9000,
@@ -339,7 +339,7 @@ def create_app():
         os.remove(file_path)
         return jsonify(predictions), 200
 
-    @app.route('/labelRecordings', methods=['GET'])
+    @app.route('/label-recordings', methods=['GET'])
     def label_recordings():
         return render_template(
             'label.html'
@@ -398,7 +398,7 @@ def create_app():
 
         return "Successfully stopped recording and labeled data", 200
 
-    @app.route('/recordAndLabel', methods=['GET'])
+    @app.route('/record-and-label', methods=['GET'])
     def record_and_label():
         recordings = recording_service.find_by_state(RecordingState.REGISTERED) + recording_service.find_by_state(
             RecordingState.RUNNING)
