@@ -91,13 +91,13 @@ def create_app():
             "audio_classification.html"
         )
 
-    @app.route('/states')
-    def states():
+    @app.route('/recordings')
+    def recordings():
         recordings = recording_service.find_by_state(RecordingState.REGISTERED) + recording_service.find_by_state(
             RecordingState.RUNNING)
 
         return render_template(
-            "states.html",
+            "recordings.html",
             recordings=recording_service.to_dtos(recordings)
         )
 
