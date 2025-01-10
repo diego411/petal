@@ -227,7 +227,7 @@
         });
 
         function executeAction(action, id) {
-            fetch(`/recording/${id}/${action}`, {
+            fetch(`/api/v1/recording/${id}/${action}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

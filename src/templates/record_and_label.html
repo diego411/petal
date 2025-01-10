@@ -282,7 +282,7 @@
                 player.play().catch(function (error) {
                     console.error('Error starting video:', error);
                 });
-                fetch(`/recording/${id}/start`, {
+                fetch(`/api/v1/recording/${id}/start`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -296,7 +296,7 @@
                     console.error('Error stopping video:', error);
                 });
                 expectedUpdateParagraph.textContent = undefined;
-                fetch(`/recording/${id}/stopAndLabel`, {
+                fetch(`/api/v1/recording/${id}/stopAndLabel`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'

@@ -113,7 +113,7 @@
             const btn = document.querySelector(".submit-button");
             btn.classList.add("submit-button--loading");
 
-            fetch('/classify', {
+            fetch('api/v1/legacy/classify', {
                 method: 'POST',
                 headers: {
                     'Content-Type': file.type
