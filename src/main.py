@@ -458,6 +458,12 @@ def create_app():
             parsed_scripts=json.dumps(scripts)
         )
 
+    @app.route('/instructions', methods=['GET'])
+    def instructions():
+        return render_template(
+            'instructions.html'
+        )
+
     return app
 
 
