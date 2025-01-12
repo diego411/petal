@@ -9,7 +9,6 @@ class RecordingResource(Resource):
 
     def __init__(self):
         self.socketio = current_app.socketio
-        print("SOCKETIO: ", self.socketio)
 
     def post(self):
         data = request.json
@@ -31,7 +30,7 @@ class RecordingResource(Resource):
         recording = recording_service.find_not_stopped_by_user_and_name(user.id, recording_name)
         if recording is not None and (
                 recording.state == RecordingState.RUNNING or recording.state == RecordingState.REGISTERED):
-            return {'id': recording.id}, 201
+            return {'id': recording.id}, 200
 
         recording_id = recording_service.create(
             recording_name,
