@@ -49,16 +49,13 @@ class RecordingActionResource(Resource):
     def update(self, recording: Recording):
         now = datetime.datetime.now()
 
-        if recording is None:
-            return f"Recording with id {recording.id} not found.", 404
-
         if recording.state != RecordingState.RUNNING:
             return f'The data collection for the recording has not started yet', 400
 
         data: bytes = request.data
         thread = threading.Thread(target=recording_service.run_update(recording, data, now))
         thread.start()
-        return f'Successfully started update for: {recording.name}', 200
+        return f'Successfully started update for: {recording.name}', 202
 
     def stop(self, recording: Recording):
         recording_state = recording.state
@@ -83,10 +80,6 @@ class RecordingActionResource(Resource):
         return f'Deleted recording with id {recording.id}', 200
 
     def stop_and_label(self, recording: Recording):
-        recording = recording_service.find_by_id(recording.id)
-        if recording is None:
-            return "Recording not found.", 404
-
         emotions = request.json
         if emotions is None:
             return 'No emotion data supplied.', 400

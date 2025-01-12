@@ -11,6 +11,14 @@ import os
 from src.AppConfig import AppConfig
 
 
+def get_all():
+    recordings = find_by_state(RecordingState.REGISTERED) + find_by_state(
+        RecordingState.RUNNING)  # TODO: these should be filters
+    return {
+        'recordings': to_dtos(recordings)
+    }
+
+
 def to_dtos(recordings: List[Recording]) -> List[dict]:
     return list(map(
         lambda recording: to_dto(recording),

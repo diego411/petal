@@ -111,11 +111,11 @@
 <body>
     {% from "macros.html" import render_top_bar, render_footer %}
     {{ render_top_bar('recordAndLabel') }}
-    <p id="recording-data" style="display: none">{{recordings}}</p>
+    <p id="recording-data" style="display: none">{{data.recordings}}</p>
     <h2 id="sessionUUID">Session offline</h2>
     <div class="container">
         <select class="select" name="recordings" id="recordings" onchange="updateRecording()">
-            {% for recording in recordings %}
+            {% for recording in data.recordings %}
             <option value="{{recording.id}}">{{recording.name}}</option>
             {% endfor %}
         </select>

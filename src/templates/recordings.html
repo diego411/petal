@@ -93,9 +93,9 @@
     {% from "macros.html" import render_top_bar, render_footer %}
     {{ render_top_bar('recordings') }}
     <div class="wrapper">
-        <p style="display: none;" id="recordings">{{recordings}}</p>
+        <p style="display: none;" id="recordings">{{data.recordings}}</p>
         <ul>
-            {% for recording in recordings %}
+            {% for recording in data.recordings %}
             <li id="item_{{recording.id}}">
                 <div id="header_{{recording.name}}" class="header">
                     <a href="/recording/{{recording.id}}">{{recording.name}}</a>

@@ -3,9 +3,9 @@ import os
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from flask import Flask
+from flask import Flask, render_template
 from flask_socketio import SocketIO
-from flask_restful import Api
+from src.PlantApi import PlantApi
 
 from src.AppConfig import AppConfig
 from src.controller import dropbox_controller
@@ -59,8 +59,12 @@ def create_app():
     scheduler.add_job(db.create_measurement_partition, 'cron', args=[1], hour=23, minute=52)
     scheduler.start()
 
+    @app.errorhandler(404)
+    def page_not_found(error):
+        return render_template('404.html'), 404
+
     API_ROUTE = f'/api/{app.config.get("API_VERSION")}'
-    api = Api(app)
+    api = PlantApi(app)
 
     api.add_resource(
         RecordingResource,
