@@ -3,15 +3,20 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Audio Classification</title>
+    <title>Label Recordings</title>
     <link rel="stylesheet" type="text/css" href="static/styles/styles.css">
     <style>
         .container {
             font-size: 2em;
         }
 
+        label {
+            font-size: 0.5em;
+        }
+
         form {
             display: flex;
+            flex-direction: column;
         }
 
         .submit-button {
@@ -87,16 +92,26 @@
         input[type="file"]::file-selector-button:active {
             background-color: #e5e7eb;
         }
+
+        .spacer {
+            min-height: 1em;
+        }
     </style>
 </head>
 
 <body>
     {% from "macros.html" import render_top_bar, render_footer %}
-    {{ render_top_bar('audio-classification') }}
+    {{ render_top_bar('label-recordings') }}
     <div class="container">
         <form id="uploadForm">
+            <label for="audioFile">Wav File:</label>
             <input type="file" id="audioFile" name="audioFile" class="file-input" accept="audio/*" required>
-            <br><br>
+            <div class="spacer"></div>
+
+            <label for="File">Moody JSON:</label>
+            <input type="file" id="jsonFile" name="jsonFile" class="file-input" accept="json,application/json" required>
+            <div class="spacer"></div>
+
             <button type="submit" class="submit-button" id="sendButton">
                 <span class="button__text">Send</span>
             </button>
@@ -107,24 +122,24 @@
         document.getElementById('uploadForm').addEventListener('submit', function (event) {
             event.preventDefault(); // Prevent the default form submission
 
-            const fileInput = document.getElementById('audioFile');
-            const file = fileInput.files[0];
+            const audioFileInput = document.getElementById('audioFile');
+            const audioFile = audioFileInput.files[0];
+
+            const jsonFileInput = document.getElementById('jsonFile');
+            const jsonFile = jsonFileInput.files[0];
+
+            const formData = new FormData();
+            formData.append('recording', audioFile);
+            formData.append('moodyExport', jsonFile);
 
             const btn = document.querySelector(".submit-button");
             btn.classList.add("submit-button--loading");
 
-            fetch('/classify', {
+            fetch('/api/v1/legacy/label', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': file.type
-                },
-                body: file
+                
+                body: formData
             })
-                .then(response => response.json())
-                .then(data => {
-                    console.log('Success:', data);
-                    document.getElementById('result').textContent = `Predicted emotion: ${data?.current_emotion}`;
-                })
                 .catch(error => {
                     console.error('Error:', error);
                     alert("Error uploading file.");

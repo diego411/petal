@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Recording states</title>
+    <title>Recordings</title>
     <link rel="stylesheet" type="text/css" href="static/styles/styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
@@ -91,11 +91,11 @@
 
 <body>
     {% from "macros.html" import render_top_bar, render_footer %}
-    {{ render_top_bar('states') }}
+    {{ render_top_bar('recordings') }}
     <div class="wrapper">
-        <p style="display: none;" id="recordings">{{recordings}}</p>
+        <p style="display: none;" id="recordings">{{data.recordings}}</p>
         <ul>
-            {% for recording in recordings %}
+            {% for recording in data.recordings %}
             <li id="item_{{recording.id}}">
                 <div id="header_{{recording.name}}" class="header">
                     <a href="/recording/{{recording.id}}">{{recording.name}}</a>
@@ -258,7 +258,7 @@
     });
 
     function executeAction(action, id) {
-        fetch(`/recording/${id}/${action}`, {
+        fetch(`/api/v1/recording/${id}/${action}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

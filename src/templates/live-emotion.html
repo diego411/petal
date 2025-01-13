@@ -20,8 +20,8 @@
     <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
     {{ render_top_bar('live-emotion') }}
     <div class="container">
-        <img id="emotionImage" src="{{ initial_image_src }}">
-        <p id="currentEmotion">Current emotion: {{initial_emotion}}</p>
+        <img id="emotionImage" src="{{ data.initial_image_src }}">
+        <p id="currentEmotion">Current emotion: {{data.initial_emotion}}</p>
         <p id="lastUpdate"></p>
     </div>
     <script>
