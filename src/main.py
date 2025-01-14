@@ -3,7 +3,7 @@ import os
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from flask import Flask, render_template
+from flask import Flask, render_template, request, make_response, redirect, url_for
 from flask_socketio import SocketIO
 from src.PlantApi import PlantApi
 
@@ -17,6 +17,9 @@ from src.resource.template.TemplateResource import TemplateResource
 from src.resource.template.EntityTemplateResource import EntityTemplateResource
 from src.resource.api.LegacyResource import LegacyResource
 
+from src.service import user_service
+from src.utils import encryption
+
 socketio = SocketIO()
 
 
@@ -27,7 +30,7 @@ def create_app():
     socketio.init_app(app)
     app.socketio = socketio
 
-    db.init_tables()
+    db.run_migrations()
     db.create_measurement_partition()
     db.create_measurement_partition(offset=1)
 
@@ -98,6 +101,36 @@ def create_app():
     @app.context_processor
     def inject_version():
         return dict(version=app.config['VERSION'])
+
+    @app.route('/api/v1/login', methods=['POST'])
+    def login():
+        username = request.form.get('username')
+        password = request.form.get('password')
+
+        if username is None:
+            return 'No username supplied!', 400
+
+        if password is None:
+            return 'No password supplied', 400
+
+        user = user_service.find_by_name(username)
+
+        if user is None:
+            return "No user with that name exists!", 400
+
+        is_password_correct = user_service.check_password(
+            user.id,
+            password
+        )
+
+        if not is_password_correct:
+            return "Incorrect password", 401
+
+        token = encryption.generate_user_token(user.id)
+
+        response = make_response(token)
+        response.set_cookie('X_AUTH_TOKEN', token, httponly=True, secure=True, samesite='Strict')
+        return response
 
     return app
 
