@@ -2,7 +2,7 @@ from src.database.db import transactional
 from psycopg2.extensions import cursor as Cursor
 from src.entity.User import User
 from typing import Optional
-from src.utils import encryption
+from src.utils import authentication
 
 
 def get_or_create(name: str) -> User:
@@ -77,7 +77,7 @@ def get_password_hash(cursor: Cursor, user_id: int) -> str:
 
 def check_password(user_id: int, password: str):
     password_hash = get_password_hash(user_id)
-    return encryption.check_password(password, password_hash)
+    return authentication.check_password(password, password_hash)
 
 
 if __name__ == '__main__':

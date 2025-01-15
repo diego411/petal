@@ -18,7 +18,7 @@ from src.resource.template.EntityTemplateResource import EntityTemplateResource
 from src.resource.api.LegacyResource import LegacyResource
 
 from src.service import user_service
-from src.utils import encryption
+from src.utils import authentication
 
 socketio = SocketIO()
 
@@ -102,6 +102,14 @@ def create_app():
     def inject_version():
         return dict(version=app.config['VERSION'])
 
+    @app.route('/index', methods=['GET'])
+    def index():
+        return render_template('index.html')
+
+    @app.errorhandler(401)
+    def not_authorized():
+        return redirect(url_for('login'))
+
     @app.route('/api/v1/login', methods=['POST'])
     def login():
         username = request.form.get('username')
@@ -126,10 +134,11 @@ def create_app():
         if not is_password_correct:
             return "Incorrect password", 401
 
-        token = encryption.generate_user_token(user.id)
+        token = authentication.generate_user_token(user.id)
 
-        response = make_response(token)
-        response.set_cookie('X_AUTH_TOKEN', token, httponly=True, secure=True, samesite='Strict')
+        response = make_response(redirect(url_for('index')))
+        response.set_cookie('X-AUTH-TOKEN', token, httponly=True, secure=True, samesite='Strict')
+        response.headers['X-AUTH-TOKEN'] = token
         return response
 
     return app

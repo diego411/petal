@@ -3,12 +3,14 @@ from flask import request
 import threading
 from src.service import recording_service
 from src.entity.Recording import Recording
+from src.entity.Payload import Payload
 from src.entity.RecordingState import RecordingState
 import datetime
 from flask_socketio import SocketIO
 import logging
 import dropbox
 from flask import current_app
+from src.utils.authentication import authenticate
 
 
 class RecordingActionResource(Resource):
@@ -18,11 +20,16 @@ class RecordingActionResource(Resource):
         self.logger: logging.Logger = current_app.logger
         self.dropbox_client: dropbox.Dropbox = current_app.dropbox_client
 
-    def post(self, recording_id: str, action: str):
+    @authenticate('api')
+    def post(self, recording_id: str, action: str, payload: Payload):
+        assert payload.resource == 'user', ""
         recording = recording_service.find_by_id(recording_id)
 
         if recording is None:
             return f"No recording with id: {recording_service} found!", 404
+
+        if recording.user != payload.id:
+            return "You are not authorized to execute an action on this recording", 401
 
         if action == 'start':
             return self.start(recording)

@@ -3,6 +3,9 @@ from flask_restful import Resource
 from src.service import recording_service, user_service
 from src.entity.RecordingState import RecordingState
 from flask import current_app
+from src.utils.authentication import authenticate
+from src.entity.Payload import Payload
+from src.entity.User import User
 
 
 class RecordingResource(Resource):
@@ -10,19 +13,16 @@ class RecordingResource(Resource):
     def __init__(self):
         self.socketio = current_app.socketio
 
-    def post(self):
+    @authenticate('api')
+    def post(self, payload: Payload):
+        assert payload.resource == 'user', "The supplied token"
         data = request.json
 
         if 'recording' not in data:
             return 'Field \"recording\" in request body is required', 400
 
-        recording_name = data['recording']
-
-        user_name = request.headers.get('User-Name')
-        if user_name is None:
-            return 'User-Name header needs to be provided', 400
-
-        user = user_service.get_or_create(user_name)
+        recording_name: str = data['recording']
+        user: User = user_service.find_by_id(payload.id)
 
         sample_rate = data['sample_rate']
         threshold = data['threshold']
@@ -42,8 +42,15 @@ class RecordingResource(Resource):
 
         return {'id': recording_id}, 201
 
-    def delete(self, recording_id):
+    @authenticate('api')
+    def delete(self, recording_id, payload: Payload):
         recording = recording_service.find_by_id(recording_id)
+        if recording is None:
+            return "No recording with given id found", 404
+
+        if recording.user != payload.id:
+            return "You are not authorized to delete this recording", 401
+
         recording_service.delete(recording_id)
 
         self.socketio.emit('recording-delete', {
