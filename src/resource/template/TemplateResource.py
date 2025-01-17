@@ -10,6 +10,7 @@ class TemplateResource(Resource):
 
     @authenticate(endpoint_type='template')
     def get(self, template=None, payload: Payload = None):
+        assert payload.resource == 'user', f"Expected payload of resource: 'user' got {payload.resource}"
         html = None
         if template is None or template == 'index':
             html = render_template(
@@ -19,7 +20,7 @@ class TemplateResource(Resource):
             X_AUTH_TOKEN = request.cookies.get('X-AUTH-TOKEN')
             data = None
             if template in SERVICE_MAP:
-                data = SERVICE_MAP[template].get_all()  # TODO: this needs to be based on the user
+                data = SERVICE_MAP[template].get_all(user=payload.id)  # TODO: this needs to be based on the user
 
             try:
                 html = render_template(

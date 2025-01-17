@@ -4,6 +4,7 @@ from flask import request, abort
 from functools import wraps
 import jwt
 from src.entity.Payload import Payload
+from src.entity.exception.UnauthorizedException import UnauthorizedException
 
 SECRET_KEY = "DANK"
 
@@ -39,30 +40,28 @@ def authenticate(endpoint_type):
                 X_AUTH_TOKEN = request.cookies.get('X-AUTH-TOKEN')
             elif endpoint_type == 'api':
                 X_AUTH_TOKEN = request.headers.get('X-AUTH-TOKEN')
+                if X_AUTH_TOKEN is None:
+                    X_AUTH_TOKEN = request.cookies.get('X-AUTH-TOKEN')
             else:
                 raise SystemExit('Invalid type for authenticate decorator!')
-            print(X_AUTH_TOKEN)
-            print(request.cookies)
-            if X_AUTH_TOKEN is None:
-                abort(401)  # No auth token
+
+            if X_AUTH_TOKEN is None:  # no auth token
+                if endpoint_type == 'template':
+                    abort(401)
+                elif endpoint_type == 'api':
+                    raise UnauthorizedException('api', 'No auth token supplied!')
 
             try:
                 payload: Payload = authenticate_token(X_AUTH_TOKEN)
                 kwargs['payload'] = payload
-            except jwt.exceptions.InvalidSignatureError:
-                return abort(401)  # invalid auth token
+            except (jwt.exceptions.InvalidSignatureError, jwt.exceptions.DecodeError):
+                if endpoint_type == 'template':
+                    return abort(401)  # invalid auth token
+                elif endpoint_type == 'api':
+                    raise UnauthorizedException('api', 'Invalid auth token supplied!')
 
             return f(*args, **kwargs)
 
         return decorated_function
 
     return decorator
-
-
-if __name__ == '__main__':
-    token = generate_user_token(1)
-    print(authenticate_token(token))
-    try:
-        print(authenticate_token(token + "1"))
-    except jwt.exceptions.InvalidSignatureError:
-        print("Invalid token")

@@ -22,7 +22,7 @@ class RecordingActionResource(Resource):
 
     @authenticate('api')
     def post(self, recording_id: str, action: str, payload: Payload):
-        assert payload.resource == 'user', ""
+        assert payload.resource == 'user', f"Expected payload of resource: 'user' got {payload.resource}"
         recording = recording_service.find_by_id(recording_id)
 
         if recording is None:

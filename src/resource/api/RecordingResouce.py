@@ -15,7 +15,7 @@ class RecordingResource(Resource):
 
     @authenticate('api')
     def post(self, payload: Payload):
-        assert payload.resource == 'user', "The supplied token"
+        assert payload.resource == 'user', f"Expected payload of resource: 'user' got {payload.resource}"
         data = request.json
 
         if 'recording' not in data:

@@ -16,6 +16,8 @@ from src.resource.api.RecordingActionResource import RecordingActionResource
 from src.resource.template.TemplateResource import TemplateResource
 from src.resource.template.EntityTemplateResource import EntityTemplateResource
 from src.resource.api.LegacyResource import LegacyResource
+from src.resource.api.LogoutResource import LogoutResource
+from src.entity.exception.UnauthorizedException import UnauthorizedException
 
 from src.service import user_service
 from src.utils import authentication
@@ -62,12 +64,13 @@ def create_app():
     scheduler.add_job(db.create_measurement_partition, 'cron', args=[1], hour=23, minute=52)
     scheduler.start()
 
-    @app.errorhandler(404)
-    def page_not_found(error):
-        return render_template('404.html'), 404
-
     API_ROUTE = f'/api/{app.config.get("API_VERSION")}'
     api = PlantApi(app)
+
+    api.add_resource(
+        LogoutResource,
+        f"{API_ROUTE}/logout"
+    )
 
     api.add_resource(
         RecordingResource,
@@ -106,11 +109,32 @@ def create_app():
     def index():
         return render_template('index.html')
 
+    @app.route('/login', methods=['GET'])
+    def login_template():
+        return render_template('login.html')
+
+    @app.errorhandler(404)
+    def page_not_found(error):
+        return render_template(
+            'error.html',
+            message='404 - Page Not Found'
+        ), 404
+
     @app.errorhandler(401)
     def not_authorized():
-        return redirect(url_for('login'))
+        return redirect(url_for('login')), 401
 
-    @app.route('/api/v1/login', methods=['POST'])
+    @app.errorhandler(UnauthorizedException)
+    def custom_unauthorized(error: UnauthorizedException):
+        if error.origin == 'api':
+            return error.message, 401
+        elif error.origin == 'template':
+            return render_template(
+                'error.html',
+                message=error.message
+            ), 401
+
+    @app.route('/api/v1/login', methods=['POST']) # TODO: own resource
     def login():
         username = request.form.get('username')
         password = request.form.get('password')
@@ -137,9 +161,17 @@ def create_app():
         token = authentication.generate_user_token(user.id)
 
         response = make_response(redirect(url_for('index')))
-        response.set_cookie('X-AUTH-TOKEN', token, httponly=True, secure=True, samesite='Strict')
+        response.set_cookie('X-AUTH-TOKEN', token, httponly=True, secure=True, samesite='Strict')#secure=False, samesite="None")#secure=True, samesite='Strict')
         response.headers['X-AUTH-TOKEN'] = token
         return response
+
+    #@authenticate(endpoint_type='api')
+    #@app.route('/api/v1/logout', methods=['POST'])
+    #def logout():
+    #    response = make_response("Logged out successfully")
+    #    response.set_cookie('X-AUTH-TOKEN', '', max_age=0, httponly=True, secure=True, samesite='Strict')
+
+    #    return response
 
     return app
 
