@@ -1,12 +1,13 @@
 import bcrypt
 from datetime import datetime, timedelta
-from flask import request, abort
+from flask import request, abort, current_app
 from functools import wraps
 import jwt
 from src.entity.Payload import Payload
 from src.entity.exception.UnauthorizedException import UnauthorizedException
+from src.AppConfig import AppConfig
 
-SECRET_KEY = "DANK"
+SECRET_KEY = AppConfig.JWT_SECRET_KEY
 
 
 def hash_password(password: str) -> str:
@@ -24,7 +25,9 @@ def generate_user_token(user_id: int) -> str:
         'exp': datetime.utcnow() + timedelta(hours=12),
     }
 
-    return jwt.encode(payload, SECRET_KEY, algorithm='HS256')
+    token = jwt.encode(payload, SECRET_KEY, algorithm='HS256')
+    current_app.logger.info(f"Generated following token for user with id {user_id}: {token}")
+    return token
 
 
 def authenticate_token(token: str) -> Payload:
@@ -39,7 +42,7 @@ def authenticate(endpoint_type):
             if endpoint_type == 'template':
                 X_AUTH_TOKEN = request.cookies.get('X-AUTH-TOKEN')
             elif endpoint_type == 'api':
-                X_AUTH_TOKEN = request.headers.get('X-AUTH-TOKEN')
+                X_AUTH_TOKEN = request.headers.get('X-AUTH-TOKEN') or request.headers.get('X-Auth-Token')
                 if X_AUTH_TOKEN is None:
                     X_AUTH_TOKEN = request.cookies.get('X-AUTH-TOKEN')
             else:
@@ -54,9 +57,10 @@ def authenticate(endpoint_type):
             try:
                 payload: Payload = authenticate_token(X_AUTH_TOKEN)
                 kwargs['payload'] = payload
-            except (jwt.exceptions.InvalidSignatureError, jwt.exceptions.DecodeError):
+            except (jwt.exceptions.InvalidSignatureError, jwt.exceptions.DecodeError) as e:  # invalid auth token
+                current_app.logger.info(f"Request on endpoint of type {endpoint_type} raised following error: {e}")
                 if endpoint_type == 'template':
-                    return abort(401)  # invalid auth token
+                    return abort(401)
                 elif endpoint_type == 'api':
                     raise UnauthorizedException('api', 'Invalid auth token supplied!')
 

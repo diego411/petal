@@ -20,7 +20,7 @@ class TemplateResource(Resource):
             X_AUTH_TOKEN = request.cookies.get('X-AUTH-TOKEN')
             data = None
             if template in SERVICE_MAP:
-                data = SERVICE_MAP[template].get_all(user=payload.id)  # TODO: this needs to be based on the user
+                data = SERVICE_MAP[template].get_all(user=payload.id)
 
             try:
                 html = render_template(
