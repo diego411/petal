@@ -13,6 +13,7 @@ body {
     width: 100%;
     padding: 0.5em;
     display: flex;
+    margin-left: 1em;
     align-items: stretch;
     position: absolute;
     top: 0;
@@ -23,7 +24,7 @@ body {
     text-decoration: none;
     color: #fff;
     font-size: 1.25em;
-    margin-left: 10px;
+    /* margin-left: 10px; */
     background-color: #fcdd03;
 }
 
@@ -53,6 +54,25 @@ body {
 
 .highlighted:hover {
     background-color: #d3d3d3;
+}
+
+.logout-button {
+    background-color: #fcdd03;
+    border: none;
+    cursor: pointer;
+    padding: 0.5em;
+    transition: transform 0.2s ease;
+    border-radius: 5px;
+    margin-left: auto;
+    margin-right: 1em;
+}
+
+.logout-icon {
+    fill: green;
+    filter: invert(24%) sepia(88%) saturate(548%) hue-rotate(97deg) brightness(95%) contrast(85%); /* Green effect when SVG has semi-overlay filters for most interfaces */
+    max-width: 2em;
+    max-height: 2em;
+    transition: transform 0.2s ease;
 }
 
 footer {

@@ -3,7 +3,7 @@ import os
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from flask import Flask, render_template
+from flask import Flask, render_template, redirect, url_for
 from flask_socketio import SocketIO
 from src.PlantApi import PlantApi
 
@@ -16,6 +16,9 @@ from src.resource.api.RecordingActionResource import RecordingActionResource
 from src.resource.template.TemplateResource import TemplateResource
 from src.resource.template.EntityTemplateResource import EntityTemplateResource
 from src.resource.api.LegacyResource import LegacyResource
+from src.resource.api.LogoutResource import LogoutResource
+from src.resource.api.LoginResource import LoginResource
+from src.entity.exception.UnauthorizedException import UnauthorizedException
 
 socketio = SocketIO()
 
@@ -27,7 +30,7 @@ def create_app():
     socketio.init_app(app)
     app.socketio = socketio
 
-    db.init_tables()
+    db.run_migrations()
     db.create_measurement_partition()
     db.create_measurement_partition(offset=1)
 
@@ -59,12 +62,18 @@ def create_app():
     scheduler.add_job(db.create_measurement_partition, 'cron', args=[1], hour=23, minute=52)
     scheduler.start()
 
-    @app.errorhandler(404)
-    def page_not_found(error):
-        return render_template('404.html'), 404
-
     API_ROUTE = f'/api/{app.config.get("API_VERSION")}'
     api = PlantApi(app)
+
+    api.add_resource(
+        LoginResource,
+        f"{API_ROUTE}/login"
+    )
+
+    api.add_resource(
+        LogoutResource,
+        f"{API_ROUTE}/logout"
+    )
 
     api.add_resource(
         RecordingResource,
@@ -98,6 +107,35 @@ def create_app():
     @app.context_processor
     def inject_version():
         return dict(version=app.config['VERSION'])
+
+    @app.route('/index', methods=['GET'])
+    def index():
+        return render_template('index.html')
+
+    @app.route('/login', methods=['GET'])
+    def login_template():
+        return render_template('login.html')
+
+    @app.errorhandler(404)
+    def page_not_found(error):
+        return render_template(
+            'error.html',
+            message='404 - Page Not Found'
+        ), 404
+
+    @app.errorhandler(401)
+    def not_authorized():
+        return redirect(url_for('login')), 401
+
+    @app.errorhandler(UnauthorizedException)
+    def custom_unauthorized(error: UnauthorizedException):
+        if error.origin == 'api':
+            return error.message, 401
+        elif error.origin == 'template':
+            return render_template(
+                'error.html',
+                message=error.message
+            ), 401
 
     return app
 
