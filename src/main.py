@@ -17,6 +17,7 @@ from src.resource.template.TemplateResource import TemplateResource
 from src.resource.template.EntityTemplateResource import EntityTemplateResource
 from src.resource.api.LegacyResource import LegacyResource
 from src.resource.api.LogoutResource import LogoutResource
+from src.resource.api.LoginResource import LoginResource
 from src.entity.exception.UnauthorizedException import UnauthorizedException
 
 from src.service import user_service
@@ -66,6 +67,11 @@ def create_app():
 
     API_ROUTE = f'/api/{app.config.get("API_VERSION")}'
     api = PlantApi(app)
+
+    api.add_resource(
+        LoginResource,
+        f"{API_ROUTE}/login"
+    )
 
     api.add_resource(
         LogoutResource,
@@ -133,45 +139,6 @@ def create_app():
                 'error.html',
                 message=error.message
             ), 401
-
-    @app.route('/api/v1/login', methods=['POST']) # TODO: own resource
-    def login():
-        username = request.form.get('username')
-        password = request.form.get('password')
-
-        if username is None:
-            return 'No username supplied!', 400
-
-        if password is None:
-            return 'No password supplied', 400
-
-        user = user_service.find_by_name(username)
-
-        if user is None:
-            return "No user with that name exists!", 400
-
-        is_password_correct = user_service.check_password(
-            user.id,
-            password
-        )
-
-        if not is_password_correct:
-            return "Incorrect password", 401
-
-        token = authentication.generate_user_token(user.id)
-
-        response = make_response(redirect(url_for('index')))
-        response.set_cookie('X-AUTH-TOKEN', token, httponly=True, secure=True, samesite='Strict')#secure=False, samesite="None")#secure=True, samesite='Strict')
-        response.headers['X-AUTH-TOKEN'] = token
-        return response
-
-    #@authenticate(endpoint_type='api')
-    #@app.route('/api/v1/logout', methods=['POST'])
-    #def logout():
-    #    response = make_response("Logged out successfully")
-    #    response.set_cookie('X-AUTH-TOKEN', '', max_age=0, httponly=True, secure=True, samesite='Strict')
-
-    #    return response
 
     return app
 
