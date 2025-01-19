@@ -8,6 +8,31 @@
         .wrapper {
             display: flex;
             flex-direction: row;
+            font-size: 1.25em;
+        }
+
+        h1 {
+            font-size: 1.5em;
+            color: #333;
+        }
+
+        /* Input field styling */
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 1em;
+        }
+
+        input[type="text"]:focus,
+        input[type="password"]:focus {
+            border-color: #007BFF;
+            outline: none;
+            box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
         }
     </style>
 </head>
@@ -21,7 +46,7 @@
             <h1>Plant Server</h1>
             <h3>Enter your login credentials</h3>
 
-            <form action="/api/v1/login" method="post">
+            <div id="login-container">
                 <label for="username">
                     Username:
                 </label>
@@ -31,15 +56,47 @@
                     Password:
                 </label>
                 <input type="password" id="password" name="password" placeholder="Enter your Password" required>
-
+                <br><br>
                 <div class="wrap">
-                    <button type="submit">
+                    <button class="button" type="button" onclick="submit()">
                         Submit
                     </button>
                 </div>
-            </form>
+            </div>
         </div>
     </div>
 </body>
+
+<script>
+    const usernameInput = document.getElementById('username');
+    const passwordInput = document.getElementById('password');
+
+    const submit = async () => {
+        const response = await fetch('/api/v1/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                username: usernameInput.value,
+                password: passwordInput.value
+            })
+        });
+
+        if (response.ok) {
+            window.location.href = "/";
+        } else {
+            const error = await response.json();
+            console.log(error);
+            alert(`Login failed: ${error}`)
+        }
+    }
+
+    document.getElementById('login-container').addEventListener('keydown', function (event) {
+        if (event.key === 'Enter') {
+            submit(); // Trigger the login function on Enter key
+        }
+    });
+</script>
 
 </html>
