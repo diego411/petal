@@ -92,7 +92,7 @@
 
 <body>
     {% from "macros.html" import render_top_bar, render_footer %}
-    {{ render_top_bar('audioClassification') }}
+    {{ render_top_bar('audio-classification') }}
     <div class="container">
         <form id="uploadForm">
             <input type="file" id="audioFile" name="audioFile" class="file-input" accept="audio/*" required>
@@ -113,7 +113,7 @@
             const btn = document.querySelector(".submit-button");
             btn.classList.add("submit-button--loading");
 
-            fetch('/classify', {
+            fetch('api/v1/legacy/classify', {
                 method: 'POST',
                 headers: {
                     'Content-Type': file.type

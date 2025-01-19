@@ -2,6 +2,7 @@ from src.database.db import transactional
 from psycopg2.extensions import cursor as Cursor
 from src.entity.User import User
 from typing import Optional
+from src.utils import authentication
 
 
 def get_or_create(name: str) -> User:
@@ -58,5 +59,22 @@ def create(cursor: Cursor, name: str) -> int:
         {'name': name}
     )
     user_id = cursor.fetchone()[0]
-    print(user_id)
     return user_id
+
+
+@transactional()
+def get_password_hash(cursor: Cursor, user_id: int) -> str:
+    cursor.execute(
+        '''
+            SELECT password_hash
+            FROM users
+            WHERE id=%(user_id)s;
+        ''',
+        {'user_id': user_id}
+    )
+    return cursor.fetchone()[0]
+
+
+def check_password(user_id: int, password: str):
+    password_hash = get_password_hash(user_id)
+    return authentication.check_password(password, password_hash)

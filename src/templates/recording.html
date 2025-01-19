@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>State of: {{recording.name}}</title>
+    <title>State of: {{data.recording.name}}</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" type="text/css" href="../static/styles/styles.css">
     <style>
@@ -95,29 +95,29 @@
     {{ render_top_bar() }}
     <main id="main">
         <div id="header" class="header">
-            <p>Recording: {{recording.name}}</a>
-            {% if recording.start_time is defined and recording.start_time is not none %}
-            <p id="start_time">Recording start time: {{recording.start_time}}</p>
+            <p>Recording: {{data.recording.name}}</a>
+            {% if data.recording.start_time is defined and data.recording.start_time is not none %}
+            <p id="start_time">Recording start time: {{data.recording.start_time}}</p>
             {% else %}
             <p id="start_time"></p>
             {% endif %}
             <div id="action_container" class="action-container">
-                {% if recording.state != "STOPPED" %}
-                    {% if recording.start_time is defined and recording.start_time is not none %}
-                    <button id="button_stop" onclick="executeAction('stop', '{{recording.id}}')" class="action-button">
+                {% if data.recording.state != "STOPPED" %}
+                    {% if data.recording.start_time is defined and data.recording.start_time is not none %}
+                    <button id="button_stop" onclick="executeAction('stop', '{{data.recording.id}}')" class="action-button">
                         <svg class="action-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <rect x="6" y="6" width="12" height="12" />
                         </svg>
                     </button>
                     {% else %}
-                    <button id="button_start" onclick="executeAction('start', '{{recording.id}}')" class="action-button">
+                    <button id="button_start" onclick="executeAction('start', '{{data.recording.id}}')" class="action-button">
                         <svg class="action-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path d="M8 5v14l11-7z" />
                         </svg>
                     </button>
                     {% endif %}
                 {% endif %}
-                <button class="action-button delete" onclick="executeAction('delete', '{{recording.id}}')">
+                <button class="action-button delete" onclick="executeAction('delete', '{{data.recording.id}}')">
                     <svg viewBox="0 0 1024 1024" fill="#000000" class="action-icon" version="1.1"
                         xmlns="http://www.w3.org/2000/svg">
                         <path
@@ -130,16 +130,16 @@
                 </button>
             </div>
         </div>
-        <a id="initialBucket" style="display: none">{{recording.measurements}}</a>
-        <a id="userName" style="display: none">{{recording.name}}</a>
-        <a id="threshold" style="display: none">{{recording.threshold}}</a>
+        <a id="initialData" style="display: none">{{data.recording.measurements}}</a>
+        <a id="userName" style="display: none">{{data.recording.name}}</a>
+        <a id="threshold" style="display: none">{{data.recording.threshold}}</a>
         <canvas id="myChart"></canvas>
     </main>
     {{ render_footer(version) }}
     <script>
         const socket = io();
         const userName = document.getElementById('userName').textContent;
-        let initialData = JSON.parse(document.getElementById('initialBucket').textContent);
+        let initialData = JSON.parse(document.getElementById('initialData').textContent);
         const threshold = Number(document.getElementById('threshold').textContent) * 2;
         initialData = initialData.slice(initialData.length - threshold);
 
@@ -170,7 +170,7 @@
             }
         });
 
-        socket.on('user-start', (data) => {
+        socket.on('recording-start', (data) => {
             const startTimeParagraph = document.getElementById(`start_time`);
             if (startTimeParagraph !== null)
                 startTimeParagraph.textContent = `Recording start time: ${data['start_time']}`;
@@ -205,29 +205,29 @@
             }
         });
 
-        socket.on('user-stop', (data) => {
+        socket.on('recording-stop', (data) => {
             location.reload();
         });
 
-        socket.on('user-delete', (data) => {
+        socket.on('recording-delete', (data) => {
             location.reload();
         });
 
-        socket.on(`user-update`, (data) => {
+        socket.on(`recording-update`, (data) => {
             if (data.name !== userName)
                 return;
 
-            let bucket = data.bucket;
+            let measurements = data.measurements;
             const threshold = data.threshold * 2;
-            bucket = bucket.slice(bucket.length - threshold);
-            myChart.data.labels = bucket.map((_, index) => index + 1);
-            myChart.data.datasets[0].data = bucket;
+            measurements = measurements.slice(measurements.length - threshold);
+            myChart.data.labels = measurements.map((_, index) => index + 1);
+            myChart.data.datasets[0].data = measurements;
 
             myChart.update();
         });
 
         function executeAction(action, id) {
-            fetch(`/recording/${id}/${action}`, {
+            fetch(`/api/v1/recording/${id}/${action}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

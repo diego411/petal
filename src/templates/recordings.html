@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Recording states</title>
+    <title>Recordings</title>
     <link rel="stylesheet" type="text/css" href="static/styles/styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
@@ -91,11 +91,11 @@
 
 <body>
     {% from "macros.html" import render_top_bar, render_footer %}
-    {{ render_top_bar('states') }}
+    {{ render_top_bar('recordings') }}
     <div class="wrapper">
-        <p style="display: none;" id="recordings">{{recordings}}</p>
+        <p style="display: none;" id="recordings">{{data.recordings}}</p>
         <ul>
-            {% for recording in recordings %}
+            {% for recording in data.recordings %}
             <li id="item_{{recording.id}}">
                 <div id="header_{{recording.name}}" class="header">
                     <a href="/recording/{{recording.id}}">{{recording.name}}</a>
@@ -136,7 +136,6 @@
                         </button>
                     </div>
                 </div>
-                <!-- <a id="initialBucket" style="display: none">{{initial_bucket}}</a> -->
                 <canvas id="chart_{{recording.name}}"></canvas>
             </li>
             {% endfor %}
@@ -150,13 +149,11 @@
     const charts = {};
 
     for (const recording of recordings) {
-        const measurements = recording.measurements.slice(recording.measurements.length - 500);
+        const measurements = recording.measurements.slice(recording.measurements.length);
         const expectedUpdateParagraph = document.getElementById(`expected_update_${recording.name}`);
         expectedUpdate = calculateExpectedUpdate(recording['last_update'], recording['threshold'], recording['sample_rate']);
         if (!isNaN(expectedUpdate))
             expectedUpdateParagraph.textContent = `Expecting update in: ${expectedUpdate}s`
-
-        const bucket = recording.measurements;
 
         const ctx = document.getElementById(`chart_${recording.name}`).getContext('2d');
         const myChart = new Chart(ctx, {
@@ -192,7 +189,7 @@
         charts[recording.name] = myChart;
     }
 
-    socket.on('user-start', (data) => {
+    socket.on('recording-start', (data) => {
         const startTimeParagraph = document.getElementById(`start_time_${data.name}`);
         if (startTimeParagraph !== null)
             startTimeParagraph.textContent = `Start time: ${data['start_time']}`;
@@ -230,29 +227,29 @@
         recordings[recordingIndex]['last_update'] = getNowFormatted();
     });
 
-    socket.on('user-stop', (data) => {
+    socket.on('recording-stop', (data) => {
         const item = document.getElementById(`item_${data.id}`);
         item?.remove();
         recordings.splice(recordings.findIndex(recording => recording.id === data.id), 1);
     });
 
-    socket.on('user-delete', (data) => {
+    socket.on('recording-delete', (data) => {
         const item = document.getElementById(`item_${data.id}`);        
         item?.remove();
         recordings.splice(recordings.findIndex(recording => recording.id === data.id), 1);
     });
 
-    socket.on(`user-update`, (data) => {
+    socket.on(`recording-update`, (data) => {
         const chart = charts[data.name];
         if (chart === undefined)
             return;
 
-        let bucket = data.bucket;
+        let measurements = data.measurements;
         const threshold = data.threshold * 2;
-        bucket = bucket.slice(bucket.length - threshold);
+        measurements = measurements.slice(measurements.length - threshold);
 
-        chart.data.labels = bucket.map((_, index) => index + 1);
-        chart.data.datasets[0].data = bucket;
+        chart.data.labels = measurements.map((_, index) => index + 1);
+        chart.data.datasets[0].data = measurements;
 
         chart.update();
 
@@ -261,7 +258,7 @@
     });
 
     function executeAction(action, id) {
-        fetch(`/recording/${id}/${action}`, {
+        fetch(`/api/v1/recording/${id}/${action}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

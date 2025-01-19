@@ -6,7 +6,9 @@ load_dotenv()
 
 class AppConfig:
     VERSION = '0.1.0'
+    API_VERSION = 'v1'
     PROFILE = os.environ.get('PROFILE') or 'dev'
+    JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY')
     POSTGRES_USER = os.environ.get('POSTGRES_USER')
     POSTGRES_PASSWORD = os.environ.get('POSTGRES_PASSWORD')
     POSTGRES_DB = os.environ.get('POSTGRES_DB')
