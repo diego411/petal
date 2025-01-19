@@ -21,8 +21,6 @@
 <script>
     const logout = async () => {
         try {
-            console.log(document.cookie);
-
             const response = await fetch('/api/v1/logout', {
                 method: 'POST',
                 credentials: 'same-origin'

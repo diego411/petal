@@ -9,7 +9,7 @@ from src.entity.Payload import Payload
 class TemplateResource(Resource):
 
     @authenticate(endpoint_type='template')
-    def get(self, template=None, payload: Payload = None):
+    def get(self, template: str = None, payload: Payload = None):
         assert payload.resource == 'user', f"Expected payload of resource: 'user' got {payload.resource}"
         html = None
         if template is None or template == 'index':
@@ -28,7 +28,7 @@ class TemplateResource(Resource):
                     data=data
                 )
             except jinja2.exceptions.TemplateNotFound:
-                current_app.logger.error("template could not be found")
+                current_app.logger.error(f"Template: {template} could not be found!")
                 return abort(404)
 
         response = make_response(html)

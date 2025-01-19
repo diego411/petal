@@ -78,7 +78,3 @@ def get_password_hash(cursor: Cursor, user_id: int) -> str:
 def check_password(user_id: int, password: str):
     password_hash = get_password_hash(user_id)
     return authentication.check_password(password, password_hash)
-
-
-if __name__ == '__main__':
-    print(check_password(1, 'test2'))

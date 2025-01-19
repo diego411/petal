@@ -28,7 +28,7 @@ class EntityTemplateResource(Resource):
             abort(404)
 
         if entity.user is not None and entity.user != payload.id:
-            raise UnauthorizedException('template', "403 - You are not authorized to access this recording")
+            raise UnauthorizedException('template', "403 - You are not authorized to access this entity!")
 
         html = render_template(
             f'{template}.html',

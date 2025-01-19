@@ -3,7 +3,7 @@ import os
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from flask import Flask, render_template, request, make_response, redirect, url_for
+from flask import Flask, render_template, redirect, url_for
 from flask_socketio import SocketIO
 from src.PlantApi import PlantApi
 
@@ -19,9 +19,6 @@ from src.resource.api.LegacyResource import LegacyResource
 from src.resource.api.LogoutResource import LogoutResource
 from src.resource.api.LoginResource import LoginResource
 from src.entity.exception.UnauthorizedException import UnauthorizedException
-
-from src.service import user_service
-from src.utils import authentication
 
 socketio = SocketIO()
 
