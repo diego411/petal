@@ -11,9 +11,14 @@ import os
 from src.AppConfig import AppConfig
 
 
-def get_all():
-    recordings = find_by_state(RecordingState.REGISTERED) + find_by_state(
-        RecordingState.RUNNING)  # TODO: these should be filters
+def get_all(user: id):
+    recordings = (find_by_user_and_state(
+        user,
+        RecordingState.REGISTERED
+    ) + find_by_user_and_state(
+        user,
+        RecordingState.RUNNING
+    ))  # TODO: these should be filters
     return {
         'recordings': to_dtos(recordings)
     }
@@ -85,14 +90,14 @@ def find_not_stopped_by_user_and_name(cursor: Cursor, user: int, name: str) -> O
 
 
 @transactional()
-def find_by_state(cursor: Cursor, state: RecordingState) -> List[Recording]:
+def find_by_user_and_state(cursor: Cursor, user: int, state: RecordingState) -> List[Recording]:
     cursor.execute(
         '''
             SELECT *
             FROM recording
-            WHERE state=%(state)s
+            WHERE state=%(state)s AND user_id=%(user_id)s
         ''',
-        {'state': state.value}
+        {'state': state.value, 'user_id': user}
     )
 
     result = cursor.fetchall()

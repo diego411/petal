@@ -1,4 +1,4 @@
-from flask import render_template, current_app
+from flask import render_template, current_app, redirect, url_for
 from flask_restful import Api
 import werkzeug
 
@@ -10,4 +10,6 @@ class PlantApi(Api):
         if isinstance(e, werkzeug.exceptions.NotFound):
             return render_template('404.html'), 404
             # Fallback to default behavior for other errors
+        if isinstance(e, werkzeug.exceptions.Unauthorized):
+            return redirect('/login')
         return super().handle_error(e)

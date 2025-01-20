@@ -18,6 +18,7 @@ services:
     image: "diego411/plant_emotion_server:latest"
     environment:
       - PROFILE=${PROFILE}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
       - DROPBOX_APP_KEY=${DROPBOX_APP_KEY}
       - DROPBOX_APP_SECRET=${DROPBOX_APP_SECRET}
       - DROPBOX_REFRESH_TOKEN=${DROPBOX_REFRESH_TOKEN}

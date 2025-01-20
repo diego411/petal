@@ -2,7 +2,7 @@ from pathlib import Path
 import json
 
 
-def get_all():
+def get_all(**_):
     scripts = []
     path = Path('scripts')
     for item in path.iterdir():
