@@ -297,7 +297,7 @@ def run_update(recording: Recording, data: bytes, now: datetime):
     sample_rate = recording.sample_rate or 142
     number_of_persisted_measurements = measurement_service.get_count(recording.id)
     start_time = recording.start_time
-    parsed_data = wav_converter.parse_raw(data)
+    parsed_data: list = wav_converter.parse_raw(data)
 
     seconds_since_start = (now - start_time).seconds
     expected_measurement_count = int(seconds_since_start * sample_rate)
