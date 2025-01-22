@@ -1,14 +1,17 @@
-from src.database.db import transactional
-from psycopg2.extensions import cursor as Cursor
+import os
 from datetime import datetime
+from typing import Optional, List
+
+import numpy as np
+from flask import current_app
+from psycopg2.extensions import cursor as Cursor
+
+from src.AppConfig import AppConfig
+from src.controller import dropbox_controller
+from src.database.db import transactional
 from src.entity.Recording import Recording
 from src.entity.RecordingState import RecordingState
 from src.service import measurement_service, wav_converter, user_service, labeler
-from src.controller import dropbox_controller
-from typing import Optional, List
-from flask import current_app
-import os
-from src.AppConfig import AppConfig
 
 
 def get_all(user: id):
@@ -299,18 +302,15 @@ def stop_and_label(recording: Recording, emotions: dict):
 
 
 def run_update(recording: Recording, data: bytes, now: datetime):
-    sample_rate = recording.sample_rate or 142
-    number_of_persisted_measurements = measurement_service.get_count(recording.id)
-    start_time = recording.start_time
-    parsed_data: list = wav_converter.parse_raw(data)
-
-    seconds_since_start = (now - start_time).seconds
-    expected_measurement_count = int(seconds_since_start * sample_rate)
-    diff_number_measurements = expected_measurement_count - (number_of_persisted_measurements + len(parsed_data))
-    if number_of_persisted_measurements == 0:
-        parsed_data = parsed_data[:expected_measurement_count]
-    elif diff_number_measurements > 0:
-        parsed_data += [parsed_data[-1]] * diff_number_measurements
+    parsed_data = process_parsed_data(
+        parsed_data=wav_converter.parse_raw(data),
+        recording_id=recording.id,
+        sample_rate=recording.sample_rate or 142,
+        # TODO: add column to recording tracking number of measurements
+        number_of_persisted_measurements=measurement_service.get_count(recording.id),
+        start_time=recording.start_time,
+        now=now
+    )
 
     current_app.socketio.emit(
         f'recording-update',
@@ -329,3 +329,83 @@ def run_update(recording: Recording, data: bytes, now: datetime):
     current_app.logger.info(
         f'Entire update for recording with id {recording.id} took {int((datetime.now() - now).total_seconds() * 1000)}ms.'
     )
+
+
+def process_parsed_data(
+        parsed_data: List[float],
+        recording_id: int,
+        sample_rate: int,
+        number_of_persisted_measurements: int,
+        start_time: datetime,
+        now: datetime
+) -> List[float]:
+    seconds_since_start: int = (now - start_time).seconds
+    number_of_expected_measurements: int = int(seconds_since_start * sample_rate)
+
+    assert number_of_persisted_measurements < number_of_expected_measurements, f"""
+            Assertion for recording with id: {recording_id} failed:
+            The number of already persisted measurements is larger than the expected number of measurements.
+            This should not have happened.
+            Number of persisted measurements: {number_of_persisted_measurements}
+            Number of expected measurements: {number_of_expected_measurements}
+            Canceling this update!
+        """
+
+    diff_number_measurements: int = number_of_expected_measurements - (
+            number_of_persisted_measurements + len(parsed_data))
+
+    """
+        At the end of the update we want to persist a number of measurements so that we have the exact number of expected
+        measurements.
+        So we want that #expected = #persisted + #parsed
+        
+        Case 1: If #expected = #persisted + #parsed, don't do anything
+        
+        Case 2: If #expected < #persisted + #parsed (we have more measurements that expected) we need to remove the oldest
+                (#persisted + #parsed) - #expected measurements from parsed or keep the newest #expected - #persisted
+                measurements from parsed.
+   
+                Example 1: #expected = 142, #persisted = 0, #parsed = 4500 => we need to keep the newest
+                (142 + 0) = 142 measurements from parsed (or remove the oldest 4358).
+   
+                Example 2: #expected = 84000, #persisted = 79740, #parsed = 5000 (84000 < 79740 + 5000) => we need to
+                keep the newest (84000 - 79740) = 4260 from parsed (or remove the oldest 740).
+   
+        Case 3: If #expected > #persited + #parsed (we have less measurements than expected) we need to interpolate
+                measurements onto parsed so that, parsed contains (#expected - #persisted) measurements
+   
+                Example: #expected = 8400, #persited = 79740, #parsed = 4000 (84000 > 79740 + 4000) => we need to
+                interpolate measurements so that parsed contains 4260 measurements.
+    """
+
+    if diff_number_measurements == 0:  # Case 1: correct amount of measurements
+        return parsed_data
+
+    if diff_number_measurements < 0:  # Case 2: we have more measurements than expected
+        parsed_data = parsed_data[-(number_of_expected_measurements - number_of_persisted_measurements):]
+
+    elif diff_number_measurements > 0:  # Case 3: we have fewer measurements than expected
+        parsed_data = interpolate_list(
+            parsed_data,
+            number_of_expected_measurements - number_of_persisted_measurements
+        )
+
+    return parsed_data
+
+
+def interpolate_list(data, m):
+    if m <= len(data):
+        return data
+
+    n = len(data)
+    x = np.arange(n)  # Original x-values
+    y = np.array(data)  # Original y-values
+
+    # Create new x-values for the extended list, including original indices
+    extended_x = np.linspace(0, n - 1, m - n)  # Adjust spacing to get 'm' points
+    extended_x = np.sort(np.concatenate((x, extended_x)))
+
+    # Interpolate to get the extended y-values
+    extended_y = np.interp(extended_x, x, y)
+
+    return extended_y.tolist()
