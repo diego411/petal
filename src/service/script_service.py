@@ -16,7 +16,7 @@ def get_all(**_):
                         content = file.read()  # .replace('"', '\\"').replace("'", "\\'")
                     versions.append({"identifier": version.name.split('.')[0], "content": content})
 
-            sorted(versions, key=lambda element: element['identifier'])
+            versions = sorted(versions, key=lambda element: element['identifier'])
             versions[-1]['identifier'] += " (latest)"
             script['versions'] = versions
             scripts.append(script)

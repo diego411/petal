@@ -3,7 +3,7 @@ import numpy as np
 import scipy.io.wavfile as wav
 
 
-def parse_raw(data: bytes):
+def parse_raw(data: bytes) -> list:
     offset = len(data) % 4
     data = data[: -1 * offset if offset != 0 else len(data)]
     chunks = [data[i:i + 4] for i in range(0, len(data), 4)]
