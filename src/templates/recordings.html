@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Recordings</title>
-    <link rel="stylesheet" type="text/css" href="static/styles/styles.css">
+    <link rel="stylesheet" type="text/css" href="/static/styles/styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
     <style>
@@ -69,16 +69,22 @@
             background-color: #fcdf03d5;
         }
 
-        .delete {
+        .finish {
             background-color: red;
         }
 
-        .delete:hover {
+        .finish:hover {
             background-color: rgb(251, 52, 52);
         }
 
-        .action-icon {
-            fill: white;
+        .finish-icon {
+            width: 2em;
+            height: 2em;
+        }
+
+        .start-icon {
+            width: 1em;
+            height: 1em;
         }
 
         .action-container {
@@ -86,12 +92,108 @@
             flex-direction: row;
             gap: 0.4em
         }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .dialog {
+            padding: 1em;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            text-align: left;
+            width: 300px;
+        }
+
+        .dialog h3 {
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Button container */
+        .dialog-button-container {
+            display: flex;
+            justify-content: flex-end;
+            gap: 1em;
+            margin-top: auto;
+            /* Push buttons to the bottom */
+        }
+
+        .dialog button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .dialog .confirm {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .dialog .cancel {
+            background-color: #f44336;
+            color: white;
+        }
+
+        #snackbar {
+            visibility: hidden;
+            margin: 0 1em;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 4px;
+            padding: 1em;
+            position: fixed;
+            z-index: 1;
+            bottom: 3em;
+            transition: visibility 0s, opacity 0.5s linear;
+            display: flex;
+            align-items: center;
+            align-items: center;
+            overflow: auto;
+            gap: 0.5em;
+        }
+
+        #snackbar.show {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        #snackbar-close {
+            align-self: center;
+            background: transparent;
+            border: none;
+            color: #f44336;
+            font-size: 25px;
+            cursor: pointer;
+        }
+
+        #snackbar a {
+            color: #4caf50;
+            text-decoration: none;
+        }
+
+        #snackbar a:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 
 <body>
     {% from "macros.html" import render_top_bar, render_footer %}
     {{ render_top_bar('recordings') }}
+
     <div class="wrapper">
         <p style="display: none;" id="recordings">{{data.recordings}}</p>
         <ul>
@@ -109,31 +211,16 @@
 
                     <div id="action_container_{{recording.name}}" class="action-container">
                         {% if recording.start_time is defined %}
-                        <button id="button_stop_{{recording.name}}" onclick="executeAction('stop', '{{recording.id}}')"
-                            class="action-button">
-                            <svg class="action-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                <rect x="6" y="6" width="12" height="12" />
-                            </svg>
+                        <button id="button_stop_{{recording.name}}" onclick="stop('{{recording.id}}')"
+                            class="action-button finish" title="Finish Recording">
+                            <img class="finish-icon" src="/static/finish.svg">
                         </button>
                         {% else %}
                         <button id="button_start_{{recording.name}}"
                             onclick="executeAction('start', '{{recording.id}}')" class="action-button">
-                            <svg class="action-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M8 5v14l11-7z" />
-                            </svg>
+                            <img class="start-icon" src="/static/play.svg" title="Start Recording">
                         </button>
                         {% endif %}
-                        <button class="action-button delete" onclick="executeAction('delete', '{{recording.id}}')">
-                            <svg viewBox="0 0 1024 1024" fill="#000000" class="action-icon" version="1.1"
-                                xmlns="http://www.w3.org/2000/svg">
-                                <path
-                                    d="M32 241.6c-11.2 0-20-8.8-20-20s8.8-20 20-20l940 1.6c11.2 0 20 8.8 20 20s-8.8 20-20 20L32 241.6zM186.4 282.4c0-11.2 8.8-20 20-20s20 8.8 20 20v688.8l585.6-6.4V289.6c0-11.2 8.8-20 20-20s20 8.8 20 20v716.8l-666.4 7.2V282.4z"
-                                    fill="" />
-                                <path
-                                    d="M682.4 867.2c-11.2 0-20-8.8-20-20V372c0-11.2 8.8-20 20-20s20 8.8 20 20v475.2c0.8 11.2-8.8 20-20 20zM367.2 867.2c-11.2 0-20-8.8-20-20V372c0-11.2 8.8-20 20-20s20 8.8 20 20v475.2c0.8 11.2-8.8 20-20 20zM524.8 867.2c-11.2 0-20-8.8-20-20V372c0-11.2 8.8-20 20-20s20 8.8 20 20v475.2c0.8 11.2-8.8 20-20 20zM655.2 213.6v-48.8c0-17.6-14.4-32-32-32H418.4c-18.4 0-32 14.4-32 32.8V208h-40v-42.4c0-40 32.8-72.8 72.8-72.8H624c40 0 72.8 32.8 72.8 72.8v48.8h-41.6z"
-                                    fill="" />
-                            </svg>
-                        </button>
                     </div>
                 </div>
                 <canvas id="chart_{{recording.name}}"></canvas>
@@ -141,6 +228,25 @@
             {% endfor %}
         </ul>
     </div>
+
+    <!-- Confirmation Dialog -->
+    <div class="overlay" id="confirmationDialog">
+        <div class="dialog">
+            <h3>Finish Recording</h3>
+            <p>This will stop the recording and upload the data to Dropbox! Are you sure you want to proceed?</p>
+            <div class="dialog-button-container">
+                <button class="cancel" id="cancelButton">Cancel</button>
+                <button class="confirm" id="confirmButton">Yes</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="snackbar">
+        <img id="snackbar-icon" style="width: 2em;">
+        <span id="snackbar-content"></span>
+        <button id="snackbar-close" onclick="closeSnackbar()">x</button>
+    </div>
+
     {{ render_footer(version) }}
 </body>
 <script>
@@ -195,33 +301,23 @@
             startTimeParagraph.textContent = `Start time: ${data['start_time']}`;
 
         const startButton = document.getElementById(`button_start_${data.name}`);
-        if (startButton !== null) {
+        if (startButton !== null)
             startButton.remove();
 
-            const actionContainer = document.getElementById(`action_container_${data.name}`);
+        const actionContainer = document.getElementById(`action_container_${data.name}`);
 
-            const button = document.createElement('button');
-            button.setAttribute('class', 'action-button');
-            button.id = `button_stop_${data.name}`;
-            button.onclick = () => executeAction('stop', data.id);
+        const button = document.createElement('button');
+        button.setAttribute('class', 'action-button finish');
+        button.id = `button_stop_${data.name}`;
+        button.onclick = () => stop(data.id);
 
-            const svgNS = "http://www.w3.org/2000/svg";
-            const svg = document.createElementNS(svgNS, 'svg');
-            svg.setAttribute('class', 'action-icon');
-            svg.setAttribute('viewBox', '0 0 24 24');
+        const img = document.createElement('img');
+        img.setAttribute('class', 'finish-icon');
+        img.setAttribute('src', '/static/finish.svg');
 
-            // Create the rectangle inside the SVG
-            const rect = document.createElementNS(svgNS, 'rect');
-            rect.setAttribute('x', '6');
-            rect.setAttribute('y', '6');
-            rect.setAttribute('width', '12');
-            rect.setAttribute('height', '12');
+        button.appendChild(img);
 
-            svg.appendChild(rect);
-            button.appendChild(svg);
-
-            actionContainer.insertBefore(button, actionContainer.firstChild);
-        }
+        actionContainer.insertBefore(button, actionContainer.firstChild);
 
         const recordingIndex = recordings.findIndex(recording => recording.name === data.name);
         recordings[recordingIndex]['last_update'] = getNowFormatted();
@@ -234,7 +330,7 @@
     });
 
     socket.on('recording-delete', (data) => {
-        const item = document.getElementById(`item_${data.id}`);        
+        const item = document.getElementById(`item_${data.id}`);
         item?.remove();
         recordings.splice(recordings.findIndex(recording => recording.id === data.id), 1);
     });
@@ -257,7 +353,33 @@
         recordings[recordingIndex]['last_update'] = data['last_update'];
     });
 
-    function executeAction(action, id) {
+    async function stop(id) {
+        await openDialog();
+
+        const response = await fetch(`/api/v1/recording/${id}/stop`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        responseBody = await response.json();
+
+        if (response.ok) {
+            showSnackbar(
+                `${responseBody.message}: <a href=\"${responseBody.shared_link}\" target=\"_blank\"" rel=\"noopener noreferrer\">${responseBody.shared_link}</a>`,
+                "sucess"
+            );
+        } else {
+            console.log(responseBody);
+            showSnackbar(
+                `${responseBody.error}: ${responseBody.message}`,
+                "error"
+            );
+        }
+    } 
+
+    async function executeAction(action, id) {
         fetch(`/api/v1/recording/${id}/${action}`, {
             method: 'POST',
             headers: {
@@ -300,6 +422,60 @@
     }
 
     setInterval(updateExpectedUpdate, 1000);
+
+    function openDialog() {
+        const dialog = document.getElementById('confirmationDialog');
+        dialog.style.display = 'flex';
+
+        return new Promise((resolve, reject) => {
+            const confirmButton = document.getElementById('confirmButton');
+            const cancelButton = document.getElementById('cancelButton');
+
+            const handleConfirm = () => {
+                resolve();
+                cleanup();
+            };
+
+            const handleCancel = () => {
+                reject();
+                cleanup();
+            };
+
+            const cleanup = () => {
+                dialog.style.display = 'none';
+                confirmButton.removeEventListener('click', handleConfirm);
+                cancelButton.removeEventListener('click', handleCancel);
+            };
+
+            confirmButton.addEventListener('click', handleConfirm);
+            cancelButton.addEventListener('click', handleCancel);
+        });
+    }
+
+    let snackbarTimeout;
+
+    function showSnackbar(content, type) {
+        const snackbar = document.getElementById("snackbar");
+        const snackbarContent = document.getElementById("snackbar-content");
+        const snackbarIcon = document.getElementById("snackbar-icon");
+
+        snackbarContent.innerHTML = content;
+        snackbar.className = "show";
+
+        snackbarIcon.setAttribute("src", `/static/${type}.svg`);
+
+        if (snackbarTimeout) {
+            clearTimeout(snackbarTimeout);
+        }
+
+        // snackbarTimeout = setTimeout(closeSnackbar, 15000);
+    }
+
+    function closeSnackbar() {
+        const snackbar = document.getElementById("snackbar");
+        snackbar.className = "";
+    }
+
 
 </script>
 

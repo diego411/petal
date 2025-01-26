@@ -14,6 +14,11 @@ class RecordingResource(Resource):
         self.socketio = current_app.socketio
 
     @authenticate('api')
+    def get(self, payload: Payload):
+        assert payload.resource == 'user', f"Expected payload of resource: 'user' got {payload.resource}"
+        return recording_service.get_all(user=payload.id), 200
+
+    @authenticate('api')
     def post(self, payload: Payload):
         assert payload.resource == 'user', f"Expected payload of resource: 'user' got {payload.resource}"
         data = request.json

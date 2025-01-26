@@ -5,6 +5,7 @@ from typing import Optional, List
 import numpy as np
 from flask import current_app
 from psycopg2.extensions import cursor as Cursor
+from dropbox.exceptions import ApiError
 
 from src.AppConfig import AppConfig
 from src.controller import dropbox_controller
@@ -242,15 +243,15 @@ def stop(recording: Recording):
         path=f'audio/{file_name}'
     )
 
-    dropbox_controller.upload_file_to_dropbox(
+    set_state(recording.id, RecordingState.STOPPED)
+
+    shared_link: str = dropbox_controller.upload_file_to_dropbox(
         dropbox_client=current_app.dropbox_client,
         file_path=file_path,
         dropbox_path=f'/PlantRecordings/{user.name}/{file_name}'
     )
 
     os.remove(file_path)
-
-    set_state(recording.id, RecordingState.STOPPED)
 
     if AppConfig.DELETE_AFTER_STOP:
         delete(recording.id)
@@ -259,6 +260,8 @@ def stop(recording: Recording):
         'id': recording.id,
         'name': recording.name
     })
+
+    return shared_link
 
 
 def stop_and_label(recording: Recording, emotions: dict):
@@ -283,11 +286,14 @@ def stop_and_label(recording: Recording, emotions: dict):
         dropbox_path_prefix=file_name_prefix
     )
 
-    dropbox_controller.upload_file_to_dropbox(
-        dropbox_client=current_app.dropbox_client,
-        file_path=file_path,
-        dropbox_path=f'/PlantRecordings/{recording.name}/{file_name}'
-    )
+    try:
+        dropbox_controller.upload_file_to_dropbox(
+            dropbox_client=current_app.dropbox_client,
+            file_path=file_path,
+            dropbox_path=f'/PlantRecordings/{recording.name}/{file_name}'
+        )
+    except ApiError as e:
+        current_app.logger.error(e.error)
 
     os.remove(file_path)
     set_state(recording.id, RecordingState.STOPPED)

@@ -2,10 +2,12 @@ import os
 import json
 from pydub import AudioSegment
 from src.controller import dropbox_controller
-import dropbox
+from dropbox import Dropbox
+from dropbox.exceptions import ApiError
+from flask import current_app
 
 
-def label_recording(recording_path: str, observations_path: str, observations: dict, dropbox_client: dropbox.Dropbox,
+def label_recording(recording_path: str, observations_path: str, observations: dict, dropbox_client: Dropbox,
                     dropbox_path_prefix: str = None):
     split_recording_path = recording_path.split('.')[0]
     split_recording_path = split_recording_path.split('_')
@@ -62,10 +64,13 @@ def label_recording(recording_path: str, observations_path: str, observations: d
         if dropbox_path_prefix:
             dropbox_file_name = f"{dropbox_path_prefix}_{dropbox_file_name}"
         # TODO: can you do a bulk upload somehow?
-        dropbox_controller.upload_file_to_dropbox(
-            dropbox_client=dropbox_client,
-            file_path=file_path,
-            dropbox_path=f"/PlantRecordings/Labeled/{emotion}/{dropbox_file_name}.wav"
-        )
+        try:
+            dropbox_controller.upload_file_to_dropbox(
+                dropbox_client=dropbox_client,
+                file_path=file_path,
+                dropbox_path=f"/PlantRecordings/Labeled/{emotion}/{dropbox_file_name}.wav"
+            )
+        except ApiError as e:
+            current_app.logger.error(e.error)
 
         os.remove(file_path)
