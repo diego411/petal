@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Emotion Experiments</title>
+    <link rel="stylesheet" type="text/css" href="/static/styles/styles.css">
+    <style>
+        .container {
+            min-width: 80%;
+            display: flex;
+            flex-direction: column;
+            gap: 1em;
+        }
+
+        .button-wrapper {
+            display: flex;
+            flex-direction: row;
+            gap: 1em;
+        }
+
+        .action-button {
+            background: #388e3c;
+            color: white;
+            font-size: 17px;
+            width: 10em;
+            height: 2.5em;
+            border: none;
+            outline: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .cancel {
+            background: gray;
+        }
+
+        .hidden {
+            visibility: hidden;
+        }
+
+        .not-displayed {
+            display: none;
+        }
+
+        table {
+            min-width: 100%;
+            border-collapse: collapse;
+            background-color: #f4f4f4;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
+
+        th {
+            background-color: #f4f4f4;
+            text-align: left;
+        }
+
+        .table-container {
+            overflow-y: auto;
+            max-height: 75%;
+        }
+    </style>
+</head>
+
+<body>
+    {% from "macros.html" import render_top_bar, render_footer %}
+    {{ render_top_bar('experiments') }}
+    <div class="container">
+        <h1>Your Emotion Experiments</h1>
+        <div class="button-wrapper">
+            <input id="name-input" type="text" class="name-input not-displayed" placeholder="Enter a name" required>
+            <button id="create-button" class="action-button" onclick="create()">+ New Experiment</button>
+            <button id="cancel-button" class="action-button cancel hidden" onclick="cancel()">Cancel</button>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Status</th>
+                        <th>Name</th>
+                        <th>Creation Date</th>
+                        <th>Started at</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for experiment in data.experiments %}
+                    <tr>
+                        <td>{{ experiment.status }}</td>
+                        <td>{{ experiment.name }}</td>
+                        <td>{{ experiment.created_at }}</td>
+                        <td>{{ experiment.started_at or '/' }}</td>
+                        <td><a href="/experiment/{{experiment.id}}">View</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+{{ render_footer() }}
+
+<script>
+    let creating = false;
+    const createButton = document.getElementById('create-button');
+    const cancelButton = document.getElementById('cancel-button');
+    const nameInput = document.getElementById('name-input');
+
+    const create = async () => {
+        creating = !creating;
+
+        if (creating) {
+            cancelButton.classList.remove('hidden');
+            createButton.textContent = "Create";
+            nameInput.classList.remove('not-displayed')
+        } else {
+            console.log(nameInput.value);
+            const nameValue = nameInput.value;
+            if (nameValue === null || nameValue === undefined || nameValue.length === 0) {
+                alert("You need to input a name!");
+                creating = true;
+                return;
+            }
+
+            const response = await fetch('api/v1/experiment', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: nameValue
+                })
+            });
+
+            if (response.ok) {
+                const id = (await response.json()).id;
+                console.log(id);
+
+                window.location.href = `/experiment/${id}`;
+            } else {
+                alert('Creating Experiment failed!');
+            }
+        }
+    }
+
+    const cancel = () => {
+        cancelButton.classList.add('hidden');
+        creating = false;
+        createButton.textContent = "+ New Experiment"
+        nameInput.classList.add('not-displayed');
+    }
+
+    const redirectToExperiment = (id) => {
+        window.location.href = `/experiment/${id}`;
+    }
+</script>
+
+</html>

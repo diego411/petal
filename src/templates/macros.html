@@ -1,20 +1,20 @@
 {% macro render_top_bar(current_page, is_login_page=False) %}
 <div class="top-bar">
     <a href="/" class="icon button">&#127793;</a> <!-- Unicode character for a plant icon -->
-    
+
     {%if is_login_page == False %}
     <a href="/recordings" class="button {% if current_page == 'recordings' %}highlighted{% endif %}">Recordings</a>
-    <a href="/live-emotion" class="button {% if current_page == 'live-emotion' %}highlighted{% endif %}">Live
-        Emotion</a>
-    <a href="/audio-classification"
-        class="button {% if current_page == 'audio-classification' %}highlighted{% endif %}">Audio Classification</a>
-    <a href="/label-recordings" class="button {% if current_page == 'label-recordings' %}highlighted{% endif %}">Label
-        Recordings</a>
-    <a href="/record-and-label" class="button {% if current_page == 'record-and-label' %}highlighted{% endif %}">Record
-        and Label
+    <a href="/live-emotion" class="button {% if current_page == 'live-emotion' %}highlighted{% endif %}">
+        LiveEmotion
+    </a>
+    <a href="/audio-classification" class="button {% if current_page == 'audio-classification' %}highlighted{% endif %}">
+        Audio Classification
+    </a>
+    <a href="/experiments" class="button {% if current_page == 'experiments' %}highlighted{% endif %}">
+        Emotion Experiments
     </a>
     <a href="/scripts" class="button {% if current_page == 'scripts' %}highlighted{% endif %}">Scripts</a>
-    <button class="logout-button" onclick="logout()"><img class="logout-icon" src="static/logout.svg"></button>
+    <button class="logout-button" onclick="logout()"><img class="logout-icon" src="/static/logout.svg"></button>
     {% endif %}
 </div>
 

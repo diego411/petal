@@ -1,7 +1,7 @@
 from flask_restful import Resource
 from flask import request
 import threading
-from src.service import recording_service
+from src.service import recording_service, experiment_service
 from src.entity.Recording import Recording
 from src.entity.Payload import Payload
 from src.entity.RecordingState import RecordingState
@@ -26,7 +26,7 @@ class RecordingActionResource(Resource):
         recording = recording_service.find_by_id(recording_id)
 
         if recording is None:
-            return f"No recording with id: {recording_service} found!", 404
+            return f"No recording with id: {recording_id} found!", 404
 
         if recording.user != payload.id:
             return "You are not authorized to execute an action on this recording", 401
@@ -37,16 +37,12 @@ class RecordingActionResource(Resource):
             return self.update(recording)
         elif action == 'stop':
             return self.stop(recording)
-        elif action == 'delete':
-            return self.delete(recording)
-        elif action == "stopAndLabel":
-            return self.stop_and_label(recording)
 
-        return f"The action: {action} is not supported for the recording resource", 400
+        return f"The is not \"{action}\" action for the recording resource", 404
 
     def start(self, recording: Recording):
         if recording.state == RecordingState.RUNNING:
-            return 'Recording for this user started already. Stop it first', 400
+            return 'Recording started already!', 400
 
         recording_service.start(recording)
 
@@ -72,28 +68,21 @@ class RecordingActionResource(Resource):
         if recording_state == RecordingState.STOPPED:
             return 'This recording is already stopped.', 400
 
-        recording_service.stop(recording)
+        experiment = experiment_service.find_by_recording(recording.id)
 
-        return f'Data collection for recording with id {recording.id} successfully stopped and file saved.', 200
+        if experiment is not None:
+            return {
+                'error': 'An error occurred when stopping the recording',
+                'message': f'This recording is linked to <a href="/experiment/{experiment.id}">this</a> experiment you can\'t manually stop it!'
+            }, 400
 
-    def delete(self, recording: Recording):
-        recording_service.delete(recording.id)
+        try:
+            shared_link: str = recording_service.stop(recording)
+        except Exception as e:
+            print(str(e))
+            return {'error': 'An error occurred when stopping the recording', 'message': str(e)}, 500
 
-        self.socketio.emit('recording-delete', {
-            'id': recording.id,
-            'name': recording.name
-        })
-
-        return f'Deleted recording with id {recording.id}', 200
-
-    def stop_and_label(self, recording: Recording):
-        emotions = request.json
-        if emotions is None:
-            return 'No emotion data supplied.', 400
-
-        if recording.state != RecordingState.RUNNING:
-            return f'The data collection for the recording has not started yet', 400
-
-        recording_service.stop_and_label(recording, emotions)
-
-        return "Successfully stopped recording and labeled data", 200
+        return {
+            'message': f'Data collection for recording (#{recording.id}) successfully stopped and file saved',
+            'shared_link': shared_link
+        }, 200

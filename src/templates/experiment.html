@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Emotion Experiment</title>
+    <link rel="stylesheet" type="text/css" href="/static/styles/styles.css">
+</head>
+
+<body>
+    {% from "macros.html" import render_top_bar, render_footer %}
+    {% from "created-experiment.html" import render_created_experiment %}
+    {% from "running-experiment.html" import render_running_experiment %}
+    {% from "finished-experiment.html" import render_finished_experiment %}
+
+    {{ render_top_bar('emotion-experiment') }}
+
+    {%if data.experiment.status == 'CREATED'%}
+    {{render_created_experiment(data)}}
+    {%endif%}
+    {%if data.experiment.status == 'RUNNING'%}
+    {{render_running_experiment(data)}}
+    {%endif%}
+    {%if data.experiment.status == 'FINISHED'%}
+    {{render_finished_experiment(data)}}
+    {%endif%}
+</body>
+{{ render_footer() }}
+
+</html>

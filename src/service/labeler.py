@@ -2,11 +2,37 @@ import os
 import json
 from pydub import AudioSegment
 from src.controller import dropbox_controller
-import dropbox
+from dropbox import Dropbox
+from dropbox.exceptions import ApiError
+from flask import current_app
+from src.entity.Experiment import Experiment
 
 
-def label_recording(recording_path: str, observations_path: str, observations: dict, dropbox_client: dropbox.Dropbox,
-                    dropbox_path_prefix: str = None):
+def merge_observations(observations, gap_threshold):
+    merged = []
+    for observation in observations:
+        if not merged:
+            merged.append(observation)
+            continue
+
+        last = merged[-1]
+        if observation['emotion'] == last['emotion'] and (observation['timestamp'] - last['timestamp']) < gap_threshold:
+            # Extend the end time of the last observation
+            last['timestamp'] = observation['timestamp']
+        else:
+            merged.append(observation)
+
+    return merged
+
+
+def label_recording(
+        experiment: Experiment,
+        recording_path: str,
+        observations_path: str,
+        observations: dict,
+        dropbox_client: Dropbox,
+        dropbox_path_prefix: str = None
+):
     split_recording_path = recording_path.split('.')[0]
     split_recording_path = split_recording_path.split('_')
     recording_start_timestamp = int(split_recording_path[len(split_recording_path) - 1])
@@ -55,17 +81,20 @@ def label_recording(recording_path: str, observations_path: str, observations: d
         if not os.path.exists(directory):
             os.makedirs(directory)
 
-        file_path = f"{directory}/{observation['id']}.wav"
+        file_path = f"{directory}/{experiment.id}.wav"
         snippet.export(file_path, format="wav")
 
-        dropbox_file_name = f"{observation['id']}_{i}"
+        dropbox_file_name = f"{experiment.id}_{i}"
         if dropbox_path_prefix:
             dropbox_file_name = f"{dropbox_path_prefix}_{dropbox_file_name}"
         # TODO: can you do a bulk upload somehow?
-        dropbox_controller.upload_file_to_dropbox(
-            dropbox_client=dropbox_client,
-            file_path=file_path,
-            dropbox_path=f"/PlantRecordings/Labeled/{emotion}/{dropbox_file_name}.wav"
-        )
+        try:
+            dropbox_controller.upload_file_to_dropbox(
+                dropbox_client=dropbox_client,
+                file_path=file_path,
+                dropbox_path=f"/PlantRecordings/Labeled/{emotion}/{dropbox_file_name}.wav"
+            )
+        except ApiError as e:
+            current_app.logger.error(e.error)
 
         os.remove(file_path)
