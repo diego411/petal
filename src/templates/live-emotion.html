@@ -3,8 +3,16 @@
 
 <head>
     <title>Plant Emotion Classification</title>
-    <link rel="stylesheet" type="text/css" href="static/styles/styles.css">
+    <link rel="stylesheet" type="text/css" href="/static/styles/styles.css">
     <style>
+        .top-bar {
+            position: absolute;
+        }
+
+        body {
+            justify-content: center;
+        }
+
         .container p {
             font-size: 2em;
         }
@@ -41,7 +49,7 @@
 
         socket.on('update', (data) => {
             emotionText.textContent = `Current emotion: ${data.emotion}`;
-            emotionImage.src = `static/${data.emotion}.svg`;
+            emotionImage.src = `/static/${data.emotion}.svg`;
             lastUpdateText.textContent = getTime();
         });
     </script>

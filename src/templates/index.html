@@ -3,13 +3,22 @@
 
 <head>
     <title>Plant Emotion Classification</title>
-    <link rel="stylesheet" type="text/css" href="static/styles/styles.css">
+    <link rel="stylesheet" type="text/css" href="/static/styles/styles.css">
+    <style>
+        .top-bar {
+            position: absolute;
+        }
+
+        body {
+            justify-content: center;
+        }
+    </style>
 </head>
 
 <body>
     {% from "macros.html" import render_top_bar, render_footer %}
     {{ render_top_bar() }}
-    <img src="static/Molde.gif">
+    <img src="/static/Molde.gif">
 </body>
 {{ render_footer(version) }}
 

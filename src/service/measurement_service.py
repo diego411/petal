@@ -64,3 +64,14 @@ def insert_many(cursor: Cursor, recording: int, measurements: list, created_at: 
         ''',
         data
     )
+
+
+@transactional()
+def delete_for_recording(cursor: Cursor, recording_id: int):
+    cursor.execute(
+        '''
+            DELETE from measurement
+            WHERE recording=%(recording_id)s;
+        ''',
+        {'recording_id': recording_id}
+    )
