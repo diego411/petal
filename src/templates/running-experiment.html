@@ -1,19 +1,36 @@
 {% macro render_running_experiment(data) %}
-<div class="container">
-    <button class="action-button" onclick="stop()" id="action-button">Stop</button>
+<div class="wrapper">
+    <div class="header">
+        <h1>Experiment: {{data.experiment.name}}</h1>
+        <button class="action-button" onclick="stop()" id="action-button">Finish Experiment</button>
+    </div>
 
-    <iframe id="iframe" src="https://player.vimeo.com/video/495184503"></iframe>
+    <div class="container">
+        <iframe id="iframe" src="https://player.vimeo.com/video/495184503"></iframe>
 
-    <video id="video" autoplay muted></video>
-    <canvas id="overlay"></canvas>
+        <video id="video" autoplay muted></video>
+        <canvas id="overlay"></canvas>
 
-    <div class="unit">
-        <div class="header">
-            <a id="recording-name"></a>
-            <p id="start-time"></p>
-            <p id="expected-update"></p>
+        <div class="unit">
+            <div class="recording-header">
+                <a id="recording-name"></a>
+                <p id="start-time"></p>
+                <p id="expected-update"></p>
+            </div>
+            <canvas id="chart"></canvas>
         </div>
-        <canvas id="chart"></canvas>
+    </div>
+</div>
+
+<!-- Confirmation Dialog -->
+<div class="overlay" id="confirmationDialog">
+    <div class="dialog">
+        <h3>Finish Experiment</h3>
+        <p>This will stop the experiment and upload the data to Dropbox! Are you sure you want to proceed?</p>
+        <div class="dialog-button-container">
+            <button class="cancel" id="cancelButton">Cancel</button>
+            <button class="confirm" id="confirmButton">Yes</button>
+        </div>
     </div>
 </div>
 
@@ -22,7 +39,6 @@
 <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
 <script src="https://player.vimeo.com/api/player.js"></script>
 <script>
-    console.log("yo")
     const socket = io();
 
     const iframe = document.getElementById('iframe');
@@ -32,16 +48,15 @@
     const recordingName = document.getElementById('recording-name');
     const expectedUpdateParagraph = document.getElementById(`expected-update`);
 
-    const recordingsData = {{ data.recordings.recordings | tojson }};
+    const recording = {{ data.experiment.recording | tojson }};
+    const experimentId = {{ data.experiment.id }};
 
-    const experimentData = {{ data.experiment | tojson }};
-
+    let dirty = true;
     let currentEmotion = undefined;
     let output = [];
 
-    const recording = recordingsData.find(recording => Number(recording.id) === Number(experimentData.recording));
     recordingName.textContent = recording.name;
-    recordingName.href = `/recording/${experimentData.recording}`;
+    recordingName.href = `/recording/${recording.id}`;
 
     updateExpectedUpdate();
 
@@ -81,6 +96,10 @@
     async function startVideo() {
         const stream = await navigator.mediaDevices.getUserMedia({ video: {} });
         video.srcObject = stream;
+
+        player.play().catch(function (error) {
+            console.error('Error starting video:', error);
+        });
     }
 
     // Load the models
@@ -126,22 +145,54 @@
         currentEmotion = emotion;
     }
 
-    const stop = () => {
+    const stop = async() => {
+        await openDialog();
+
         player.pause().catch(function (error) {
             console.error('Error stopping video:', error);
         });
 
-        fetch(`/api/v1/experiment/${experimentData.id}/stop`, {
+        fetch(`/api/v1/experiment/${experimentId}/stop`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                recording_id: recordingId,
+                recording_id: recording.id,
                 emotions: output
             })
         }).then(() => {
+            dirty = false;
             window.location.reload();
+        });
+    }
+
+    function openDialog() {
+        const dialog = document.getElementById('confirmationDialog');
+        dialog.style.display = 'flex';
+
+        return new Promise((resolve, reject) => {
+            const confirmButton = document.getElementById('confirmButton');
+            const cancelButton = document.getElementById('cancelButton');
+
+            const handleConfirm = () => {
+                resolve();
+                cleanup();
+            };
+
+            const handleCancel = () => {
+                reject();
+                cleanup();
+            };
+
+            const cleanup = () => {
+                dialog.style.display = 'none';
+                confirmButton.removeEventListener('click', handleConfirm);
+                cancelButton.removeEventListener('click', handleCancel);
+            };
+
+            confirmButton.addEventListener('click', handleConfirm);
+            cancelButton.addEventListener('click', handleCancel);
         });
     }
 
@@ -229,9 +280,44 @@
             }, 100);
         });
     })();
+
+    window.addEventListener('beforeunload', function (event) {
+        if (!dirty)
+            return;
+
+        const message = "You have unsaved changes. Are you sure you want to leave?";
+        event.preventDefault();
+        event.returnValue = message;
+        return message;
+    });
 </script>
 
 <style>
+    .top-bar {
+        position: absolute;
+    }
+
+    body {
+        justify-content: center;
+    }
+
+    .wrapper {
+        background: white;
+        border: 1px black solid;
+        border-radius: 4px;
+        padding: 1em;
+    }
+
+    .header {
+        display: flex;
+        gap: 2em;
+    }
+
+    .header h1 {
+        margin: 0;
+        padding: 0;
+    }
+
     .container {
         display: grid;
         grid-template-columns: 14vw 14vw 14vw 14vw 14vw 14vw;
@@ -241,7 +327,6 @@
             "video video video video camera camera"
             "video video video video chart chart"
             "video video video video chart chart"
-            ". . button button . ."
         ;
         position: relative;
         gap: 1em;
@@ -276,19 +361,19 @@
         padding: 1em 1em;
     }
 
-    .header {
+    .recording-header {
         display: flex;
         justify-content: space-between;
         font-size: 1em;
         margin-bottom: 0.5em;
     }
 
-    .header a {
+    .recording-header a {
         text-decoration: none;
         color: #388e3c;
     }
 
-    .header p {
+    .recording-header p {
         padding: 0;
         margin: 0;
     }
@@ -298,7 +383,7 @@
     }
 
     .action-button {
-        background: #388e3c;
+        background: red;
         color: white;
         font-size: 17px;
         width: 10em;
@@ -307,6 +392,59 @@
         outline: none;
         border-radius: 5px;
         cursor: pointer;
+    }
+
+    .overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: none;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .dialog {
+        padding: 1em;
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        text-align: left;
+        width: 300px;
+    }
+
+    .dialog h3 {
+        margin: 0;
+        padding: 0;
+    }
+
+    /* Button container */
+    .dialog-button-container {
+        display: flex;
+        justify-content: flex-end;
+        gap: 1em;
+        margin-top: auto;
+        /* Push buttons to the bottom */
+    }
+
+    .dialog button {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+    }
+
+    .dialog .confirm {
+        background-color: #4CAF50;
+        color: white;
+    }
+
+    .dialog .cancel {
+        background-color: #f44336;
+        color: white;
     }
 </style>
 {% endmacro %}

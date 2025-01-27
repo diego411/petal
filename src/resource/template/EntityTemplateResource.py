@@ -17,7 +17,7 @@ def get_data(entity, payload: Payload):
     if isinstance(entity, Experiment):
         return {
             'experiment': experiment_service.to_dto(entity),
-            'recordings': recording_service.get_all(payload.id)
+            'recordings': recording_service.get_all_without_experiment(payload.id)
         }
 
 

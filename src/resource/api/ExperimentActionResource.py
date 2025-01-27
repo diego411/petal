@@ -11,7 +11,6 @@ class ExperimentActionResource(Resource):
 
     @authenticate('api')
     def post(self, experiment_id: int, action: str, payload: Payload):
-        print(action)
         assert payload.resource == 'user', f"Expected payload of resource: 'user' got {payload.resource}"
         experiment = experiment_service.find_by_id(experiment_id)
 
@@ -64,8 +63,8 @@ class ExperimentActionResource(Resource):
             if recording.state != RecordingState.RUNNING:
                 return f'The data collection for the recording has not started yet', 400
 
-            recording_service.stop_and_label(recording, emotions)
             experiment_service.set_status(experiment_id, 'FINISHED')
+            recording_service.stop_and_label(experiment, recording, emotions)
 
             return "Sucessfully stopped experiment", 200
 

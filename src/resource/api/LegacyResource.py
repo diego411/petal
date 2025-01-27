@@ -64,25 +64,4 @@ class LegacyResource(Resource):
             predictions = self.jakob_classifier.classify(file_path)
             os.remove(file_path)
             return predictions, 200
-        elif action == 'label':
-            if 'recording' not in request.files or 'moodyExport' not in request.files:
-                return {'error': 'Both the wav recording and the moody export file are required.'}, 400
 
-            recording = request.files['recording']
-            moody_export = request.files['moodyExport']
-
-            recording_path = f'label_dumps/{recording.filename}'
-            moody_export_path = f'label_dumps/{moody_export.filename}'
-            recording.save(recording_path)
-            moody_export.save(moody_export_path)
-
-            labeler.label_recording(
-                recording_path=recording_path,
-                observations_path=moody_export_path,
-                dropbox_client=self.dropbox_client
-            )
-
-            os.remove(recording_path)
-            os.remove(moody_export_path)
-
-            return "Successfully labeled data", 200

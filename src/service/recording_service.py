@@ -12,6 +12,7 @@ from src.controller import dropbox_controller
 from src.database.db import transactional
 from src.entity.Recording import Recording
 from src.entity.RecordingState import RecordingState
+from src.entity.Experiment import Experiment
 from src.service import measurement_service, wav_converter, user_service, labeler
 
 
@@ -20,6 +21,19 @@ def get_all(user: id):
         user,
         RecordingState.REGISTERED
     ) + find_by_user_and_state(
+        user,
+        RecordingState.RUNNING
+    ))  # TODO: these should be filters
+    return {
+        'recordings': to_dtos(recordings)
+    }
+
+
+def get_all_without_experiment(user: id):
+    recordings = (find_by_user_and_state_without_experiment(
+        user,
+        RecordingState.REGISTERED
+    ) + find_by_user_and_state_without_experiment(
         user,
         RecordingState.RUNNING
     ))  # TODO: these should be filters
@@ -100,6 +114,29 @@ def find_by_user_and_state(cursor: Cursor, user: int, state: RecordingState) -> 
             SELECT *
             FROM recording
             WHERE state=%(state)s AND user_id=%(user_id)s
+        ''',
+        {'state': state.value, 'user_id': user}
+    )
+
+    result = cursor.fetchall()
+
+    if result is None:
+        return []
+
+    return list(map(
+        lambda recording: Recording.from_(recording),
+        result
+    ))
+
+
+@transactional()
+def find_by_user_and_state_without_experiment(cursor: Cursor, user: int, state: RecordingState) -> List[Recording]:
+    cursor.execute(
+        '''
+            SELECT recording.*
+            FROM recording
+            LEFT JOIN experiment ON recording.id = experiment.recording_id
+            WHERE state=%(state)s AND recording.user_id=%(user_id)s AND experiment.recording_id IS NULL;
         ''',
         {'state': state.value, 'user_id': user}
     )
@@ -264,7 +301,7 @@ def stop(recording: Recording):
     return shared_link
 
 
-def stop_and_label(recording: Recording, emotions: dict):
+def stop_and_label(experiment: Experiment, recording: Recording, emotions: dict):
     start_time = recording.start_time
     delta_seconds = (recording.last_update - start_time).seconds
     measurements = measurement_service.get_values_for_recording(recording.id)
@@ -279,6 +316,7 @@ def stop_and_label(recording: Recording, emotions: dict):
     )
 
     labeler.label_recording(
+        experiment=experiment,
         recording_path=file_path,
         observations_path='',
         observations=emotions,

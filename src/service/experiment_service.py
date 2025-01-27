@@ -3,6 +3,7 @@ from psycopg2.extensions import cursor as Cursor
 from datetime import datetime
 from src.entity.Experiment import Experiment
 from typing import Optional, List
+from src.service import recording_service
 
 
 def get_all(user: id):
@@ -21,14 +22,20 @@ def to_dtos(experiments: List[Experiment]) -> List[dict]:
 
 
 def to_dto(experiment: Experiment) -> dict:
+    recording = None
+    if experiment.recording is not None:
+        recording = recording_service.find_by_id(experiment.recording)
+
     dto = {
         "id": experiment.id,
         "name": experiment.name,
         "status": experiment.status,
         "user": experiment.user,
         "created_at": experiment.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-        "recording": experiment.recording
     }
+
+    if recording is not None:
+        dto['recording'] = recording_service.to_dto(recording)
 
     if experiment.started_at is not None:
         dto['started_at'] = experiment.started_at.strftime('%Y-%m-%d %H:%M:%S')
@@ -74,7 +81,8 @@ def find_by_user(cursor: Cursor, user_id: int) -> List[Experiment]:
         '''
             SELECT *
             FROM experiment
-            WHERE user_id=%(user_id)s 
+            WHERE user_id=%(user_id)s
+            ORDER BY created_at DESC;
         ''',
         {'user_id': user_id}
     )
@@ -88,6 +96,24 @@ def find_by_user(cursor: Cursor, user_id: int) -> List[Experiment]:
         lambda experiment: Experiment.from_(experiment),
         result
     ))
+
+
+@transactional()
+def find_by_recording(cursor: Cursor, recording_id: int) -> Optional[Experiment]:
+    cursor.execute(
+        '''
+            SELECT *
+            FROM experiment
+            WHERE recording_id=%(recording_id)s;
+        ''',
+        {'recording_id': recording_id}
+    )
+
+    result = cursor.fetchone()
+    if result is None:
+        return None
+
+    return Experiment.from_(result)
 
 
 @transactional()

@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS experiment (
      user_id INTEGER NOT NULL,
      created_at TIMESTAMP NOT NULL,
      started_at TIMESTAMP,
-     recording_id INTEGER,
+     recording_id INTEGER UNIQUE,
      FOREIGN KEY (recording_id) REFERENCES recording (id),
      FOREIGN KEY (user_id) REFERENCES users (id)
 );

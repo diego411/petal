@@ -1,6 +1,6 @@
 from flask import request
 from flask_restful import Resource
-from src.service import recording_service, user_service
+from src.service import recording_service, user_service, experiment_service
 from src.entity.RecordingState import RecordingState
 from flask import current_app
 from src.utils.authentication import authenticate
@@ -55,6 +55,14 @@ class RecordingResource(Resource):
 
         if recording.user != payload.id:
             return "You are not authorized to delete this recording", 401
+
+        experiment = experiment_service.find_by_recording(recording.id)
+
+        if experiment is not None:
+            return {
+                'error': 'An error occurred when stopping the recording',
+                'message': f'This recording is linked to <a href="/experiment/{experiment.id}">this</a> experiment you can\'t manually stop it!'
+            }, 400
 
         recording_service.delete(recording_id)
 

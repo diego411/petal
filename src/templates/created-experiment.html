@@ -1,31 +1,38 @@
 {% macro render_created_experiment(data) %}
-<h1>Experiment: {{data.experiment.name}}</h1>
-<p>Welcome to the our Experiment. For instructions please refer to this page.</p>
-<div class="consent-form">
-    <p>I herby consent to the use of the data blah blah</p><input type="checkbox">
-</div>
-<p>To start please select a device for the experiment and then click the start button</p>
-<div>
-    <select class="select" name="recordings" id="recordings" onchange="updateRecording()">
-        {% for recording in data.recordings.recordings %}
-        <option value="{{recording.id}}">{{recording.name}}</option>
-        {% endfor %}
-    </select>
-    <button class="action-button" onclick="start()" id="action-button">
-        Start
-    </button>
+<div class="wrapper">
+    <h1>Experiment: {{data.experiment.name}}</h1>
+    <hr>
+    <br>
+    <p>
+        <b>Creation Date</b>: {{data.experiment.created_at}} <br>
+        <b>Status</b>:        {{data.experiment.status}}
+    </p>
+    <p>
+        This experiment has not started yet! For instructions please refer to this page. <br>
+        I herby consent to the use of the data blah blah <input type="checkbox" id="consent-checkbox">
+    </p>
+    <p>To start please select a device for the experiment and then click the start button</p>
+    <div>
+        <select class="select" name="recordings" id="recordings" onchange="updateRecording()">
+            {% for recording in data.recordings.recordings %}
+            <option value="{{recording.id}}">{{recording.name}}</option>
+            {% endfor %}
+        </select>
+        <button class="action-button" onclick="start()">Start</button>
+    </div>
 </div>
 
 <script>
     const recordings = document.getElementById('recordings');
+    const consentCheckbox = document.getElementById('consent-checkbox');
     const experimentId = {{ data.experiment.id }};
 
     function start() {
-        console.log("start");
+        if (!consentCheckbox.checked) {
+            alert("You need to consent to continue!");
+            return;
+        }
 
-        // player.play().catch(function (error) {
-        //     console.error('Error starting video:', error);
-        // });
         fetch(`/api/v1/experiment/${experimentId}/start`, {
             method: 'POST',
             headers: {
@@ -39,4 +46,67 @@
         });
     }
 </script>
+
+<style>
+    .top-bar {
+        position: absolute;
+    }
+
+    body {
+        justify-content: center;
+    }
+
+    .wrapper {
+        background: white;
+        border: 1px black solid;
+        border-radius: 4px;
+        margin: 1em;
+        padding: 1em;
+        font-size: 20px;
+    }
+
+    .wrapper h1 {
+        padding: 0;
+        margin: 0;
+    }
+
+
+    .select {
+        width: 10em;
+        padding: 0.5em;
+        font-size: 16px;
+        border: 2px solid #388e3c;
+        border-radius: 5px;
+        background-color: #fff;
+        color: #333;
+        outline: none;
+        cursor: pointer;
+    }
+
+    .select:hover {
+        border-color: #fcdd03;
+    }
+
+    .select:focus {
+        box-shadow: 0 0 5px rgba(0, 123, 255, 0.75);
+        border-color: #fcdd03;
+    }
+
+    .action-button {
+        background: #388e3c;
+        color: white;
+        font-size: 17px;
+        width: 5em;
+        height: 2.2em;
+        border: none;
+        outline: none;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    .consent-form {
+        display: flex;
+        gap: 1em;
+    }
+</style>
 {% endmacro %}
