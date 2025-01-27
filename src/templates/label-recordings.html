@@ -4,8 +4,16 @@
 <head>
     <meta charset="UTF-8">
     <title>Label Recordings</title>
-    <link rel="stylesheet" type="text/css" href="static/styles/styles.css">
+    <link rel="stylesheet" type="text/css" href="/static/styles/styles.css">
     <style>
+        .top-bar {
+            position: absolute;
+        }
+
+        body {
+            justify-content: center;
+        }
+
         .container {
             font-size: 2em;
         }
@@ -137,7 +145,7 @@
 
             fetch('/api/v1/legacy/label', {
                 method: 'POST',
-                
+
                 body: formData
             })
                 .catch(error => {

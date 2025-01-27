@@ -3,8 +3,16 @@
 
 <head>
     <title>Login</title>
-    <link rel="stylesheet" type="text/css" href="static/styles/styles.css">
+    <link rel="stylesheet" type="text/css" href="/static/styles/styles.css">
     <style>
+        .top-bar {
+            position: absolute;
+        }
+
+        body {
+            justify-content: center;
+        }
+
         .wrapper {
             display: flex;
             flex-direction: row;
@@ -41,7 +49,7 @@
     {% from "macros.html" import render_top_bar, render_footer %}
     {{ render_top_bar(is_login_page=True) }}
     <div class="wrapper">
-        <img src="static/Molde.gif">
+        <img src="/static/Molde.gif">
         <div class="main">
             <h1>Plant Server</h1>
             <h3>Enter your login credentials</h3>

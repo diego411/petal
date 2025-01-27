@@ -57,7 +57,7 @@ def authenticate(endpoint_type):
             try:
                 payload: Payload = authenticate_token(X_AUTH_TOKEN)
                 kwargs['payload'] = payload
-            except (jwt.exceptions.InvalidSignatureError, jwt.exceptions.DecodeError) as e:  # invalid auth token
+            except (jwt.exceptions.InvalidSignatureError, jwt.exceptions.DecodeError, jwt.exceptions.ExpiredSignatureError) as e:  # invalid auth token
                 current_app.logger.info(f"Request on endpoint of type {endpoint_type} raised following error: {e}")
                 if endpoint_type == 'template':
                     return abort(401)

@@ -13,6 +13,8 @@ from src.database import db
 
 from src.resource.api.RecordingResouce import RecordingResource
 from src.resource.api.RecordingActionResource import RecordingActionResource
+from src.resource.api.ExperimentResource import ExperimentResource
+from src.resource.api.ExperimentActionResource import ExperimentActionResource
 from src.resource.template.TemplateResource import TemplateResource
 from src.resource.template.EntityTemplateResource import EntityTemplateResource
 from src.resource.api.LegacyResource import LegacyResource
@@ -78,6 +80,7 @@ def create_app():
     api.add_resource(
         RecordingResource,
         f"{API_ROUTE}/recording",
+        f"{API_ROUTE}/recordings",
         f"{API_ROUTE}/recording/<string:recording_id>",
         endpoint="recording"
     )
@@ -91,6 +94,19 @@ def create_app():
     api.add_resource(
         LegacyResource,
         f'{API_ROUTE}/legacy/<string:action>'
+    )
+
+    api.add_resource(
+        ExperimentResource,
+        f"{API_ROUTE}/experiment",
+        f"{API_ROUTE}/experiment/<string:experiment_id>",
+        endpoint="experiment"
+    )
+
+    api.add_resource(
+        ExperimentActionResource,
+        f"{API_ROUTE}/experiment/<string:experiment_id>/<string:action>",
+        endpoint="experiment_action"
     )
 
     api.add_resource(

@@ -254,7 +254,7 @@ def stop(recording: Recording):
     os.remove(file_path)
 
     if AppConfig.DELETE_AFTER_STOP:
-        delete(recording.id)
+        measurement_service.delete_for_recording(recording.id)
 
     current_app.socketio.emit('recording-stop', {
         'id': recording.id,
@@ -299,7 +299,7 @@ def stop_and_label(recording: Recording, emotions: dict):
     set_state(recording.id, RecordingState.STOPPED)
 
     if AppConfig.DELETE_AFTER_STOP:
-        delete(recording.id)
+        measurement_service.delete_for_recording(recording.id)
 
     current_app.socketio.emit('recording-stop', {
         'id': recording.id,

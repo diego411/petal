@@ -1,0 +1,42 @@
+{% macro render_created_experiment(data) %}
+<h1>Experiment: {{data.experiment.name}}</h1>
+<p>Welcome to the our Experiment. For instructions please refer to this page.</p>
+<div class="consent-form">
+    <p>I herby consent to the use of the data blah blah</p><input type="checkbox">
+</div>
+<p>To start please select a device for the experiment and then click the start button</p>
+<div>
+    <select class="select" name="recordings" id="recordings" onchange="updateRecording()">
+        {% for recording in data.recordings.recordings %}
+        <option value="{{recording.id}}">{{recording.name}}</option>
+        {% endfor %}
+    </select>
+    <button class="action-button" onclick="start()" id="action-button">
+        Start
+    </button>
+</div>
+
+<script>
+    const recordings = document.getElementById('recordings');
+    const experimentId = {{ data.experiment.id }};
+
+    function start() {
+        console.log("start");
+
+        // player.play().catch(function (error) {
+        //     console.error('Error starting video:', error);
+        // });
+        fetch(`/api/v1/experiment/${experimentId}/start`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                recording_id: recordings.value
+            })
+        }).then(() => {
+            window.location.reload();
+        });
+    }
+</script>
+{% endmacro %}

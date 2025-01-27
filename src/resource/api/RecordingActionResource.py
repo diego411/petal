@@ -26,7 +26,7 @@ class RecordingActionResource(Resource):
         recording = recording_service.find_by_id(recording_id)
 
         if recording is None:
-            return f"No recording with id: {recording_service} found!", 404
+            return f"No recording with id: {recording_id} found!", 404
 
         if recording.user != payload.id:
             return "You are not authorized to execute an action on this recording", 401
@@ -42,11 +42,11 @@ class RecordingActionResource(Resource):
         elif action == "stopAndLabel":
             return self.stop_and_label(recording)
 
-        return f"The action: {action} is not supported for the recording resource", 400
+        return f"The is not \"{action}\" action for the recording resource", 404
 
     def start(self, recording: Recording):
         if recording.state == RecordingState.RUNNING:
-            return 'Recording for this user started already. Stop it first', 400
+            return 'Recording started already!', 400
 
         recording_service.start(recording)
 
@@ -72,9 +72,16 @@ class RecordingActionResource(Resource):
         if recording_state == RecordingState.STOPPED:
             return 'This recording is already stopped.', 400
 
-        recording_service.stop(recording)
+        try:
+            shared_link: str = recording_service.stop(recording)
+        except Exception as e:
+            print(str(e))
+            return {'error': 'An error occured when stopping the recording', 'message': str(e)}, 500
 
-        return f'Data collection for recording with id {recording.id} successfully stopped and file saved.', 200
+        return {
+            'message': f'Data collection for recording (#{recording.id}) successfully stopped and file saved',
+            'shared_link': shared_link
+        }, 200
 
     def delete(self, recording: Recording):
         recording_service.delete(recording.id)
