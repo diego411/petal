@@ -53,8 +53,7 @@ class ExperimentActionResource(Resource):
             if 'emotions' not in body:
                 return 'No emotion data supplied.', 400
 
-            emotions = body['emotions']
-
+            emotions: list = body['emotions']
             if 'recording_id' not in body:
                 return 'No recording id supplied!', 400
 

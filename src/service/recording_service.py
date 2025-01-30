@@ -283,7 +283,6 @@ def stop(recording: Recording):
     set_state(recording.id, RecordingState.STOPPED)
 
     shared_link: str = dropbox_controller.upload_file_to_dropbox(
-        dropbox_client=current_app.dropbox_client,
         file_path=file_path,
         dropbox_path=f'/PlantRecordings/{user.name}/{file_name}'
     )
@@ -301,7 +300,7 @@ def stop(recording: Recording):
     return shared_link
 
 
-def stop_and_label(experiment: Experiment, recording: Recording, emotions: dict):
+def stop_and_label(experiment: Experiment, recording: Recording, emotions: list):
     start_time = recording.start_time
     delta_seconds = (recording.last_update - start_time).seconds
     measurements = measurement_service.get_values_for_recording(recording.id)
@@ -318,15 +317,12 @@ def stop_and_label(experiment: Experiment, recording: Recording, emotions: dict)
     labeler.label_recording(
         experiment=experiment,
         recording_path=file_path,
-        observations_path='',
         observations=emotions,
-        dropbox_client=current_app.dropbox_client,
         dropbox_path_prefix=file_name_prefix
     )
 
     try:
         dropbox_controller.upload_file_to_dropbox(
-            dropbox_client=current_app.dropbox_client,
             file_path=file_path,
             dropbox_path=f'/PlantRecordings/{recording.name}/{file_name}'
         )

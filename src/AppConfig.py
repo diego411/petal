@@ -20,3 +20,4 @@ class AppConfig:
     AUGMENT_WINDOW = int(os.environ.get('AUGMENT_WINDOW')) or 1
     AUGMENT_PADDING = int(os.environ.get('AUGMENT_PADDING')) or 1
     DELETE_AFTER_STOP = os.environ.get('DELETE_AFTER_STOP') or True
+    MERGE_OBSERVATIONS_THRESHOLD = os.environ.get('MERGE_OBSERVATIONS_THRESHOLD') or 3000
