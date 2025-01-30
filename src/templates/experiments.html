@@ -68,7 +68,8 @@
 </head>
 
 <body>
-    {% from "macros.html" import render_top_bar, render_footer %}
+    {% from "macros/top-bar.html" import render_top_bar %}
+    {% from "macros/footer.html" import render_footer %}
     {{ render_top_bar('experiments') }}
     <div class="container">
         <h1>Your Emotion Experiments</h1>
