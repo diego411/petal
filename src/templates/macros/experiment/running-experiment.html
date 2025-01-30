@@ -1,4 +1,6 @@
 {% macro render_running_experiment(data) %}
+{% from "macros/confirmation-dialog.html" import render_confirmation_dialog %}
+{% from "macros/loading-spinner.html" import render_loading_spinner %}
 <div class="wrapper">
     <div class="header">
         <h1>Experiment: {{data.experiment.name}}</h1>
@@ -22,17 +24,11 @@
     </div>
 </div>
 
-<!-- Confirmation Dialog -->
-<div class="overlay" id="confirmationDialog">
-    <div class="dialog">
-        <h3>Finish Experiment</h3>
-        <p>This will stop the experiment and upload the data to Dropbox! Are you sure you want to proceed?</p>
-        <div class="dialog-button-container">
-            <button class="cancel" id="cancelButton">Cancel</button>
-            <button class="confirm" id="confirmButton">Yes</button>
-        </div>
-    </div>
-</div>
+{{ render_loading_spinner() }}
+{{ render_confirmation_dialog(
+'Finish Experiment',
+'This will stop the experiment and upload the data to Dropbox! Are you sure you want to proceed?'
+) }}
 
 <script src="/static/face-api.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -145,55 +141,32 @@
         currentEmotion = emotion;
     }
 
-    const stop = async() => {
+    const stop = async () => {
         await openDialog();
+        showLoadingSpinner();
 
-        player.pause().catch(function (error) {
-            console.error('Error stopping video:', error);
-        });
+        try {
+            player.pause().catch(function (error) {
+                console.error('Error stopping video:', error);
+            });
 
-        fetch(`/api/v1/experiment/${experimentId}/stop`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                recording_id: recording.id,
-                emotions: output
-            })
-        }).then(() => {
+            await fetch(`/api/v1/experiment/${experimentId}/stop`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    recording_id: recording.id,
+                    emotions: output
+                })
+            }); 
+            
             dirty = false;
             window.location.reload();
-        });
-    }
+        } finally {
+            hideLoadingSpinner();
+        }
 
-    function openDialog() {
-        const dialog = document.getElementById('confirmationDialog');
-        dialog.style.display = 'flex';
-
-        return new Promise((resolve, reject) => {
-            const confirmButton = document.getElementById('confirmButton');
-            const cancelButton = document.getElementById('cancelButton');
-
-            const handleConfirm = () => {
-                resolve();
-                cleanup();
-            };
-
-            const handleCancel = () => {
-                reject();
-                cleanup();
-            };
-
-            const cleanup = () => {
-                dialog.style.display = 'none';
-                confirmButton.removeEventListener('click', handleConfirm);
-                cancelButton.removeEventListener('click', handleCancel);
-            };
-
-            confirmButton.addEventListener('click', handleConfirm);
-            cancelButton.addEventListener('click', handleCancel);
-        });
     }
 
     function getNowFormatted() {

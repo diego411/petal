@@ -193,6 +193,8 @@
 <body>
     {% from "macros/top-bar.html" import render_top_bar %}
     {% from "macros/footer.html" import render_footer %}
+    {% from "macros/confirmation-dialog.html" import render_confirmation_dialog %}
+    {% from "macros/loading-spinner.html" import render_loading_spinner %}
     {{ render_top_bar('recordings') }}
 
     <div class="wrapper">
@@ -230,23 +232,9 @@
         </ul>
     </div>
 
-    <!-- Confirmation Dialog -->
-    <div class="overlay" id="confirmationDialog">
-        <div class="dialog">
-            <h3>Finish Recording</h3>
-            <p>This will stop the recording and upload the data to Dropbox! Are you sure you want to proceed?</p>
-            <div class="dialog-button-container">
-                <button class="cancel" id="cancelButton">Cancel</button>
-                <button class="confirm" id="confirmButton">Yes</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="snackbar">
-        <img id="snackbar-icon" style="width: 2em;">
-        <span id="snackbar-content"></span>
-        <button id="snackbar-close" onclick="closeSnackbar()">x</button>
-    </div>
+    {{ render_loading_spinner() }}
+    {{ render_confirmation_dialog('Finish Recording', 'This will stop the recording and upload the data to Dropbox! Are
+    you sure you want to proceed?')}}
 
     {{ render_footer(version) }}
 </body>
@@ -357,27 +345,34 @@
     async function stop(id) {
         await openDialog();
 
-        const response = await fetch(`/api/v1/recording/${id}/stop`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
+        showLoadingSpinner();
+
+        try {
+            const response = await fetch(`/api/v1/recording/${id}/stop`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            responseBody = await response.json();
+
+            if (response.ok) {
+                showSnackbar(
+                    `${responseBody.message}: <a href=\"${responseBody.shared_link}\" target=\"_blank\"" rel=\"noopener noreferrer\">${responseBody.shared_link}</a>`,
+                    "sucess"
+                );
+            } else {
+                showSnackbar(
+                    `${responseBody.error}: ${responseBody.message}`,
+                    "error"
+                );
             }
-        });
-
-        responseBody = await response.json();
-
-        if (response.ok) {
-            showSnackbar(
-                `${responseBody.message}: <a href=\"${responseBody.shared_link}\" target=\"_blank\"" rel=\"noopener noreferrer\">${responseBody.shared_link}</a>`,
-                "sucess"
-            );
-        } else {
-            showSnackbar(
-                `${responseBody.error}: ${responseBody.message}`,
-                "error"
-            );
+        } finally {
+            hideLoadingSpinner();
         }
-    } 
+
+    }
 
     async function executeAction(action, id) {
         fetch(`/api/v1/recording/${id}/${action}`, {
@@ -423,35 +418,6 @@
 
     setInterval(updateExpectedUpdate, 1000);
 
-    function openDialog() {
-        const dialog = document.getElementById('confirmationDialog');
-        dialog.style.display = 'flex';
-
-        return new Promise((resolve, reject) => {
-            const confirmButton = document.getElementById('confirmButton');
-            const cancelButton = document.getElementById('cancelButton');
-
-            const handleConfirm = () => {
-                resolve();
-                cleanup();
-            };
-
-            const handleCancel = () => {
-                reject();
-                cleanup();
-            };
-
-            const cleanup = () => {
-                dialog.style.display = 'none';
-                confirmButton.removeEventListener('click', handleConfirm);
-                cancelButton.removeEventListener('click', handleCancel);
-            };
-
-            confirmButton.addEventListener('click', handleConfirm);
-            cancelButton.addEventListener('click', handleCancel);
-        });
-    }
-
     let snackbarTimeout;
 
     function showSnackbar(content, type) {
@@ -468,7 +434,7 @@
             clearTimeout(snackbarTimeout);
         }
 
-        // snackbarTimeout = setTimeout(closeSnackbar, 15000);
+        snackbarTimeout = setTimeout(closeSnackbar, 15000);
     }
 
     function closeSnackbar() {

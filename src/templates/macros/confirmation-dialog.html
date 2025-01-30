@@ -1,0 +1,49 @@
+{% macro render_confirmation_dialog(title, message) %}
+<div class="overlay" id="confirmationDialog">
+    <div class="dialog">
+        <h3>{{title}}</h3>
+        <p>{{message}}</p>
+        <div class="dialog-button-container">
+            <button class="cancel" id="cancelButton">Cancel</button>
+            <button class="confirm" id="confirmButton">Yes</button>
+        </div>
+    </div>
+</div>
+
+<div id="snackbar">
+    <img id="snackbar-icon" style="width: 2em;">
+    <span id="snackbar-content"></span>
+    <button id="snackbar-close" onclick="closeSnackbar()">x</button>
+</div>
+
+<script>
+    function openDialog() {
+        const dialog = document.getElementById('confirmationDialog');
+        dialog.style.display = 'flex';
+
+        return new Promise((resolve, reject) => {
+            const confirmButton = document.getElementById('confirmButton');
+            const cancelButton = document.getElementById('cancelButton');
+
+            const handleConfirm = () => {
+                resolve();
+                cleanup();
+            };
+
+            const handleCancel = () => {
+                reject();
+                cleanup();
+            };
+
+            const cleanup = () => {
+                dialog.style.display = 'none';
+                confirmButton.removeEventListener('click', handleConfirm);
+                cancelButton.removeEventListener('click', handleCancel);
+            };
+
+            confirmButton.addEventListener('click', handleConfirm);
+            cancelButton.addEventListener('click', handleCancel);
+        });
+    }
+</script>
+{% endmacro %}
