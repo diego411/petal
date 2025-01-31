@@ -73,7 +73,7 @@ class RecordingActionResource(Resource):
         if experiment is not None:
             return {
                 'error': 'An error occurred when stopping the recording',
-                'message': f'This recording is linked to <a href="/experiment/{experiment.id}">this</a> experiment you can\'t manually stop it!'
+                'message': f'This recording is linked to <a href="/experiment/{experiment.id}">this</a> experiment you can\'t manually stop it! Finish the experiment instead!'
             }, 400
 
         try:

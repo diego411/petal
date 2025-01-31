@@ -25,15 +25,9 @@
 </div>
 
 {{ render_loading_spinner() }}
-{{ render_confirmation_dialog(
-'Finish Experiment',
-'This will stop the experiment and upload the data to Dropbox! Are you sure you want to proceed?'
-) }}
+{{ render_confirmation_dialog('Finish Experiment','This will stop the experiment and upload the data to Dropbox! Are you
+sure you want to proceed?') }}
 
-<script src="/static/face-api.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
-<script src="https://player.vimeo.com/api/player.js"></script>
 <script>
     const socket = io();
 
@@ -159,8 +153,8 @@
                     recording_id: recording.id,
                     emotions: output
                 })
-            }); 
-            
+            });
+
             dirty = false;
             window.location.reload();
         } finally {
