@@ -10,12 +10,6 @@
     </div>
 </div>
 
-<div id="snackbar">
-    <img id="snackbar-icon" style="width: 2em;">
-    <span id="snackbar-content"></span>
-    <button id="snackbar-close" onclick="closeSnackbar()">x</button>
-</div>
-
 <script>
     function openDialog() {
         const dialog = document.getElementById('confirmationDialog');
@@ -46,4 +40,47 @@
         });
     }
 </script>
+
+<style>
+    .dialog {
+        padding: 1em;
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        text-align: left;
+        width: 300px;
+    }
+
+    .dialog h3 {
+        margin: 0;
+        padding: 0;
+    }
+
+    /* Button container */
+    .dialog-button-container {
+        display: flex;
+        justify-content: flex-end;
+        gap: 1em;
+        margin-top: auto;
+        /* Push buttons to the bottom */
+    }
+
+    .dialog button {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+    }
+
+    .dialog .confirm {
+        background-color: #4CAF50;
+        color: white;
+    }
+
+    .dialog .cancel {
+        background-color: #f44336;
+        color: white;
+    }
+</style>
 {% endmacro %}
