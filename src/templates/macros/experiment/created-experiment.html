@@ -52,11 +52,7 @@
         });
 
         if (response.ok) {
-            const createdExperimentContainer = document.getElementById('created-experiment-container');
-            const runningExperimentContainer = document.getElementById('running-experiment-container');
-
-            createdExperimentContainer.classList.add('hidden');
-            runningExperimentContainer.classList.remove('hidden');
+            window.location.reload();
         }
         else {
             const responseBody = await response.json();
