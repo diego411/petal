@@ -1,7 +1,7 @@
 {% macro render_running_experiment(data) %}
 {% from "macros/confirmation-dialog.html" import render_confirmation_dialog %}
 {% from "macros/loading-spinner.html" import render_loading_spinner %}
-<div class="wrapper">
+<div id="content" class="wrapper hidden">
     <div class="header">
         <h1>Experiment: {{data.experiment.name}}</h1>
         <button class="action-button" onclick="stop()" id="action-button">Finish Experiment</button>
@@ -25,12 +25,12 @@
 </div>
 
 {{ render_loading_spinner() }}
-{{ render_confirmation_dialog('Finish Experiment','This will stop the experiment and upload the data to Dropbox! Are you
-sure you want to proceed?') }}
+{{ render_confirmation_dialog() }}
 
 <script>
     const socket = io();
 
+    const content = document.getElementById('content');
     const iframe = document.getElementById('iframe');
     const player = new Vimeo.Player(iframe);
     const video = document.getElementById('video');
@@ -38,7 +38,7 @@ sure you want to proceed?') }}
     const recordingName = document.getElementById('recording-name');
     const expectedUpdateParagraph = document.getElementById(`expected-update`);
 
-    const recording = {{ data.experiment.recording | tojson }};
+    const recording = {{ data.experiment.recording | tojson}};
     const experimentId = {{ data.experiment.id }};
 
     let dirty = true;
@@ -47,40 +47,6 @@ sure you want to proceed?') }}
 
     recordingName.textContent = recording.name;
     recordingName.href = `/recording/${recording.id}`;
-
-    updateExpectedUpdate();
-
-    const ctx = document.getElementById('chart')?.getContext('2d');
-    const myChart = new Chart(ctx, {
-        type: 'line', // Change this to 'bar' or other types if you prefer
-        data: {
-            labels: [].map((_, index) => index + 1), // Labels for X-axis (1, 2, 3, ...)
-            datasets: [{
-                label: 'Values',
-                data: [],
-                backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                borderColor: 'rgba(75, 192, 192, 1)',
-                borderWidth: 1,
-                pointRadius: 0,
-            }]
-        },
-        options: {
-            animations: {
-                duration: 200
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    max: 1
-                }
-            },
-            plugins: {
-                legend: {
-                    display: false
-                }
-            }
-        }
-    });
 
     // Start the camera and play video
     async function startVideo() {
@@ -136,7 +102,7 @@ sure you want to proceed?') }}
     }
 
     const stop = async () => {
-        await openDialog();
+        await openDialog('Finish Experiment','This will stop the experiment and upload the data to Dropbox! Are yousure you want to proceed?');
         showLoadingSpinner();
 
         try {
@@ -227,7 +193,7 @@ sure you want to proceed?') }}
     setInterval(updateExpectedUpdate, 1000);
 
     // Start video and emotion detection
-    (async function run() {
+    async function run() {
         await loadModels();
         startVideo();
 
@@ -246,20 +212,64 @@ sure you want to proceed?') }}
                 updateOutput(detection);
             }, 100);
         });
+    };
+
+    (async function mounted() {
+        await openDialog('Warning', 'Are you ready?', true, false);
+        content.classList.remove('hidden');
+        updateExpectedUpdate();
+
+        const ctx = document.getElementById('chart')?.getContext('2d');
+        const myChart = new Chart(ctx, {
+            type: 'line', // Change this to 'bar' or other types if you prefer
+            data: {
+                labels: [].map((_, index) => index + 1), // Labels for X-axis (1, 2, 3, ...)
+                datasets: [{
+                    label: 'Values',
+                    data: [],
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1,
+                    pointRadius: 0,
+                }]
+            },
+            options: {
+                animations: {
+                    duration: 200
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 1
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+
+        run();
+
+        window.addEventListener('beforeunload', function (event) {
+            if (!dirty)
+                return;
+
+            const message = "You have unsaved changes. Are you sure you want to leave?";
+            event.preventDefault();
+            event.returnValue = message;
+            return message;
+        });
     })();
-
-    window.addEventListener('beforeunload', function (event) {
-        if (!dirty)
-            return;
-
-        const message = "You have unsaved changes. Are you sure you want to leave?";
-        event.preventDefault();
-        event.returnValue = message;
-        return message;
-    });
 </script>
 
 <style>
+    .hidden {
+        display: none;
+    }
+
     .top-bar {
         position: absolute;
     }

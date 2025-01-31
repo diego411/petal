@@ -1,8 +1,8 @@
 {% macro render_confirmation_dialog(title, message) %}
 <div class="overlay" id="confirmationDialog">
     <div class="dialog">
-        <h3>{{title}}</h3>
-        <p>{{message}}</p>
+        <h3 id="title">{{title}}</h3>
+        <p id="message">{{message}}</p>
         <div class="dialog-button-container">
             <button class="cancel" id="cancelButton">Cancel</button>
             <button class="confirm" id="confirmButton">Yes</button>
@@ -11,9 +11,26 @@
 </div>
 
 <script>
-    function openDialog() {
-        const dialog = document.getElementById('confirmationDialog');
+    const dialog = document.getElementById('confirmationDialog');
+    const titleHeader = document.getElementById('title');
+    const messageParagraph = document.getElementById('message');
+    const cancelButton = document.getElementById('cancelButton');
+    const confirmButton = document.getElementById('confirmButton');
+
+    function openDialog(title, message, showResolve=true, showReject=true) {
         dialog.style.display = 'flex';
+        titleHeader.textContent = title;
+        messageParagraph.textContent = message;
+
+        if (showResolve)
+            confirmButton.classList.remove('hidden');
+        else
+            confirmButton.classList.add('hidden');
+
+        if (showReject)
+            cancelButton.classList.remove('hidden');
+        else
+            cancelButton.classList.add('hidden');
 
         return new Promise((resolve, reject) => {
             const confirmButton = document.getElementById('confirmButton');
@@ -42,6 +59,10 @@
 </script>
 
 <style>
+    .hidden {
+        display: none;
+    }
+
     .dialog {
         padding: 1em;
         background: #fff;
