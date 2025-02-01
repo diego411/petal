@@ -43,7 +43,6 @@
 
     let dirty = true;
     let currentEmotion = undefined;
-    let output = [];
 
     recordingName.textContent = recording.name;
     recordingName.href = `/recording/${recording.id}`;
@@ -93,16 +92,23 @@
         const emotion = Object.keys(expressions).reduce((a, b) => expressions[a] > expressions[b] ? a : b);
 
         if (currentEmotion !== emotion) {
-            output.push({
-                emotion: emotion,
-                timestamp: Date.now(),
-            })
+            fetch('/api/v1/observation', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    label: emotion,
+                    timestamp: Date.now(),
+                    experiment: experimentId
+                })
+            });
         }
         currentEmotion = emotion;
     }
 
     const stop = async () => {
-        await openDialog('Finish Experiment','This will stop the experiment and upload the data to Dropbox! Are yousure you want to proceed?');
+        await openDialog('Finish Experiment', 'This will stop the experiment and upload the data! Are yousure you want to proceed?');
         showLoadingSpinner();
 
         try {
@@ -115,10 +121,6 @@
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({
-                    recording_id: recording.id,
-                    emotions: output
-                })
             });
 
             dirty = false;

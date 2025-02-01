@@ -13,7 +13,7 @@ from src.database.db import transactional
 from src.entity.Recording import Recording
 from src.entity.RecordingState import RecordingState
 from src.entity.Experiment import Experiment
-from src.service import measurement_service, wav_converter, user_service, labeler
+from src.service import measurement_service, wav_converter, user_service, labeler, observation_service
 
 
 def get_all(user: id):
@@ -174,7 +174,7 @@ def find_by_user(cursor: Cursor, user: int) -> List[Recording]:
 
 
 @transactional()
-def create(cursor: Cursor, name: str, user: int, state: RecordingState, sample_rate: int, threshold: int):
+def create(cursor: Cursor, name: str, user: int, state: RecordingState, sample_rate: int, threshold: int) -> int:
     cursor.execute(
         '''
             INSERT INTO recording (name, user_id, state, sample_rate, threshold)
@@ -300,11 +300,12 @@ def stop(recording: Recording):
     return shared_link
 
 
-def stop_and_label(experiment: Experiment, recording: Recording, emotions: list):
+def stop_and_label(experiment: Experiment, recording: Recording):
     start_time = recording.start_time
     delta_seconds = (recording.last_update - start_time).seconds
     measurements = measurement_service.get_values_for_recording(recording.id)
     sample_rate = int(len(measurements) / delta_seconds) if delta_seconds != 0 else 0
+    observations = observation_service.find_by_experiment(experiment.id)
 
     file_name_prefix = f'{recording.name}_{sample_rate}Hz_{int(start_time.timestamp() * 1000)}'
     file_name = f'{file_name_prefix}.wav'
@@ -317,7 +318,7 @@ def stop_and_label(experiment: Experiment, recording: Recording, emotions: list)
     labeler.label_recording(
         experiment=experiment,
         recording_path=file_path,
-        observations=emotions,
+        observations=observations,
         dropbox_path_prefix=file_name_prefix
     )
 

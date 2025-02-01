@@ -5,9 +5,12 @@ from dropbox.exceptions import ApiError
 from flask import current_app
 from src.entity.Experiment import Experiment
 from src.AppConfig import AppConfig
+from typing import List
+from src.entity.Obervation import Observation
+from datetime import datetime, timedelta
 
 
-def merge_observations(observations: list, gap_threshold: int = AppConfig.MERGE_OBSERVATIONS_THRESHOLD):
+def merge_observations(observations: List[Observation], gap_threshold: int = AppConfig.MERGE_OBSERVATIONS_THRESHOLD):
     """
     Merge observations with small gaps between the same emotion.
 
@@ -18,20 +21,21 @@ def merge_observations(observations: list, gap_threshold: int = AppConfig.MERGE_
     merged = []
     stack = list(reversed(observations))
     while len(stack) >= 1:
-        observation = stack.pop()
+        observation: Observation = stack.pop()
 
         merged.append(observation)
 
         if len(stack) == 0:
             continue
 
-        next_observation = stack[-1]
-        threshold = (next_observation['timestamp'] - observation['timestamp']) + gap_threshold
+        next_observation: Observation = stack[-1]
+        threshold: timedelta = (next_observation.observed_at - observation.observed_at) + timedelta(
+            seconds=gap_threshold)
 
         next_observation_with_same_emotion_in_range = find_next_with_same_emotion_in_range(
             observations=list(reversed(stack)),
-            emotion=observation['emotion'],
-            timestamp=observation['timestamp'],
+            label=observation.label,
+            timestamp=observation.observed_at,
             threshold=threshold
         )
 
@@ -43,10 +47,15 @@ def merge_observations(observations: list, gap_threshold: int = AppConfig.MERGE_
     return merged
 
 
-def find_next_with_same_emotion_in_range(observations: list, emotion: str, timestamp: int, threshold: int):
+def find_next_with_same_emotion_in_range(
+        observations: List[Observation],
+        label: str,
+        timestamp: datetime,
+        threshold: timedelta
+):
     for i in range(0, len(observations)):
-        observation = observations[i]
-        if observation['emotion'] == emotion and (observation['timestamp'] - timestamp) < threshold:
+        observation: Observation = observations[i]
+        if observation.label == label and (observation.observed_at - timestamp) < threshold:
             return observation
 
     return None
@@ -55,7 +64,7 @@ def find_next_with_same_emotion_in_range(observations: list, emotion: str, times
 def label_recording(
         experiment: Experiment,
         recording_path: str,
-        observations: list = None,
+        observations: List[Observation] = None,
         dropbox_path_prefix: str = None
 ):
     if observations is None or len(observations) == 0:
@@ -70,7 +79,7 @@ def label_recording(
     except Exception:
         return  # TODO throw bad request exception or something (user feedback)
 
-    observations = sorted(observations, key=lambda x: x['timestamp'])
+    observations = sorted(observations, key=lambda obs: obs.observed_at)
     full_length = len(observations)
 
     observations = merge_observations(observations)
@@ -81,18 +90,13 @@ def label_recording(
     )
 
     for i in range(0, len(observations)):
-        observation = observations[i]
+        observation: Observation = observations[i]
         next_observation = observations[i + 1] if i + 1 < len(observations) else None
 
-        start = observation['timestamp']
-        end = next_observation['timestamp'] if next_observation is not None else None
+        start = observation.observed_at.timestamp()
+        end = next_observation.observed_at.timestamp() if next_observation is not None else None
 
-        if 'emotion' in observation:
-            emotion = observation['emotion']
-        else:
-            emotion = max({key: observation[key] for key in
-                           ['happy', 'surprised', 'neutral', 'sad', 'angry', 'disgusted', 'fearful']},
-                          key=observation.get)
+        emotion = observation.label
         current_app.logger.info(
             f"""
                 Processing the {i}-th observation of experiment {experiment.id} 

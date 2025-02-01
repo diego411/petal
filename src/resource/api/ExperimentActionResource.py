@@ -62,22 +62,13 @@ def stop(experiment: Experiment):
     if experiment.status == 'FINISHED':
         return 'Experiment is already Finished. It can\'t be stopped!', 400
 
-    body = request.json
-
-    if 'emotions' not in body:
-        return 'No emotion data supplied.', 400
-
-    emotions: list = body['emotions']
-    if 'recording_id' not in body:
-        return 'No recording id supplied!', 400
-
-    recording = recording_service.find_by_id(body['recording_id'])
+    recording = recording_service.find_by_id(experiment.recording)
 
     if recording.state != RecordingState.RUNNING:
         return f'The data collection for the recording has not started yet', 400
 
     experiment_service.set_status(experiment.id, 'FINISHED')
-    recording_service.stop_and_label(experiment, recording, emotions)
+    recording_service.stop_and_label(experiment, recording)
 
     return "Successfully stopped experiment", 200
 
