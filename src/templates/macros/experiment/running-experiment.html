@@ -43,6 +43,7 @@
 
     let dirty = true;
     let currentEmotion = undefined;
+    let chart = undefined;
 
     recordingName.textContent = recording.name;
     recordingName.href = `/recording/${recording.id}`;
@@ -152,7 +153,7 @@
     socket.on('recording-stop', (data) => {
         const startTimeParagraph = document.getElementById(`start-time`);
         startTimeParagraph.textContent = "";
-        myChart.clear()
+        chart?.clear()
     });
 
     socket.on('recording-delete', (data) => {
@@ -168,10 +169,13 @@
         let measurements = data.measurements;
         const threshold = data.threshold * 2;
         measurements = measurements.slice(measurements.length - threshold);
-        myChart.data.labels = measurements.map((_, index) => index + 1);
-        myChart.data.datasets[0].data = measurements;
 
-        myChart.update();
+        if (chart !== undefined) {
+            chart.data.labels = measurements.map((_, index) => index + 1);
+            chart.data.datasets[0].data = measurements;
+
+            chart.update();
+        }
     });
 
     function calculateExpectedUpdate(lastUpdate, threshold, sampleRate) {
@@ -222,7 +226,7 @@
         updateExpectedUpdate();
 
         const ctx = document.getElementById('chart')?.getContext('2d');
-        const myChart = new Chart(ctx, {
+        chart = new Chart(ctx, {
             type: 'line', // Change this to 'bar' or other types if you prefer
             data: {
                 labels: [].map((_, index) => index + 1), // Labels for X-axis (1, 2, 3, ...)
