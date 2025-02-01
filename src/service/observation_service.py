@@ -36,3 +36,14 @@ def create(cursor: Cursor, label: str, observed_at: datetime, experiment_id: int
     )
 
     return cursor.fetchone()[0]
+
+
+@transactional()
+def delete_all_for_experiment(cursor: Cursor, experiment_id: int):
+    cursor.execute(
+        '''
+            DELETE FROM observation
+            WHERE experiment_id=%(experiment_id)s;
+        ''',
+        {'experiment_id': experiment_id}
+    )

@@ -3,9 +3,10 @@ from flask import request
 from src.utils.authentication import authenticate
 from src.entity.Payload import Payload
 from src.entity.RecordingState import RecordingState
-from src.service import experiment_service, recording_service
+from src.service import experiment_service, recording_service, observation_service
 from datetime import datetime
 from src.entity.Experiment import Experiment
+from src.AppConfig import AppConfig
 
 
 def start(experiment: Experiment):
@@ -69,6 +70,9 @@ def stop(experiment: Experiment):
 
     experiment_service.set_status(experiment.id, 'FINISHED')
     recording_service.stop_and_label(experiment, recording)
+
+    if AppConfig.DELETE_OBSERVATIONS_AFTER_STOP:
+        observation_service.delete_all_for_experiment(experiment.id)
 
     return "Successfully stopped experiment", 200
 

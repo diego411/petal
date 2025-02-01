@@ -289,7 +289,7 @@ def stop(recording: Recording):
 
     os.remove(file_path)
 
-    if AppConfig.DELETE_AFTER_STOP:
+    if AppConfig.DELETE_MEASUREMENTS_AFTER_STOP:
         measurement_service.delete_for_recording(recording.id)
 
     current_app.socketio.emit('recording-stop', {
@@ -315,9 +315,12 @@ def stop_and_label(experiment: Experiment, recording: Recording):
         path=f'audio/{file_name}'
     )
 
+    set_state(recording.id, RecordingState.STOPPED)
+
     labeler.label_recording(
         experiment=experiment,
         recording_path=file_path,
+        recording=recording,
         observations=observations,
         dropbox_path_prefix=file_name_prefix
     )
@@ -331,9 +334,8 @@ def stop_and_label(experiment: Experiment, recording: Recording):
         current_app.logger.error(e.error)
 
     os.remove(file_path)
-    set_state(recording.id, RecordingState.STOPPED)
 
-    if AppConfig.DELETE_AFTER_STOP:
+    if AppConfig.DELETE_MEASUREMENTS_AFTER_STOP:
         measurement_service.delete_for_recording(recording.id)
 
     current_app.socketio.emit('recording-stop', {
