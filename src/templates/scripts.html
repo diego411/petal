@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Scripts</title>
-    <link rel="stylesheet" type="text/css" href="static/styles/styles.css">
+    <link rel="stylesheet" type="text/css" href="/static/styles/styles.css">
     <style>
         /* textarea {
             overflow-y: scroll;
@@ -134,15 +134,16 @@
 </head>
 
 <body>
-    {% from "macros.html" import render_top_bar, render_footer %}
+    {% from "macros/top-bar.html" import render_top_bar %}
+    {% from "macros/footer.html" import render_footer %}
     {{ render_top_bar('scripts') }}
-    <p id="parsedScripts" style="display: none;">{{parsed_scripts}}</p>
+    <p id="parsedScripts" style="display: none;">{{data.parsed_scripts}}</p>
     <h2 id="scriptHeader"></h2>
     <div class="wrapper">
         <div>
             <label for="scriptList">Use Cases</label>
             <ul id="scriptList">
-                {% for script in scripts %}
+                {% for script in data.scripts %}
                 <li>
                     <button id="button-{{script.name}}" onclick="handleClick('{{script.name}}')">
                         <span class="button-text">{{script.name}}</span>

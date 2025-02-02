@@ -1,0 +1,380 @@
+{% macro render_running_experiment(data) %}
+{% from "macros/confirmation-dialog.html" import render_confirmation_dialog %}
+{% from "macros/loading-spinner.html" import render_loading_spinner %}
+<div id="content" class="wrapper hidden">
+    <div class="header">
+        <h1>Experiment: {{data.experiment.name}}</h1>
+        <button class="action-button" onclick="stop()" id="action-button">Finish Experiment</button>
+    </div>
+
+    <div class="container">
+        <iframe id="iframe" src="https://player.vimeo.com/video/495184503"></iframe>
+
+        <video id="video" autoplay muted></video>
+        <canvas id="overlay"></canvas>
+
+        <div class="unit">
+            <div class="recording-header">
+                <a id="recording-name"></a>
+                <p id="start-time"></p>
+                <p id="expected-update"></p>
+            </div>
+            <canvas id="chart"></canvas>
+        </div>
+    </div>
+</div>
+
+{{ render_loading_spinner() }}
+{{ render_confirmation_dialog() }}
+
+<script>
+    const socket = io();
+
+    const content = document.getElementById('content');
+    const iframe = document.getElementById('iframe');
+    const player = new Vimeo.Player(iframe);
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('overlay');
+    const recordingName = document.getElementById('recording-name');
+    const expectedUpdateParagraph = document.getElementById(`expected-update`);
+
+    const recording = {{ data.experiment.recording | tojson}};
+    const experimentId = {{ data.experiment.id }};
+
+    let dirty = true;
+    let currentEmotion = undefined;
+    let chart = undefined;
+
+    recordingName.textContent = recording.name;
+    recordingName.href = `/recording/${recording.id}`;
+
+    // Start the camera and play video
+    async function startVideo() {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: {} });
+        video.srcObject = stream;
+
+        player.play().catch(function (error) {
+            console.error('Error starting video:', error);
+        });
+    }
+
+    // Load the models
+    async function loadModels() {
+        console.log("load models")
+        await faceapi.nets.tinyFaceDetector.loadFromUri('/static/models');
+        await faceapi.nets.faceExpressionNet.loadFromUri('/static/models'); // Load the emotion model
+    }
+
+    function drawResult(detection, displaySize) {
+        if (detection === undefined)
+            return;
+
+        const resizedDetection = faceapi.resizeResults(detection, displaySize);
+        canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw the bounding box around the face
+        faceapi.draw.drawDetections(canvas, resizedDetection);
+
+        if (detection && detection.expressions) {
+            const { expressions, detection: face } = detection;
+            const emotion = Object.keys(expressions).reduce((a, b) => expressions[a] > expressions[b] ? a : b);
+
+            const ctx = canvas.getContext('2d');
+            ctx.font = '18px Arial';
+            ctx.fillStyle = 'red';
+            ctx.fillText(emotion, face.box.x, face.box.y - 10); // Display emotion above the face
+        }
+    }
+
+    function updateOutput(detection) {
+        if (!detection || !detection.expressions)
+            return;
+        const { expressions, detection: face } = detection;
+        const emotion = Object.keys(expressions).reduce((a, b) => expressions[a] > expressions[b] ? a : b);
+
+        if (currentEmotion !== emotion) {
+            fetch('/api/v1/observation', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    label: emotion,
+                    timestamp: Date.now(),
+                    experiment: experimentId
+                })
+            });
+        }
+        currentEmotion = emotion;
+    }
+
+    const stop = async () => {
+        await openDialog('Finish Experiment', 'This will stop the experiment and upload the data! Are yousure you want to proceed?');
+        showLoadingSpinner();
+
+        try {
+            player.pause().catch(function (error) {
+                console.error('Error stopping video:', error);
+            });
+
+            await fetch(`/api/v1/experiment/${experimentId}/stop`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+            });
+
+            dirty = false;
+            window.location.reload();
+        } finally {
+            hideLoadingSpinner();
+        }
+
+    }
+
+    function getNowFormatted() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0'); // Local hour
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
+
+        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    }
+
+    socket.on('recording-start', (data) => {
+        const startTimeParagraph = document.getElementById(`start-time`);
+        startTimeParagraph.textContent = `Start time: ${data['start_time']}`;
+        recording['last_update'] = getNowFormatted();
+    });
+
+    socket.on('recording-stop', (data) => {
+        const startTimeParagraph = document.getElementById(`start-time`);
+        startTimeParagraph.textContent = "";
+        chart?.clear()
+    });
+
+    socket.on('recording-delete', (data) => {
+        // TODO: ?
+    });
+
+    socket.on(`recording-update`, (data) => {
+        if (data.id != recording.id)
+            return;
+
+        recording['last_update'] = data['last_update'];
+
+        let measurements = data.measurements;
+        const threshold = data.threshold * 2;
+        measurements = measurements.slice(measurements.length - threshold);
+
+        if (chart !== undefined) {
+            chart.data.labels = measurements.map((_, index) => index + 1);
+            chart.data.datasets[0].data = measurements;
+
+            chart.update();
+        }
+    });
+
+    function calculateExpectedUpdate(lastUpdate, threshold, sampleRate) {
+        if (lastUpdate === undefined)
+            return NaN;
+
+        const secondsForOneUpdate = threshold / sampleRate;
+
+        const lastUpdateTimestamp = new Date(lastUpdate.replace(" ", "T")).getTime();
+        const secondsPassed = (Date.now() - lastUpdateTimestamp) / 1000;
+
+        return Math.floor(secondsForOneUpdate - secondsPassed);
+    }
+
+    function updateExpectedUpdate() {
+        const expectedUpdate = calculateExpectedUpdate(recording['last_update'], recording['threshold'], recording['sample_rate']);
+        if (!isNaN(expectedUpdate))
+            expectedUpdateParagraph.textContent = `Expecting update in: ${expectedUpdate}s`
+    }
+
+    setInterval(updateExpectedUpdate, 1000);
+
+    // Start video and emotion detection
+    async function run() {
+        await loadModels();
+        startVideo();
+
+        video.addEventListener('play', () => {
+            // Adjust canvas size to match the video
+            canvas.width = video.width;
+            canvas.height = video.height;
+
+            const displaySize = { width: video.videoWidth, height: video.videoHeight };
+            faceapi.matchDimensions(canvas, displaySize);
+
+            // Detect the face and emotion every 100ms and draw results on the canvas
+            setInterval(async () => {
+                const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceExpressions();
+                drawResult(detection, displaySize);
+                updateOutput(detection);
+            }, 100);
+        });
+    };
+
+    (async function mounted() {
+        await openDialog('Warning', 'Are you ready?', true, false);
+        content.classList.remove('hidden');
+        updateExpectedUpdate();
+
+        const ctx = document.getElementById('chart')?.getContext('2d');
+        chart = new Chart(ctx, {
+            type: 'line', // Change this to 'bar' or other types if you prefer
+            data: {
+                labels: [].map((_, index) => index + 1), // Labels for X-axis (1, 2, 3, ...)
+                datasets: [{
+                    label: 'Values',
+                    data: [],
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1,
+                    pointRadius: 0,
+                }]
+            },
+            options: {
+                animations: {
+                    duration: 200
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 1
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+
+        run();
+
+        window.addEventListener('beforeunload', function (event) {
+            if (!dirty)
+                return;
+
+            const message = "You have unsaved changes. Are you sure you want to leave?";
+            event.preventDefault();
+            event.returnValue = message;
+            return message;
+        });
+    })();
+</script>
+
+<style>
+    .hidden {
+        display: none;
+    }
+
+    .top-bar {
+        position: absolute;
+    }
+
+    body {
+        justify-content: center;
+    }
+
+    .wrapper {
+        background: white;
+        border: 1px black solid;
+        border-radius: 4px;
+        padding: 1em;
+    }
+
+    .header {
+        display: flex;
+        gap: 2em;
+    }
+
+    .header h1 {
+        margin: 0;
+        padding: 0;
+    }
+
+    .container {
+        display: grid;
+        grid-template-columns: 14vw 14vw 14vw 14vw 14vw 14vw;
+        grid-template-rows: auto;
+        grid-template-areas:
+            "video video video video camera camera"
+            "video video video video camera camera"
+            "video video video video chart chart"
+            "video video video video chart chart"
+        ;
+        position: relative;
+        gap: 1em;
+    }
+
+    iframe {
+        grid-area: video;
+        height: 100%;
+        width: 100%;
+        border: none;
+    }
+
+    video,
+    canvas {
+        grid-area: camera;
+        width: 100%;
+        height: 100%;
+    }
+
+    canvas {
+        z-index: 2;
+        pointer-events: none;
+    }
+
+    .unit {
+        grid-area: chart;
+        display: inline-block;
+        list-style-type: none;
+        margin: 1em;
+        border-radius: 5px;
+        background-color: white;
+        padding: 1em 1em;
+    }
+
+    .recording-header {
+        display: flex;
+        justify-content: space-between;
+        font-size: 1em;
+        margin-bottom: 0.5em;
+    }
+
+    .recording-header a {
+        text-decoration: none;
+        color: #388e3c;
+    }
+
+    .recording-header p {
+        padding: 0;
+        margin: 0;
+    }
+
+    canvas {
+        min-height: 16em;
+    }
+
+    .action-button {
+        background: red;
+        color: white;
+        font-size: 17px;
+        width: 10em;
+        height: 2.5em;
+        border: none;
+        outline: none;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+</style>
+{% endmacro %}

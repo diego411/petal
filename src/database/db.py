@@ -2,6 +2,8 @@ import psycopg2
 from psycopg2.extensions import cursor as Cursor
 from functools import wraps
 from src.AppConfig import AppConfig
+from typing import List
+from pathlib import Path
 
 
 def get_connection():
@@ -39,45 +41,33 @@ def transactional():
     return decorator
 
 
+def get_all_migrations_scripts() -> List[str]:
+    migrations_folder = Path('./src/database/migrations')
+    migrations = []
+
+    up_script = migrations_folder / 'up.sql'
+    assert up_script.exists(), 'Invalid state: no up.sql found!'
+
+    with up_script.open('r') as file:
+        migrations.append(file.read())
+
+    for sql_file in migrations_folder.glob("*.sql"):
+        if sql_file.name == 'up.sql':
+            continue
+
+        with sql_file.open('r') as file:
+            sql_content = file.read()
+            migrations.append(sql_content)
+
+    return migrations
+
+
 @transactional()
-def init_tables(cursor: Cursor):
-    cursor.execute(
-        '''
-            CREATE TABLE IF NOT EXISTS users (
-                id SERIAL PRIMARY KEY,
-                name TEXT NOT NULL
-            );
-        '''
-    )
+def run_migrations(cursor: Cursor):
+    migrations = get_all_migrations_scripts()
 
-    cursor.execute(
-        '''
-            CREATE TABLE IF NOT EXISTS recording (
-                id SERIAL PRIMARY KEY,
-                name TEXT NOT NULL,
-                user_id INTEGER NOT NULL,
-                state INTEGER NOT NULL,
-                sample_rate INTEGER NOT NULL,
-                threshold INTEGER NOT NULL,
-                start_time TIMESTAMP,
-                last_update TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users (id)
-            );
-        '''
-    )
-
-    cursor.execute(
-        '''
-            CREATE TABLE IF NOT EXISTS measurement (
-                id SERIAL,
-                value REAL,
-                recording INTEGER NOT NULL,
-                created_at TIMESTAMP NOT NULL,
-                FOREIGN KEY (recording) REFERENCES recording(id) ON DELETE CASCADE,
-                PRIMARY KEY (id, created_at)
-            ) PARTITION BY RANGE (created_at);
-        '''
-    )
+    for migration in migrations:
+        cursor.execute(migration)
 
 
 @transactional()

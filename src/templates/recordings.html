@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Recordings</title>
-    <link rel="stylesheet" type="text/css" href="static/styles/styles.css">
+    <link rel="stylesheet" type="text/css" href="/static/styles/styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
     <style>
@@ -69,33 +69,44 @@
             background-color: #fcdf03d5;
         }
 
-        .delete {
+        .finish {
             background-color: red;
         }
 
-        .delete:hover {
+        .finish:hover {
             background-color: rgb(251, 52, 52);
         }
 
-        .action-icon {
-            fill: white;
+        .finish-icon {
+            width: 2em;
+            height: 2em;
+        }
+
+        .start-icon {
+            width: 1em;
+            height: 1em;
         }
 
         .action-container {
             display: flex;
             flex-direction: row;
             gap: 0.4em
-        }
+        }        
     </style>
 </head>
 
 <body>
-    {% from "macros.html" import render_top_bar, render_footer %}
+    {% from "macros/top-bar.html" import render_top_bar %}
+    {% from "macros/footer.html" import render_footer %}
+    {% from "macros/confirmation-dialog.html" import render_confirmation_dialog %}
+    {% from "macros/loading-spinner.html" import render_loading_spinner %}
+    {% from "macros/snackbar.html" import render_snackbar %}
     {{ render_top_bar('recordings') }}
+
     <div class="wrapper">
-        <p style="display: none;" id="recordings">{{recordings}}</p>
+        <p style="display: none;" id="recordings">{{data.recordings}}</p>
         <ul>
-            {% for recording in recordings %}
+            {% for recording in data.recordings %}
             <li id="item_{{recording.id}}">
                 <div id="header_{{recording.name}}" class="header">
                     <a href="/recording/{{recording.id}}">{{recording.name}}</a>
@@ -109,31 +120,16 @@
 
                     <div id="action_container_{{recording.name}}" class="action-container">
                         {% if recording.start_time is defined %}
-                        <button id="button_stop_{{recording.name}}" onclick="executeAction('stop', '{{recording.id}}')"
-                            class="action-button">
-                            <svg class="action-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                <rect x="6" y="6" width="12" height="12" />
-                            </svg>
+                        <button id="button_stop_{{recording.name}}" onclick="stop('{{recording.id}}')"
+                            class="action-button finish" title="Finish Recording">
+                            <img class="finish-icon" src="/static/finish.svg">
                         </button>
                         {% else %}
                         <button id="button_start_{{recording.name}}"
                             onclick="executeAction('start', '{{recording.id}}')" class="action-button">
-                            <svg class="action-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M8 5v14l11-7z" />
-                            </svg>
+                            <img class="start-icon" src="/static/play.svg" title="Start Recording">
                         </button>
                         {% endif %}
-                        <button class="action-button delete" onclick="executeAction('delete', '{{recording.id}}')">
-                            <svg viewBox="0 0 1024 1024" fill="#000000" class="action-icon" version="1.1"
-                                xmlns="http://www.w3.org/2000/svg">
-                                <path
-                                    d="M32 241.6c-11.2 0-20-8.8-20-20s8.8-20 20-20l940 1.6c11.2 0 20 8.8 20 20s-8.8 20-20 20L32 241.6zM186.4 282.4c0-11.2 8.8-20 20-20s20 8.8 20 20v688.8l585.6-6.4V289.6c0-11.2 8.8-20 20-20s20 8.8 20 20v716.8l-666.4 7.2V282.4z"
-                                    fill="" />
-                                <path
-                                    d="M682.4 867.2c-11.2 0-20-8.8-20-20V372c0-11.2 8.8-20 20-20s20 8.8 20 20v475.2c0.8 11.2-8.8 20-20 20zM367.2 867.2c-11.2 0-20-8.8-20-20V372c0-11.2 8.8-20 20-20s20 8.8 20 20v475.2c0.8 11.2-8.8 20-20 20zM524.8 867.2c-11.2 0-20-8.8-20-20V372c0-11.2 8.8-20 20-20s20 8.8 20 20v475.2c0.8 11.2-8.8 20-20 20zM655.2 213.6v-48.8c0-17.6-14.4-32-32-32H418.4c-18.4 0-32 14.4-32 32.8V208h-40v-42.4c0-40 32.8-72.8 72.8-72.8H624c40 0 72.8 32.8 72.8 72.8v48.8h-41.6z"
-                                    fill="" />
-                            </svg>
-                        </button>
                     </div>
                 </div>
                 <canvas id="chart_{{recording.name}}"></canvas>
@@ -141,6 +137,11 @@
             {% endfor %}
         </ul>
     </div>
+
+    {{ render_loading_spinner() }}
+    {{ render_confirmation_dialog()}}
+    {{ render_snackbar() }}
+
     {{ render_footer(version) }}
 </body>
 <script>
@@ -195,33 +196,23 @@
             startTimeParagraph.textContent = `Start time: ${data['start_time']}`;
 
         const startButton = document.getElementById(`button_start_${data.name}`);
-        if (startButton !== null) {
+        if (startButton !== null)
             startButton.remove();
 
-            const actionContainer = document.getElementById(`action_container_${data.name}`);
+        const actionContainer = document.getElementById(`action_container_${data.name}`);
 
-            const button = document.createElement('button');
-            button.setAttribute('class', 'action-button');
-            button.id = `button_stop_${data.name}`;
-            button.onclick = () => executeAction('stop', data.id);
+        const button = document.createElement('button');
+        button.setAttribute('class', 'action-button finish');
+        button.id = `button_stop_${data.name}`;
+        button.onclick = () => stop(data.id);
 
-            const svgNS = "http://www.w3.org/2000/svg";
-            const svg = document.createElementNS(svgNS, 'svg');
-            svg.setAttribute('class', 'action-icon');
-            svg.setAttribute('viewBox', '0 0 24 24');
+        const img = document.createElement('img');
+        img.setAttribute('class', 'finish-icon');
+        img.setAttribute('src', '/static/finish.svg');
 
-            // Create the rectangle inside the SVG
-            const rect = document.createElementNS(svgNS, 'rect');
-            rect.setAttribute('x', '6');
-            rect.setAttribute('y', '6');
-            rect.setAttribute('width', '12');
-            rect.setAttribute('height', '12');
+        button.appendChild(img);
 
-            svg.appendChild(rect);
-            button.appendChild(svg);
-
-            actionContainer.insertBefore(button, actionContainer.firstChild);
-        }
+        actionContainer.insertBefore(button, actionContainer.firstChild);
 
         const recordingIndex = recordings.findIndex(recording => recording.name === data.name);
         recordings[recordingIndex]['last_update'] = getNowFormatted();
@@ -234,7 +225,7 @@
     });
 
     socket.on('recording-delete', (data) => {
-        const item = document.getElementById(`item_${data.id}`);        
+        const item = document.getElementById(`item_${data.id}`);
         item?.remove();
         recordings.splice(recordings.findIndex(recording => recording.id === data.id), 1);
     });
@@ -257,8 +248,40 @@
         recordings[recordingIndex]['last_update'] = data['last_update'];
     });
 
-    function executeAction(action, id) {
-        fetch(`/recording/${id}/${action}`, {
+    async function stop(id) {
+        await openDialog('Finish Recording', 'This will stop the recording and upload the data to Dropbox! Are you sure you want to proceed?');
+
+        showLoadingSpinner();
+
+        try {
+            const response = await fetch(`/api/v1/recording/${id}/stop`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            responseBody = await response.json();
+
+            if (response.ok) {
+                showSnackbar(
+                    `${responseBody.message}: <a href=\"${responseBody.shared_link}\" target=\"_blank\"" rel=\"noopener noreferrer\">${responseBody.shared_link}</a>`,
+                    "sucess"
+                );
+            } else {
+                showSnackbar(
+                    `${responseBody.error}: ${responseBody.message}`,
+                    "error"
+                );
+            }
+        } finally {
+            hideLoadingSpinner();
+        }
+
+    }
+
+    async function executeAction(action, id) {
+        fetch(`/api/v1/recording/${id}/${action}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
