@@ -10,7 +10,8 @@ def create_dropbox_client(app_key: str, app_secret: str, refresh_token: str) -> 
     )
 
 
-def upload_file_to_dropbox(dropbox_client: dropbox.Dropbox, file_path: str, dropbox_path: str) -> str:
+def upload_file_to_dropbox(file_path: str, dropbox_path: str) -> str:
+    dropbox_client = current_app.dropbox_client
     dropbox_client.check_and_refresh_access_token()
 
     # Open the file and upload it

@@ -46,7 +46,8 @@
 </head>
 
 <body>
-    {% from "macros.html" import render_top_bar, render_footer %}
+    {% from "macros/top-bar.html" import render_top_bar %}
+    {% from "macros/footer.html" import render_footer %}
     {{ render_top_bar(is_login_page=True) }}
     <div class="wrapper">
         <img src="/static/Molde.gif">

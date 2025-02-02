@@ -5,13 +5,18 @@
     <meta charset="UTF-8">
     <title>Emotion Experiment</title>
     <link rel="stylesheet" type="text/css" href="/static/styles/styles.css">
+    <script src="/static/face-api.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <script src="https://player.vimeo.com/api/player.js"></script>
 </head>
 
 <body>
-    {% from "macros.html" import render_top_bar, render_footer %}
-    {% from "created-experiment.html" import render_created_experiment %}
-    {% from "running-experiment.html" import render_running_experiment %}
-    {% from "finished-experiment.html" import render_finished_experiment %}
+    {% from "macros/top-bar.html" import render_top_bar %}
+    {% from "macros/footer.html" import render_footer %}
+    {% from "macros/experiment/created-experiment.html" import render_created_experiment %}
+    {% from "macros/experiment/running-experiment.html" import render_running_experiment %}
+    {% from "macros/experiment/finished-experiment.html" import render_finished_experiment %}
 
     {{ render_top_bar('emotion-experiment') }}
 

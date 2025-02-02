@@ -90,7 +90,8 @@
 </head>
 
 <body>
-    {% from "macros.html" import render_top_bar, render_footer %}
+    {% from "macros/top-bar.html" import render_top_bar %}
+    {% from "macros/footer.html" import render_footer %}
     <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
     {{ render_top_bar() }}
     <main id="main">

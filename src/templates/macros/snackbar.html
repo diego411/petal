@@ -1,0 +1,77 @@
+{% macro render_snackbar() %}
+<style>
+    #snackbar {
+        visibility: hidden;
+        margin: 0 1em;
+        background-color: #333;
+        color: #fff;
+        text-align: center;
+        border-radius: 4px;
+        padding: 1em;
+        position: fixed;
+        z-index: 1;
+        bottom: 3em;
+        transition: visibility 0s, opacity 0.5s linear;
+        display: flex;
+        align-items: center;
+        align-items: center;
+        overflow: auto;
+        gap: 0.5em;
+    }
+
+    #snackbar.show {
+        visibility: visible;
+        opacity: 1;
+    }
+
+    #snackbar-close {
+        align-self: center;
+        background: transparent;
+        border: none;
+        color: #f44336;
+        font-size: 25px;
+        cursor: pointer;
+    }
+
+    #snackbar a {
+        color: #4caf50;
+        text-decoration: none;
+    }
+
+    #snackbar a:hover {
+        text-decoration: underline;
+    }
+</style>
+
+<div id="snackbar">
+    <img id="snackbar-icon" style="width: 2em;">
+    <span id="snackbar-content"></span>
+    <button id="snackbar-close" onclick="closeSnackbar()">x</button>
+</div>
+
+<script>
+    const snackbar = document.getElementById("snackbar");
+    const snackbarContent = document.getElementById("snackbar-content");
+    const snackbarIcon = document.getElementById("snackbar-icon");
+
+    let snackbarTimeout;
+
+    function showSnackbar(content, type) {
+        snackbarContent.innerHTML = content;
+        snackbar.className = "show";
+
+        snackbarIcon.setAttribute("src", `/static/${type}.svg`);
+
+        if (snackbarTimeout) {
+            clearTimeout(snackbarTimeout);
+        }
+
+        snackbarTimeout = setTimeout(closeSnackbar, 15000);
+    }
+
+    function closeSnackbar() {
+        const snackbar = document.getElementById("snackbar");
+        snackbar.className = "";
+    }
+</script>
+{% endmacro %}
