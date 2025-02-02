@@ -45,9 +45,14 @@
     let currentEmotion = undefined;
     let chart = undefined;
     let stopping = false;
+    let videoStartedAtTimestamp = undefined;
 
     recordingName.textContent = recording.name;
     recordingName.href = `/recording/${recording.id}`;
+
+    player.on('play', async function () {
+        videoStartedAtTimestamp = Date.now();
+    });
 
     // Start the camera and play video
     async function startVideo() {
@@ -129,12 +134,15 @@
 
             const sleepMs = (expectedUpdate * 1000) + 5000;
             await sleep(sleepMs); // this is done to wait for the last batch of measurements
-
+            
             await fetch(`/api/v1/experiment/${experimentId}/stop`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
+                body: videoStartedAtTimestamp !== undefined ? JSON.stringify({
+                    video_started_at_timestamp: videoStartedAtTimestamp
+                }) : undefined
             });
 
             dirty = false;

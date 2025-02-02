@@ -1,6 +1,7 @@
 import os
 from datetime import datetime
 from typing import Optional, List
+from pydub import AudioSegment
 
 import numpy as np
 from flask import current_app
@@ -300,7 +301,27 @@ def stop(recording: Recording):
     return shared_link
 
 
-def stop_and_label(experiment: Experiment, recording: Recording):
+def trim_audio(
+        file_path: str,
+        file_name_prefix: str,
+        recording_started_at: datetime,
+        video_started_at: datetime
+) -> Optional[str]:
+    if video_started_at <= recording_started_at:
+        return None
+
+    audio = AudioSegment.from_wav(file_path)
+    trim_start_ms = (video_started_at - recording_started_at).total_seconds() * 1000
+    trimmed_audio = audio[trim_start_ms:]
+
+    output_path = f'audio/{file_name_prefix}_trimmed.wav'
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+    trimmed_audio.export(output_path, format="wav")
+    return output_path
+
+
+def stop_and_label(experiment: Experiment, recording: Recording, video_started_at: Optional[datetime]):
     start_time = recording.start_time
     delta_seconds = (recording.last_update - start_time).seconds
     measurements = measurement_service.get_values_for_recording(recording.id)
@@ -325,13 +346,26 @@ def stop_and_label(experiment: Experiment, recording: Recording):
         dropbox_path_prefix=file_name_prefix
     )
 
+    trimmed_audio_path = None
     try:
+        if video_started_at is not None:
+            file_name_prefix = f'{recording.name}_{sample_rate}Hz_{int(video_started_at.timestamp() * 1000)}'
+            trimmed_audio_path = trim_audio(
+                file_path=file_path,
+                file_name_prefix=file_name_prefix,
+                recording_started_at=recording.start_time,
+                video_started_at=video_started_at
+            )
+
         dropbox_controller.upload_file_to_dropbox(
-            file_path=file_path,
-            dropbox_path=f'/PlantRecordings/{recording.name}/{file_name}'
+            file_path=file_path if trimmed_audio_path is None else trimmed_audio_path,
+            dropbox_path=f'/EmotionExperiment/unlabeled/{file_name_prefix}_{experiment.id}.wav'
         )
     except ApiError as e:
         current_app.logger.error(e.error)
+
+    if trimmed_audio_path is not None:
+        os.remove(trimmed_audio_path)
 
     os.remove(file_path)
 

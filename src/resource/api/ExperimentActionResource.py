@@ -7,6 +7,7 @@ from src.service import experiment_service, recording_service, observation_servi
 from datetime import datetime
 from src.entity.Experiment import Experiment
 from src.AppConfig import AppConfig
+from typing import Optional
 
 
 def start(experiment: Experiment):
@@ -68,8 +69,23 @@ def stop(experiment: Experiment):
     if recording.state != RecordingState.RUNNING:
         return f'The data collection for the recording has not started yet', 400
 
+    body = request.json
+    video_started_at: Optional[datetime] = None
+    if 'video_started_at_timestamp' in body:
+        video_started_at_timestamp = body['video_started_at_timestamp']
+        try:
+            video_started_at: datetime = datetime.fromtimestamp(video_started_at_timestamp)
+        except ValueError:
+            try:
+                video_started_at: datetime = datetime.fromtimestamp(video_started_at_timestamp / 1000)
+            except ValueError as e:
+                return {
+                    'error': 'Bad request',
+                    'message': f'Provided timestamp could not be parsed: {e}'
+                }, 400
+
     experiment_service.set_status(experiment.id, 'FINISHED')
-    recording_service.stop_and_label(experiment, recording)
+    recording_service.stop_and_label(experiment, recording, video_started_at)
 
     if AppConfig.DELETE_OBSERVATIONS_AFTER_STOP:
         observation_service.delete_all_for_experiment(experiment.id)
