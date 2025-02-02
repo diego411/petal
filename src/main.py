@@ -15,6 +15,7 @@ from src.resource.api.RecordingResouce import RecordingResource
 from src.resource.api.RecordingActionResource import RecordingActionResource
 from src.resource.api.ExperimentResource import ExperimentResource
 from src.resource.api.ExperimentActionResource import ExperimentActionResource
+from src.resource.api.ObservationResource import ObservationResource
 from src.resource.template.TemplateResource import TemplateResource
 from src.resource.template.EntityTemplateResource import EntityTemplateResource
 from src.resource.api.LegacyResource import LegacyResource
@@ -107,6 +108,12 @@ def create_app():
         ExperimentActionResource,
         f"{API_ROUTE}/experiment/<string:experiment_id>/<string:action>",
         endpoint="experiment_action"
+    )
+
+    api.add_resource(
+        ObservationResource,
+        f"{API_ROUTE}/observation",
+        endpoint="observation"
     )
 
     api.add_resource(

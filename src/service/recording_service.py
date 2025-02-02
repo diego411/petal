@@ -13,7 +13,7 @@ from src.database.db import transactional
 from src.entity.Recording import Recording
 from src.entity.RecordingState import RecordingState
 from src.entity.Experiment import Experiment
-from src.service import measurement_service, wav_converter, user_service, labeler
+from src.service import measurement_service, wav_converter, user_service, labeler, observation_service
 
 
 def get_all(user: id):
@@ -174,7 +174,7 @@ def find_by_user(cursor: Cursor, user: int) -> List[Recording]:
 
 
 @transactional()
-def create(cursor: Cursor, name: str, user: int, state: RecordingState, sample_rate: int, threshold: int):
+def create(cursor: Cursor, name: str, user: int, state: RecordingState, sample_rate: int, threshold: int) -> int:
     cursor.execute(
         '''
             INSERT INTO recording (name, user_id, state, sample_rate, threshold)
@@ -283,14 +283,13 @@ def stop(recording: Recording):
     set_state(recording.id, RecordingState.STOPPED)
 
     shared_link: str = dropbox_controller.upload_file_to_dropbox(
-        dropbox_client=current_app.dropbox_client,
         file_path=file_path,
         dropbox_path=f'/PlantRecordings/{user.name}/{file_name}'
     )
 
     os.remove(file_path)
 
-    if AppConfig.DELETE_AFTER_STOP:
+    if AppConfig.DELETE_MEASUREMENTS_AFTER_STOP:
         measurement_service.delete_for_recording(recording.id)
 
     current_app.socketio.emit('recording-stop', {
@@ -301,11 +300,12 @@ def stop(recording: Recording):
     return shared_link
 
 
-def stop_and_label(experiment: Experiment, recording: Recording, emotions: dict):
+def stop_and_label(experiment: Experiment, recording: Recording):
     start_time = recording.start_time
     delta_seconds = (recording.last_update - start_time).seconds
     measurements = measurement_service.get_values_for_recording(recording.id)
     sample_rate = int(len(measurements) / delta_seconds) if delta_seconds != 0 else 0
+    observations = observation_service.find_by_experiment(experiment.id)
 
     file_name_prefix = f'{recording.name}_{sample_rate}Hz_{int(start_time.timestamp() * 1000)}'
     file_name = f'{file_name_prefix}.wav'
@@ -315,18 +315,18 @@ def stop_and_label(experiment: Experiment, recording: Recording, emotions: dict)
         path=f'audio/{file_name}'
     )
 
+    set_state(recording.id, RecordingState.STOPPED)
+
     labeler.label_recording(
         experiment=experiment,
         recording_path=file_path,
-        observations_path='',
-        observations=emotions,
-        dropbox_client=current_app.dropbox_client,
+        recording=recording,
+        observations=observations,
         dropbox_path_prefix=file_name_prefix
     )
 
     try:
         dropbox_controller.upload_file_to_dropbox(
-            dropbox_client=current_app.dropbox_client,
             file_path=file_path,
             dropbox_path=f'/PlantRecordings/{recording.name}/{file_name}'
         )
@@ -334,9 +334,8 @@ def stop_and_label(experiment: Experiment, recording: Recording, emotions: dict)
         current_app.logger.error(e.error)
 
     os.remove(file_path)
-    set_state(recording.id, RecordingState.STOPPED)
 
-    if AppConfig.DELETE_AFTER_STOP:
+    if AppConfig.DELETE_MEASUREMENTS_AFTER_STOP:
         measurement_service.delete_for_recording(recording.id)
 
     current_app.socketio.emit('recording-stop', {
