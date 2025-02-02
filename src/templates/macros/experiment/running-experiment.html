@@ -44,6 +44,7 @@
     let dirty = true;
     let currentEmotion = undefined;
     let chart = undefined;
+    let stopping = false;
 
     recordingName.textContent = recording.name;
     recordingName.href = `/recording/${recording.id}`;
@@ -87,7 +88,7 @@
     }
 
     function updateOutput(detection) {
-        if (!detection || !detection.expressions)
+        if (!detection || !detection.expressions || stopping)
             return;
         const { expressions, detection: face } = detection;
         const emotion = Object.keys(expressions).reduce((a, b) => expressions[a] > expressions[b] ? a : b);
@@ -108,14 +109,26 @@
         currentEmotion = emotion;
     }
 
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
     const stop = async () => {
         await openDialog('Finish Experiment', 'This will stop the experiment and upload the data! Are yousure you want to proceed?');
+        stopping = true;
         showLoadingSpinner();
 
         try {
             player.pause().catch(function (error) {
                 console.error('Error stopping video:', error);
             });
+
+            let expectedUpdate = calculateExpectedUpdate(recording['last_update'], recording['threshold'], recording['sample_rate']);
+            if (isNaN(expectedUpdate) || expectedUpdate < 0)
+                expectedUpdate = 0;
+
+            const sleepMs = (expectedUpdate * 1000) + 5000;
+            await sleep(sleepMs); // this is done to wait for the last batch of measurements
 
             await fetch(`/api/v1/experiment/${experimentId}/stop`, {
                 method: 'POST',
@@ -128,6 +141,7 @@
             window.location.reload();
         } finally {
             hideLoadingSpinner();
+            stopping = false;
         }
 
     }
