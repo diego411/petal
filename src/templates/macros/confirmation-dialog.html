@@ -1,40 +1,38 @@
 {% macro render_confirmation_dialog(title, message) %}
 <div class="overlay" id="confirmationDialog">
     <div class="dialog">
-        <h3 id="title">{{title}}</h3>
-        <p id="message">{{message}}</p>
+        <h3 id="confirmationDialogTitle">{{title}}</h3>
+        <p id="confirmationDialogMessage">{{message}}</p>
         <div class="dialog-button-container">
-            <button class="cancel" id="cancelButton">Cancel</button>
-            <button class="confirm" id="confirmButton">Yes</button>
+            <button class="cancel" id="confirmationDialogCancelButton">Cancel</button>
+            <button class="confirm" id="confirmationDialogConfirmButton">Yes</button>
         </div>
     </div>
 </div>
 
 <script>
-    const dialog = document.getElementById('confirmationDialog');
-    const titleHeader = document.getElementById('title');
-    const messageParagraph = document.getElementById('message');
-    const cancelButton = document.getElementById('cancelButton');
-    const confirmButton = document.getElementById('confirmButton');
+    const confirmationDialog = document.getElementById('confirmationDialog');
+    const confirmationDialogTitleHeader = document.getElementById('confirmationDialogTitle');
+    const confirmationDialogMessageParagraph = document.getElementById('confirmationDialogMessage');
+    const confirmationDialogCancelButton = document.getElementById('confirmationDialogCancelButton');
+    const confirmationDialogConfirmButton = document.getElementById('confirmationDialogConfirmButton');
 
-    function openDialog(title, message, showResolve=true, showReject=true) {
-        dialog.style.display = 'flex';
-        titleHeader.textContent = title;
-        messageParagraph.textContent = message;
+    function openDialog(title, message, showResolve = true, showReject = true) {
+        confirmationDialog.style.display = 'flex';
+        confirmationDialogTitleHeader.textContent = title;
+        confirmationDialogMessageParagraph.textContent = message;
 
         if (showResolve)
-            confirmButton.classList.remove('hidden');
+            confirmationDialogConfirmButton.classList.remove('hidden');
         else
-            confirmButton.classList.add('hidden');
+            confirmationDialogConfirmButton.classList.add('hidden');
 
         if (showReject)
-            cancelButton.classList.remove('hidden');
+            confirmationDialogCancelButton.classList.remove('hidden');
         else
-            cancelButton.classList.add('hidden');
+            confirmationDialogCancelButton.classList.add('hidden');
 
         return new Promise((resolve, reject) => {
-            const confirmButton = document.getElementById('confirmButton');
-            const cancelButton = document.getElementById('cancelButton');
 
             const handleConfirm = () => {
                 resolve();
@@ -47,18 +45,30 @@
             };
 
             const cleanup = () => {
-                dialog.style.display = 'none';
-                confirmButton.removeEventListener('click', handleConfirm);
-                cancelButton.removeEventListener('click', handleCancel);
+                confirmationDialog.style.display = 'none';
+                confirmationDialogConfirmButton.removeEventListener('click', handleConfirm);
+                confirmationDialogCancelButton.removeEventListener('click', handleCancel);
             };
 
-            confirmButton.addEventListener('click', handleConfirm);
-            cancelButton.addEventListener('click', handleCancel);
+            confirmationDialogConfirmButton.addEventListener('click', handleConfirm);
+            confirmationDialogCancelButton.addEventListener('click', handleCancel);
         });
     }
 </script>
 
 <style>
+    .overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: none;
+        justify-content: center;
+        align-items: center;
+    }
+
     .hidden {
         display: none;
     }

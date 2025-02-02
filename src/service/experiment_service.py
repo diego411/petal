@@ -150,3 +150,15 @@ def set_recording(cursor: Cursor, experiment_id: int, recording_id: int):
         ''',
         {'recording_id': recording_id, 'experiment_id': experiment_id}
     )
+
+
+@transactional()
+def delete(cursor: Cursor, experiment_id: int):
+    cursor.execute(
+        '''
+            DELETE 
+            FROM experiment
+            WHERE id=%(experiment_id)s
+        ''',
+        {'experiment_id': experiment_id}
+    )
