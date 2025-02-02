@@ -3,14 +3,35 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Data Collection Instructions</title>
-    <link rel="stylesheet" type="text/css" href="static/styles/styles.css">
+    <title>Instructions</title>
+    <link rel="stylesheet" type="text/css" href="/static/styles/styles.css">
     <style>
+        .wrapper {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
         .content {
+            display: flex;
+            justify-content: center;
+            border: 2px black solid;
+            width: 100%;
+            background-color: white;
+            margin: 1em 1em 1em 0.5em;
+            padding: 1em;
             overflow: auto;
-            margin: 5% 0%;
-            padding: 1%;
+            max-width: 95%;
             font-size: 22px;
+        }
+
+        .content h1 {
+            padding: 0;
+            margin: 0;
+        }
+
+        .inner-content {
+            width: 70%;
         }
 
         .vertical-image {
@@ -29,113 +50,51 @@
 </head>
 
 <body>
-    {% from "macros.html" import render_top_bar, render_footer %}
+    {% from "macros/top-bar.html" import render_top_bar %}
+    {% from "macros/footer.html" import render_footer %}
+    {% from "macros/instruction-navigation.html" import render_instruction_navigation %}
+
     {{ render_top_bar('instructions') }}
 
-    <div class="content">
-        <h1>Instructions</h1>
-        <ul>
-            <li>The goal of this experiment is to collect plant signal data while the participants watch a series of
-                emotionally charged videos</li>
-            <li>The face of the participant will be recorded through a webcam and an emotion recognition model will be
-                used
-                to extract the currently felt emotion of the participant</li>
-            <li>At the same time, a sensor connected to a nearby plant will record the plant signals</li>
-            <li>The video feed from the webcam will not be saved by us</li>
-            <li>The only saved data entails the extracted emotions and the plant signals</li>
-            <li>The collected data will then be used to train machine learning models</li>
-        </ul>
+    <div class="wrapper">
+        {{ render_instruction_navigation('overview') }}
 
-        <h4>To conduct this experiment you need the following requirements:</h4>
-        <ul>
-            <li><input type="checkbox"> an Oxocard</li>
-            <li><input type="checkbox"> a Plant Cartridge and the appropriate wires</li>
-            <li><input type="checkbox"> a basil plant</li>
-            <li><input type="checkbox"> a webcam</li>
-        </ul>
+        <div class="content">
+            <div class="inner-content">
+                <h1>Overview</h1>
+                <p>
+                    This system is used to collect electrical signal data for plants. 
+                    The signals are collected through a sensor.
+                    Currently only the Oxocard sensor is supported.
+                    For instructions to set up the Oxocard please refer to the <a href="/instructions/oxocard-setup">Oxocard Setup</a> page.
+                    <br> <br>
 
-        <div class="figures">
-            <figure>
-                <img class="vertical-image" src="static/oxocard.jpg">
-                <figcaption>Oxocard</figcaption>
-            </figure>
-            <figure>
-                <img class="vertical-image" src="static/plant-cartridge.jpg">
-                <figcaption>Plant Cartridge</figcaption>
-            </figure>
-            <figure>
-                <img class="vertical-image" src="static/cables.jpg">
-                <figcaption>Wires</figcaption>
-            </figure>
-        </div>
+                    <b>Recordings</b>
+                    <br>
+                    If you are trying to collect data for your own experiments, you can create recordings.
+                    Instructions for this can be found on the <a href="/instructions/recordings">Recordings</a> page
+                    <br><br>
 
-        <h1>Oxocard Setup</h1>
-        <ul>
-            <li>Plug the Plant Cartridge into the Oxocard Connect interface</li>
-            <div class="figures">
-                <figure>
-                    <img class="horizontal-image" src="static/oxocard-connect-1.jpg">
-                </figure>
-                <figure>
-                    <img class="horizontal-image" src="static/oxocard-connect-2.jpg">
-                </figure>
+                    <b>Experiments</b>
+                    <br>
+                    If you want to participate in our experiment to collect plant signal data for emotion recognition please refer to the
+                    <a href="/instructions/experiment-instructions">Experiments</a> page for instructions.
+                    <br><br>
+
+                    <b>Scripts</b>
+                    <br>
+                    If you are searching for instruction on the scripts which can be run on the sensors please refer to the 
+                    <a href="/instructions/scripts">Scripts</a> page.
+                    <br><br>
+
+                    <b>Error codes</b>
+                    <br>
+                    If you are encountering error codes and don't know what they mean please refer to the 
+                    <a href="/instructions/error-codes">Error codes</a> page.
+                </p>
             </div>
-            <li>Plug the wires into the Plant Cartridge
-                <ul>
-                    <li>There are two inputs for the wires on the Plant Cartridge</li>
-                    <li>Use the one labeled with "IN"</li>
-                </ul>
-            </li>
-            <li>Connect the Oxocard to a power source using a USB-C cable</li>
-            <li>The Oxocard might download some data on startup and try to connect to memorized WIFI networks which
-                might
-                take a few minutes</li>
-            <li>Once the Oxocard is fully started up you should see a screen similar to this one:</li>
-            <li>Navigate to the menu entry called "WIFI" using the buttons under the screen</li>
-            <li>Confirm by clicking the middle button</li>
-            <li>Follow the instructions to connect to the WIFI</li>
-            <li>Once the Oxocard is connected to the WIFI, simply click the menu entry "START"</li>
-            <li>Your Oxocard should now show up here:</li>
-            <li>If your Oxocard does not show up above, try to unplug it from the power source and plug it in again,
-                then
-                click the menu entry "START" once again</li>
-            <li>Should there be any complications with the steps, please contact Diego under this E-Mail address: <a
-                    href="mailto:dlonghi1@smail.uni-koeln.de">dlonghi1@smail.uni-koeln.de</a></li>
-        </ul>
-
-        <h1>Experiment Setup</h1>
-        <ul>
-            <li>We highly recommend conducting the experiment on a desktop computer and not on your smartphone</li>
-            <li>Connect the Oxocard to the power source and restart it</li>
-            <li>Connect the red wire to one of the plant's leaves</li>
-            <li>Plug the black wire into the earth</li>
-            <li>Place the plant next to you and sit in front of your webcam</li>
-            <li>We ask you to do this experiment in a well-lit room</li>
-            <li>Additionally, please make sure no one else is in the room for the time of the experiment to minimize
-                noise
-            </li>
-        </ul>
-
-        <h1>Conducting the Experiment</h1>
-        <ul>
-            <li>In the following, you will be redirected to a site displaying a video for you to watch</li>
-            <li>On the right side, you will see your webcam feed with annotations displaying the predicted emotions from
-                the
-                facial recognition model</li>
-            <li>Under the webcam, the collected data from the Oxocard will be displayed in a graph</li>
-            <li>Once you enter the site, please allow the use of the camera in your web browser</li>
-            <li>In the dropdown, please select your Oxocard (if not already selected)
-                <ul>
-                    <li>Should your Oxocard not show up, please restart it, refresh the web browser, and try again</li>
-                </ul>
-            </li>
-            <li>Then once you are ready, simply press the "Start" button</li>
-            <li>The video will then start</li>
-            <li>Simply watch the video until the end and press the "Stop" button once the video finishes</li>
-            <li>That's it! Thank you for participating in the experiment!</li>
-        </ul>
+        </div>
     </div>
-
 </body>
 {{ render_footer(version) }}
 

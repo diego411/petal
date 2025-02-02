@@ -17,6 +17,7 @@ from src.resource.api.ExperimentResource import ExperimentResource
 from src.resource.api.ExperimentActionResource import ExperimentActionResource
 from src.resource.api.ObservationResource import ObservationResource
 from src.resource.template.TemplateResource import TemplateResource
+from src.resource.template.NestedTemplateResource import NestedTemplateResource
 from src.resource.template.EntityTemplateResource import EntityTemplateResource
 from src.resource.api.LegacyResource import LegacyResource
 from src.resource.api.LogoutResource import LogoutResource
@@ -123,8 +124,13 @@ def create_app():
     )
 
     api.add_resource(
+        NestedTemplateResource,
+        '/<string:module>/<string:template>'
+    )
+
+    api.add_resource(
         EntityTemplateResource,
-        '/<string:template>/<string:entity_id>',
+        '/<string:template>/<int:entity_id>',
     )
 
     @app.context_processor
@@ -159,12 +165,6 @@ def create_app():
                 'error.html',
                 message=error.message
             ), 401
-
-    @app.route('/instructions', methods=['GET'])
-    def instructions():
-        return render_template(
-            'instructions.html'
-        )
 
     return app
 

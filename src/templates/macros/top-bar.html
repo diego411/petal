@@ -1,8 +1,10 @@
 {% macro render_top_bar(current_page, is_login_page=False) %}
+<link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
 <div class="top-bar">
     <a href="/" class="icon button">&#127793;</a> <!-- Unicode character for a plant icon -->
 
     {%if is_login_page == False %}
+    <a href="/instructions" class="button {% if current_page == 'instructions' %}highlighted{% endif %}">Instructions</a>
     <a href="/recordings" class="button {% if current_page == 'recordings' %}highlighted{% endif %}">Recordings</a>
     <a href="/live-emotion" class="button {% if current_page == 'live-emotion' %}highlighted{% endif %}">
         LiveEmotion
@@ -11,7 +13,7 @@
         Audio Classification
     </a>
     <a href="/experiments" class="button {% if current_page == 'experiments' %}highlighted{% endif %}">
-        Emotion Experiments
+        Experiments
     </a>
     <a href="/scripts" class="button {% if current_page == 'scripts' %}highlighted{% endif %}">Scripts</a>
     <button class="logout-button" onclick="logout()"><img class="logout-icon" src="/static/logout.svg"></button>

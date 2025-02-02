@@ -1,0 +1,58 @@
+{% macro render_instruction_navigation(selected) %}
+<div class="instruction-navigation">
+    <h4 class="{{'selected-instruction-item' if selected == 'overview'}}"><a href="/instructions">Overview</a></h4>
+    <ol>
+        <li>
+            <a class="{{'selected-instruction-item' if selected == 'oxocard-setup'}}"
+                href="/instructions/oxocard-setup">Oxocard Setup</a>
+        </li>
+        <li>
+            <a class="{{'selected-instruction-item' if selected == 'experiments'}}"
+                href="/instructions/experiment-instructions">Experiments</a>
+        </li>
+        <li>
+            <a class="{{'selected-instruction-item' if selected == 'recordings'}}"
+                href="/instructions/recordings">Recordings</a>
+        </li>
+        <li>
+            <a class="{{'selected-instruction-item' if selected == 'scripts'}}" href="/instructions/scripts">Scripts</a>
+        </li>
+        <li>
+            <a class="{{'selected-instruction-item' if selected == 'error-codes'}}"
+                href="/instructions/error-codes">Error codes</a>
+        </li>
+    </ol>
+</div>
+
+<style>
+    .selected-instruction-item {
+        color: #1b5e20;
+    }
+
+    .instruction-navigation {
+        border: 2px black solid;
+        background-color: white;
+        font-size: 21px;
+        min-width: 15%;
+        margin: 1em 0.5em 1em 1em;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .instruction-navigation li {
+        margin: 0.5em 0;
+    }
+
+    .instruction-navigation h4 {
+        padding: 0.5em 0.5em 0;
+        margin: 0;
+    }
+
+    .instruction-navigation h4 a {
+        all: unset;
+        text-decoration: none;
+        color: inherit;
+        cursor: pointer;
+    }
+</style>
+{% endmacro %}
