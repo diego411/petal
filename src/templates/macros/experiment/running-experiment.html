@@ -1,5 +1,7 @@
 {% macro render_running_experiment(data) %}
-<div class="wrapper">
+{% from "macros/confirmation-dialog.html" import render_confirmation_dialog %}
+{% from "macros/loading-spinner.html" import render_loading_spinner %}
+<div id="content" class="wrapper hidden">
     <div class="header">
         <h1>Experiment: {{data.experiment.name}}</h1>
         <button class="action-button" onclick="stop()" id="action-button">Finish Experiment</button>
@@ -22,25 +24,13 @@
     </div>
 </div>
 
-<!-- Confirmation Dialog -->
-<div class="overlay" id="confirmationDialog">
-    <div class="dialog">
-        <h3>Finish Experiment</h3>
-        <p>This will stop the experiment and upload the data to Dropbox! Are you sure you want to proceed?</p>
-        <div class="dialog-button-container">
-            <button class="cancel" id="cancelButton">Cancel</button>
-            <button class="confirm" id="confirmButton">Yes</button>
-        </div>
-    </div>
-</div>
+{{ render_loading_spinner() }}
+{{ render_confirmation_dialog() }}
 
-<script src="/static/face-api.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
-<script src="https://player.vimeo.com/api/player.js"></script>
 <script>
     const socket = io();
 
+    const content = document.getElementById('content');
     const iframe = document.getElementById('iframe');
     const player = new Vimeo.Player(iframe);
     const video = document.getElementById('video');
@@ -48,49 +38,15 @@
     const recordingName = document.getElementById('recording-name');
     const expectedUpdateParagraph = document.getElementById(`expected-update`);
 
-    const recording = {{ data.experiment.recording | tojson }};
+    const recording = {{ data.experiment.recording | tojson}};
     const experimentId = {{ data.experiment.id }};
 
     let dirty = true;
     let currentEmotion = undefined;
-    let output = [];
+    let chart = undefined;
 
     recordingName.textContent = recording.name;
     recordingName.href = `/recording/${recording.id}`;
-
-    updateExpectedUpdate();
-
-    const ctx = document.getElementById('chart')?.getContext('2d');
-    const myChart = new Chart(ctx, {
-        type: 'line', // Change this to 'bar' or other types if you prefer
-        data: {
-            labels: [].map((_, index) => index + 1), // Labels for X-axis (1, 2, 3, ...)
-            datasets: [{
-                label: 'Values',
-                data: [],
-                backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                borderColor: 'rgba(75, 192, 192, 1)',
-                borderWidth: 1,
-                pointRadius: 0,
-            }]
-        },
-        options: {
-            animations: {
-                duration: 200
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    max: 1
-                }
-            },
-            plugins: {
-                legend: {
-                    display: false
-                }
-            }
-        }
-    });
 
     // Start the camera and play video
     async function startVideo() {
@@ -137,63 +93,43 @@
         const emotion = Object.keys(expressions).reduce((a, b) => expressions[a] > expressions[b] ? a : b);
 
         if (currentEmotion !== emotion) {
-            output.push({
-                emotion: emotion,
-                timestamp: Date.now(),
-            })
+            fetch('/api/v1/observation', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    label: emotion,
+                    timestamp: Date.now(),
+                    experiment: experimentId
+                })
+            });
         }
         currentEmotion = emotion;
     }
 
-    const stop = async() => {
-        await openDialog();
+    const stop = async () => {
+        await openDialog('Finish Experiment', 'This will stop the experiment and upload the data! Are yousure you want to proceed?');
+        showLoadingSpinner();
 
-        player.pause().catch(function (error) {
-            console.error('Error stopping video:', error);
-        });
+        try {
+            player.pause().catch(function (error) {
+                console.error('Error stopping video:', error);
+            });
 
-        fetch(`/api/v1/experiment/${experimentId}/stop`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                recording_id: recording.id,
-                emotions: output
-            })
-        }).then(() => {
+            await fetch(`/api/v1/experiment/${experimentId}/stop`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+            });
+
             dirty = false;
             window.location.reload();
-        });
-    }
+        } finally {
+            hideLoadingSpinner();
+        }
 
-    function openDialog() {
-        const dialog = document.getElementById('confirmationDialog');
-        dialog.style.display = 'flex';
-
-        return new Promise((resolve, reject) => {
-            const confirmButton = document.getElementById('confirmButton');
-            const cancelButton = document.getElementById('cancelButton');
-
-            const handleConfirm = () => {
-                resolve();
-                cleanup();
-            };
-
-            const handleCancel = () => {
-                reject();
-                cleanup();
-            };
-
-            const cleanup = () => {
-                dialog.style.display = 'none';
-                confirmButton.removeEventListener('click', handleConfirm);
-                cancelButton.removeEventListener('click', handleCancel);
-            };
-
-            confirmButton.addEventListener('click', handleConfirm);
-            cancelButton.addEventListener('click', handleCancel);
-        });
     }
 
     function getNowFormatted() {
@@ -217,7 +153,7 @@
     socket.on('recording-stop', (data) => {
         const startTimeParagraph = document.getElementById(`start-time`);
         startTimeParagraph.textContent = "";
-        myChart.clear()
+        chart?.clear()
     });
 
     socket.on('recording-delete', (data) => {
@@ -233,10 +169,13 @@
         let measurements = data.measurements;
         const threshold = data.threshold * 2;
         measurements = measurements.slice(measurements.length - threshold);
-        myChart.data.labels = measurements.map((_, index) => index + 1);
-        myChart.data.datasets[0].data = measurements;
 
-        myChart.update();
+        if (chart !== undefined) {
+            chart.data.labels = measurements.map((_, index) => index + 1);
+            chart.data.datasets[0].data = measurements;
+
+            chart.update();
+        }
     });
 
     function calculateExpectedUpdate(lastUpdate, threshold, sampleRate) {
@@ -260,7 +199,7 @@
     setInterval(updateExpectedUpdate, 1000);
 
     // Start video and emotion detection
-    (async function run() {
+    async function run() {
         await loadModels();
         startVideo();
 
@@ -279,20 +218,64 @@
                 updateOutput(detection);
             }, 100);
         });
+    };
+
+    (async function mounted() {
+        await openDialog('Warning', 'Are you ready?', true, false);
+        content.classList.remove('hidden');
+        updateExpectedUpdate();
+
+        const ctx = document.getElementById('chart')?.getContext('2d');
+        chart = new Chart(ctx, {
+            type: 'line', // Change this to 'bar' or other types if you prefer
+            data: {
+                labels: [].map((_, index) => index + 1), // Labels for X-axis (1, 2, 3, ...)
+                datasets: [{
+                    label: 'Values',
+                    data: [],
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1,
+                    pointRadius: 0,
+                }]
+            },
+            options: {
+                animations: {
+                    duration: 200
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 1
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+
+        run();
+
+        window.addEventListener('beforeunload', function (event) {
+            if (!dirty)
+                return;
+
+            const message = "You have unsaved changes. Are you sure you want to leave?";
+            event.preventDefault();
+            event.returnValue = message;
+            return message;
+        });
     })();
-
-    window.addEventListener('beforeunload', function (event) {
-        if (!dirty)
-            return;
-
-        const message = "You have unsaved changes. Are you sure you want to leave?";
-        event.preventDefault();
-        event.returnValue = message;
-        return message;
-    });
 </script>
 
 <style>
+    .hidden {
+        display: none;
+    }
+
     .top-bar {
         position: absolute;
     }
@@ -392,59 +375,6 @@
         outline: none;
         border-radius: 5px;
         cursor: pointer;
-    }
-
-    .overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        display: none;
-        justify-content: center;
-        align-items: center;
-    }
-
-    .dialog {
-        padding: 1em;
-        background: #fff;
-        border-radius: 8px;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-        text-align: left;
-        width: 300px;
-    }
-
-    .dialog h3 {
-        margin: 0;
-        padding: 0;
-    }
-
-    /* Button container */
-    .dialog-button-container {
-        display: flex;
-        justify-content: flex-end;
-        gap: 1em;
-        margin-top: auto;
-        /* Push buttons to the bottom */
-    }
-
-    .dialog button {
-        padding: 10px 20px;
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
-        font-size: 16px;
-    }
-
-    .dialog .confirm {
-        background-color: #4CAF50;
-        color: white;
-    }
-
-    .dialog .cancel {
-        background-color: #f44336;
-        color: white;
     }
 </style>
 {% endmacro %}

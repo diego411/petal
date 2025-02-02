@@ -40,7 +40,7 @@ def augment(voltages, augment_window, augment_padding):
     return augmented_voltages
 
 
-def convert(measurements: list, sample_rate=10_000, path=None):
+def convert(measurements: list, sample_rate=10_000, path=None) -> str:
     # Assuming the voltage measurements range from 0 to 1, map them to audio samples (-1 to 1)
     audio_samples = np.array(measurements) * 2 - 1
     # Scale the audio samples to fit within the valid range for 16-bit audio (-32768 to 32767)

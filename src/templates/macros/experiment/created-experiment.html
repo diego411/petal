@@ -1,17 +1,19 @@
 {% macro render_created_experiment(data) %}
+{% from "macros/snackbar.html" import render_snackbar %}
+<script src="https://unpkg.com/htmx.org@1.9.6"></script>
 <div class="wrapper">
     <h1>Experiment: {{data.experiment.name}}</h1>
     <hr>
     <br>
     <p>
         <b>Creation Date</b>: {{data.experiment.created_at}} <br>
-        <b>Status</b>:        {{data.experiment.status}}
+        <b>Status</b>: {{data.experiment.status}}
     </p>
     <p>
-        This experiment has not started yet! For instructions please refer to this page. <br>
+        For instructions to configure the experiment please refer to this page. <br>
         I herby consent to the use of the data blah blah <input type="checkbox" id="consent-checkbox">
     </p>
-    <p>To start please select a device for the experiment and then click the start button</p>
+    <p>To proceed please select a device for the experiment and then click the next button</p>
     <div>
         <select class="select" name="recordings" id="recordings" onchange="updateRecording()">
             {% for recording in data.recordings.recordings %}
@@ -21,29 +23,44 @@
         <button class="action-button" onclick="start()">Start</button>
     </div>
 </div>
+{{ render_snackbar() }}
 
 <script>
     const recordings = document.getElementById('recordings');
     const consentCheckbox = document.getElementById('consent-checkbox');
-    const experimentId = {{ data.experiment.id }};
+    let experimentId = {{ data.experiment.id }};
 
-    function start() {
+    async function start() {
         if (!consentCheckbox.checked) {
             alert("You need to consent to continue!");
             return;
         }
 
-        fetch(`/api/v1/experiment/${experimentId}/start`, {
+        if (!recordings.value) {
+            alert("You need to select a device!");
+            return;
+        }
+
+        const response = await fetch(`/api/v1/experiment/${experimentId}/start`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                recording_id: recordings.value
+                recording: recordings.value
             })
-        }).then(() => {
-            window.location.reload();
         });
+
+        if (response.ok) {
+            window.location.reload();
+        }
+        else {
+            const responseBody = await response.json();
+            showSnackbar(
+                `${responseBody.error}${responseBody.message ? ': ' + responseBody.message : ''}`,
+                "error"
+            );
+        }
     }
 </script>
 

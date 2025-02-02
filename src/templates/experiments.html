@@ -64,18 +64,37 @@
             overflow-y: auto;
             max-height: 75%;
         }
+
+        .link-button {
+            all: unset;
+            /* Removes all default button styles */
+            color: rgba(255, 0, 0, 0.897);
+            text-decoration: underline;
+            cursor: pointer;
+            font-size: inherit;
+            display: inline;
+        }
+
+        .link-btn:hover {
+            text-decoration: none;
+        }
     </style>
 </head>
 
 <body>
-    {% from "macros.html" import render_top_bar, render_footer %}
+    {% from "macros/top-bar.html" import render_top_bar %}
+    {% from "macros/footer.html" import render_footer %}
+    {% from "macros/confirmation-dialog.html" import render_confirmation_dialog %}
+    {% from "macros/snackbar.html" import render_snackbar %}
+    {% from "macros/loading-spinner.html" import render_loading_spinner %}
+
     {{ render_top_bar('experiments') }}
     <div class="container">
-        <h1>Your Emotion Experiments</h1>
+        <h1>Your Experiments</h1>
         <div class="button-wrapper">
-            <input id="name-input" type="text" class="name-input not-displayed" placeholder="Enter a name" required>
-            <button id="create-button" class="action-button" onclick="create()">+ New Experiment</button>
-            <button id="cancel-button" class="action-button cancel hidden" onclick="cancel()">Cancel</button>
+            <input id="nameInput" type="text" class="name-input not-displayed" placeholder="Enter a name" required>
+            <button id="createButton" class="action-button" onclick="create()">+ New Experiment</button>
+            <button id="cancelButton" class="action-button cancel hidden" onclick="cancel()">Cancel</button>
         </div>
         <div class="table-container">
             <table>
@@ -91,25 +110,35 @@
                 <tbody>
                     {% for experiment in data.experiments %}
                     <tr>
-                        <td>{{ experiment.status }}</td>
+                        <td
+                            style="color: {{'green' if experiment.status == 'CREATED' else ('orange' if experiment.status == 'RUNNING' else 'grey')}};">
+                            {{ experiment.status }}
+                        </td>
                         <td>{{ experiment.name }}</td>
                         <td>{{ experiment.created_at }}</td>
                         <td>{{ experiment.started_at or '/' }}</td>
-                        <td><a href="/experiment/{{experiment.id}}">View</a></td>
+                        <td>
+                            <a href="/experiment/{{experiment.id}}">View</a>
+                            <button class="link-button" onclick="deleteExperiment('{{experiment.id}}')">Delete</button>
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
+
+    {{ render_loading_spinner() }}
+    {{ render_confirmation_dialog()}}
+    {{ render_snackbar() }}
 </body>
 {{ render_footer() }}
 
 <script>
     let creating = false;
-    const createButton = document.getElementById('create-button');
-    const cancelButton = document.getElementById('cancel-button');
-    const nameInput = document.getElementById('name-input');
+    const createButton = document.getElementById('createButton');
+    const cancelButton = document.getElementById('cancelButton');
+    const nameInput = document.getElementById('nameInput');
 
     const create = async () => {
         creating = !creating;
@@ -119,7 +148,6 @@
             createButton.textContent = "Create";
             nameInput.classList.remove('not-displayed')
         } else {
-            console.log(nameInput.value);
             const nameValue = nameInput.value;
             if (nameValue === null || nameValue === undefined || nameValue.length === 0) {
                 alert("You need to input a name!");
@@ -155,8 +183,29 @@
         nameInput.classList.add('not-displayed');
     }
 
-    const redirectToExperiment = (id) => {
-        window.location.href = `/experiment/${id}`;
+    async function deleteExperiment(id) {
+        await openDialog('Delete Experiment', 'Are you sure you want to delete this experiment? If the experiment is running the observed data will be lost! If the experiment is finished this will NOT effect the data in the cloud!')
+
+        showLoadingSpinner();
+
+        try {
+            const response = await fetch(`/api/v1/experiment/${id}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                window.location.reload();
+            } else {
+                const responseBody = await response.json();
+                showSnackbar(
+                    `${responseBody.error}: ${responseBody.message}`,
+                    "error"
+                );
+            }
+        } finally {
+            hideLoadingSpinner();
+        }
+        
     }
 </script>
 
