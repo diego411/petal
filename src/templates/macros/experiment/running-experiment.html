@@ -51,7 +51,8 @@
     recordingName.href = `/recording/${recording.id}`;
 
     player.on('play', async function () {
-        videoStartedAtTimestamp = Date.now();
+        if (videoStartedAtTimestamp == undefined)
+            videoStartedAtTimestamp = Date.now();
     });
 
     // Start the camera and play video
@@ -121,7 +122,7 @@
     const stop = async () => {
         await openDialog('Finish Experiment', 'This will stop the experiment and upload the data! Are yousure you want to proceed?');
         stopping = true;
-        showLoadingSpinner();
+        showLoadingSpinner("Please do not close the browser window!");
 
         try {
             player.pause().catch(function (error) {
