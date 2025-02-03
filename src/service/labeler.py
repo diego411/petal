@@ -9,6 +9,8 @@ from typing import List, Tuple, Optional
 from src.entity.Obervation import Observation
 from src.entity.Recording import Recording
 from datetime import datetime, timedelta
+from src.service import observation_service
+import json
 
 
 def merge_observations(observations: List[Observation], gap_threshold: int = AppConfig.MERGE_OBSERVATIONS_THRESHOLD):
@@ -92,12 +94,35 @@ def get_file_path(label: str, experiment_id: int) -> str:
     return f"{directory}/{experiment_id}.wav"
 
 
+def upload_observations(observations: List[Observation], experiment_id: int, postfix: str = None):
+    try:
+        observations_output_file_name = f'{experiment_id}_observations'
+        if postfix:
+            observations_output_file_name = f'{observations_output_file_name}_{postfix}'
+        observation_output_path = f'data/{observations_output_file_name}.json'
+
+        with open(observation_output_path, "w") as f:
+            json.dump(observation_service.to_dtos(observations), f, indent=4)
+
+        try:
+            dropbox_controller.upload_file_to_dropbox(
+                file_path=observation_output_path,
+                dropbox_path=f"/EmotionExperiment/observations/{observations_output_file_name}.json"
+            )
+        except ApiError as e:
+            current_app.logger.error(e.error)
+        finally:
+            os.remove(observation_output_path)
+    except Exception:
+        current_app.logger.error(f"Failed to upload observations for experiment with id {experiment_id}")
+
+
 def upload_to_dropbox(index: int, dropbox_file_prefix: str, file_path: str, label: str):
     # TODO: can you do a bulk upload somehow?
     try:
         dropbox_controller.upload_file_to_dropbox(
             file_path=file_path,
-            dropbox_path=f"/EmotionExperiment/{label}/{dropbox_file_prefix}_{index}.wav"
+            dropbox_path=f"/EmotionExperiment/labeled/{label}/{dropbox_file_prefix}_{index}.wav"
         )
     except ApiError as e:
         current_app.logger.error(e.error)
@@ -120,15 +145,16 @@ def label_recording(
     try:
         recording = AudioSegment.from_wav(recording_path)
     except Exception as e:
-        print(e)
         current_app.logger.error(f"Creating audio segment out of recording file failed while labeling: {e}")
         return  # TODO throw bad request exception or something (user feedback)
 
     observations = sorted(observations, key=lambda obs: obs.observed_at)
     full_length = len(observations)
+    upload_observations(observations, experiment_id=experiment.id)
 
     observations = merge_observations(observations)
     merged_length = len(observations)
+    upload_observations(observations, experiment_id=experiment.id, postfix="merged")
 
     current_app.logger.info(
         f"Preprocessing for experiment {experiment.id} filtered out {full_length - merged_length} observations"

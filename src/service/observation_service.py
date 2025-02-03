@@ -5,6 +5,21 @@ from typing import List
 from src.entity.Obervation import Observation
 
 
+def to_dtos(observations: List[Observation]) -> List[dict]:
+    return list(map(
+        lambda observation: to_dto(observation),
+        observations
+    ))
+
+
+def to_dto(observation: Observation) -> dict:
+    return {
+        'label': observation.label,
+        'observed_at': int(observation.observed_at.timestamp() * 1000),
+        'experiment': observation.experiment
+    }
+
+
 @transactional()
 def find_by_experiment(cursor: Cursor, experiment_id: int) -> List[Observation]:
     cursor.execute(
