@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Instructions</title>
+    <link rel="stylesheet" type="text/css" href="/static/styles/styles.css">
+    <style>
+        .wrapper {
+            width: 100%;
+            height: 100%;
+            display: flex;
+        }
+
+        .content {
+            display: flex;
+            justify-content: center;
+            border: 2px black solid;
+            width: 100%;
+            background-color: white;
+            margin: 1em 1em 1em 0.5em;
+            padding: 1em;
+            overflow: auto;
+            max-width: 95%;
+            font-size: 22px;
+        }
+
+        .content h1 {
+            padding: 0;
+            margin: 0;
+        }
+
+        .inner-content {
+            width: 70%;
+        }
+
+        .vertical-image {
+            width: 10em;
+        }
+
+        .horizontal-image {
+            height: 10em;
+        }
+
+        .figures {
+            display: flex;
+            flex-direction: row;
+        }
+    </style>
+</head>
+
+<body>
+    {% from "macros/top-bar.html" import render_top_bar %}
+    {% from "macros/footer.html" import render_footer %}
+    {% from "macros/instruction-navigation.html" import render_instruction_navigation %}
+
+    {{ render_top_bar('instructions') }}
+
+    <div class="wrapper">
+        {{ render_instruction_navigation('oxocard-setup') }}
+
+        <div class="content">
+            <div>
+                <h1>Oxocard Setup</h1>
+
+                <h1>WORK IN PROGRESS</h1>
+                <br><br>
+
+                <p>
+                    To set up the
+                </p>
+
+                <b>Components</b>
+                <br>
+
+                <div class="figures">
+                    <figure>
+                        <img class="vertical-image" src="/static/oxocard.jpg">
+                        <figcaption>Oxocard</figcaption>
+                    </figure>
+                    <figure>
+                        <img class="vertical-image" src="/static/plant-cartridge.jpg">
+                        <figcaption>Plant Cartridge</figcaption>
+                    </figure>
+                    <figure>
+                        <img class="vertical-image" src="/static/cables.jpg">
+                        <figcaption>Wires</figcaption>
+                    </figure>
+                </div>
+
+                <ul>
+                    <li>Plug the Plant Cartridge into the Oxocard Connect interface like this</li>
+                    <div class="figures">
+                        <figure>
+                            <img class="horizontal-image" src="/static/oxocard-connect-1.jpg">
+                        </figure>
+                        <figure>
+                            <img class="horizontal-image" src="/static/oxocard-connect-2.jpg">
+                        </figure>
+                    </div>
+                    <li>Plug the wires into the Plant Cartridge
+                        <ul>
+                            <li>There are two inputs for the wires on the Plant Cartridge</li>
+                            <li>Use the one labeled with "IN"</li>
+                        </ul>
+                    </li>
+                    <li>Connect the Oxocard to a power source using a USB-C cable</li>
+                    <li>The Oxocard might download some data on startup and try to connect to memorized WIFI networks
+                        which
+                        might
+                        take a few minutes</li>
+                    <li>Once the Oxocard is fully started up you should see a screen similar to this one:</li>
+                    <li>Navigate to the menu entry called "WIFI" using the buttons under the screen</li>
+                    <li>Confirm by clicking the middle button</li>
+                    <li>Follow the instructions to connect to the WIFI</li>
+                    <li>Once the Oxocard is connected to the WIFI, simply click the menu entry "START"</li>
+                    <li>Your Oxocard should now show up here:</li>
+                    <li>If your Oxocard does not show up above, try to unplug it from the power source and plug it in
+                        again,
+                        then
+                        click the menu entry "START" once again</li>
+                    <li>Should there be any complications with the steps, please contact Diego under this E-Mail
+                        address: <a href="mailto:dlonghi1@smail.uni-koeln.de">dlonghi1@smail.uni-koeln.de</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</body>
+{{ render_footer(version) }}
+
+</html>

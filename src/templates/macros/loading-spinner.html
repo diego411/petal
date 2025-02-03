@@ -59,18 +59,22 @@
         <div class="spinner"></div>
         <p><b>Loading...</b></p>
         <p>This may take a while</p>
+        <p id="loadingSpinnerCustomMessage"></p>
     </div>
 </div>
 
 <script>
     const loadingModal = document.getElementById('loadingModal');
+    const loadingSpinnerCustomMessage = document.getElementById('loadingSpinnerCustomMessage');
     hideLoadingSpinner();
-    function showLoadingSpinner() {
+    function showLoadingSpinner(customMessage) {
         loadingModal.style.display = 'flex';
+        loadingSpinnerCustomMessage.textContent = customMessage;
     }
 
     function hideLoadingSpinner() {
         loadingModal.style.display = 'none';
+        loadingSpinnerCustomMessage.textContent = '';
     }
 </script>
 {% endmacro %}

@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>Plant Emotion Classification</title>
+    <title>Petal</title>
     <link rel="stylesheet" type="text/css" href="/static/styles/styles.css">
     <style>
         .top-bar {
@@ -12,6 +12,19 @@
         body {
             justify-content: center;
         }
+
+        .wrapper {
+            display: flex;
+            max-width: 80%;
+        }
+
+        .description {
+            max-width: 50%;
+        }
+
+        .description p {
+            font-size: 25px;
+        }
     </style>
 </head>
 
@@ -19,7 +32,19 @@
     {% from "macros/top-bar.html" import render_top_bar %}
     {% from "macros/footer.html" import render_footer %}
     {{ render_top_bar() }}
-    <img src="/static/Molde.gif">
+
+    <div class="wrapper">
+        <img src="/static/Molde.gif">
+        <div class="description">
+            <h1>Welcome to Petal!</h1>
+            <p>
+                Petal is a system for facilitating the collection of electrical signal data from plants! <br>
+                If you are new here please refer to the instructions page <a href="/instructions">here</a>! <br>
+                Otherwise feel free to navigate through the modules using the top bar! <br> <br>
+                <b>Have fun collecting!</b> &#127793;
+            </p>
+        </div>
+    </div>
 </body>
 {{ render_footer(version) }}
 

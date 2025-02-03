@@ -1,6 +1,7 @@
 import os
 from datetime import datetime
 from typing import Optional, List
+from pydub import AudioSegment
 
 import numpy as np
 from flask import current_app
@@ -300,20 +301,62 @@ def stop(recording: Recording):
     return shared_link
 
 
-def stop_and_label(experiment: Experiment, recording: Recording):
+def trim_audio(
+        file_path: str,
+        file_name_prefix: str,
+        recording_started_at: datetime,
+        video_started_at: datetime
+) -> Optional[str]:
+    if video_started_at <= recording_started_at:
+        return None
+
+    audio = AudioSegment.from_wav(file_path)
+    trim_start_ms = (video_started_at - recording_started_at).total_seconds() * 1000
+    trimmed_audio = audio[trim_start_ms:]
+
+    output_path = f'audio/{file_name_prefix}_trimmed.wav'
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+    trimmed_audio.export(output_path, format="wav")
+    return output_path
+
+
+def stop_and_label(experiment: Experiment, recording: Recording, video_started_at: Optional[datetime]):
     start_time = recording.start_time
     delta_seconds = (recording.last_update - start_time).seconds
     measurements = measurement_service.get_values_for_recording(recording.id)
     sample_rate = int(len(measurements) / delta_seconds) if delta_seconds != 0 else 0
     observations = observation_service.find_by_experiment(experiment.id)
 
-    file_name_prefix = f'{recording.name}_{sample_rate}Hz_{int(start_time.timestamp() * 1000)}'
+    base_file_name = f'{experiment.id}_{experiment.name}_{recording.name}_{sample_rate}Hz'
+    file_name_prefix = f'{base_file_name}_{int(start_time.timestamp() * 1000)}'
     file_name = f'{file_name_prefix}.wav'
     file_path = wav_converter.convert(
         measurements,
         sample_rate=sample_rate,
         path=f'audio/{file_name}'
     )
+
+    trimmed_audio_path = None
+    try:
+        if video_started_at is not None:
+            file_name_prefix = f'{base_file_name}_{int(video_started_at.timestamp() * 1000)}'
+            trimmed_audio_path = trim_audio(
+                file_path=file_path,
+                file_name_prefix=file_name_prefix,
+                recording_started_at=recording.start_time,
+                video_started_at=video_started_at
+            )
+
+        dropbox_controller.upload_file_to_dropbox(
+            file_path=file_path if trimmed_audio_path is None else trimmed_audio_path,
+            dropbox_path=f'/EmotionExperiment/unlabeled/{file_name_prefix}.wav'
+        )
+    except Exception as e:
+        current_app.logger.error(e)
+
+    if trimmed_audio_path is not None:
+        os.remove(trimmed_audio_path)
 
     set_state(recording.id, RecordingState.STOPPED)
 
@@ -322,16 +365,8 @@ def stop_and_label(experiment: Experiment, recording: Recording):
         recording_path=file_path,
         recording=recording,
         observations=observations,
-        dropbox_path_prefix=file_name_prefix
+        dropbox_file_prefix=base_file_name
     )
-
-    try:
-        dropbox_controller.upload_file_to_dropbox(
-            file_path=file_path,
-            dropbox_path=f'/PlantRecordings/{recording.name}/{file_name}'
-        )
-    except ApiError as e:
-        current_app.logger.error(e.error)
 
     os.remove(file_path)
 
