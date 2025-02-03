@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Instructions</title>
+    <link rel="stylesheet" type="text/css" href="/static/styles/styles.css">
+    <style>
+        .wrapper {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        .content {
+            display: flex;
+            justify-content: center;
+            border: 2px black solid;
+            width: 100%;
+            background-color: white;
+            margin: 1em 1em 1em 0.5em;
+            padding: 1em;
+            overflow: auto;
+            max-width: 95%;
+            font-size: 22px;
+        }
+
+        .content h1 {
+            padding: 0;
+            margin: 0;
+        }
+
+        .inner-content {
+            width: 70%;
+        }
+
+        .vertical-image {
+            width: 10em;
+        }
+
+        .horizontal-image {
+            height: 10em;
+        }
+
+        .figures {
+            display: flex;
+            flex-direction: row;
+        }
+    </style>
+</head>
+
+<body>
+    {% from "macros/top-bar.html" import render_top_bar %}
+    {% from "macros/footer.html" import render_footer %}
+    {% from "macros/instruction-navigation.html" import render_instruction_navigation %}
+
+    {{ render_top_bar('instructions') }}
+
+    <div class="wrapper">
+        {{ render_instruction_navigation('overview') }}
+
+        <div class="content">
+            <div class="inner-content">
+                <h1>Overview</h1>
+                <p>
+                    This system is used to collect electrical signal data for plants. 
+                    The signals are collected through a sensor.
+                    Currently only the Oxocard sensor is supported.
+                    For instructions to set up the Oxocard please refer to the <a href="/instructions/oxocard-setup">Oxocard Setup</a> page.
+                    <br> <br>
+
+                    <b>Recordings</b>
+                    <br>
+                    If you are trying to collect data for your own experiments, you can create recordings.
+                    Instructions for this can be found on the <a href="/instructions/recordings">Recordings</a> page
+                    <br><br>
+
+                    <b>Experiments</b>
+                    <br>
+                    If you want to participate in our experiment to collect plant signal data for emotion recognition please refer to the
+                    <a href="/instructions/experiment-instructions">Experiments</a> page for instructions.
+                    <br><br>
+
+                    <b>Scripts</b>
+                    <br>
+                    If you are searching for instruction on the scripts which can be run on the sensors please refer to the 
+                    <a href="/instructions/scripts">Scripts</a> page.
+                    <br><br>
+
+                    <b>Error codes</b>
+                    <br>
+                    If you are encountering error codes and don't know what they mean please refer to the 
+                    <a href="/instructions/error-codes">Error codes</a> page.
+                </p>
+            </div>
+        </div>
+    </div>
+</body>
+{{ render_footer(version) }}
+
+</html>
