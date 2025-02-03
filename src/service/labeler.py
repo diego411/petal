@@ -92,15 +92,12 @@ def get_file_path(label: str, experiment_id: int) -> str:
     return f"{directory}/{experiment_id}.wav"
 
 
-def upload_to_dropbox(experiment_id: int, index: int, dropbox_path_prefix: str, file_path: str, label: str):
-    dropbox_file_name = f"{experiment_id}_{index}"
-    if dropbox_path_prefix:
-        dropbox_file_name = f"{dropbox_path_prefix}_{dropbox_file_name}"
+def upload_to_dropbox(index: int, dropbox_file_prefix: str, file_path: str, label: str):
     # TODO: can you do a bulk upload somehow?
     try:
         dropbox_controller.upload_file_to_dropbox(
             file_path=file_path,
-            dropbox_path=f"/EmotionExperiment/{label}/{dropbox_file_name}.wav"
+            dropbox_path=f"/EmotionExperiment/{label}/{dropbox_file_prefix}_{index}.wav"
         )
     except ApiError as e:
         current_app.logger.error(e.error)
@@ -111,7 +108,7 @@ def label_recording(
         recording_path: str,
         recording: Recording,
         observations: List[Observation] = None,
-        dropbox_path_prefix: str = None
+        dropbox_file_prefix: str = None
 ):
     if observations is None or len(observations) == 0:
         return
@@ -171,10 +168,9 @@ def label_recording(
         snippet.export(file_path, format="wav")
 
         upload_to_dropbox(
-            experiment_id=experiment.id,
             index=i,
             file_path=file_path,
-            dropbox_path_prefix=dropbox_path_prefix,
+            dropbox_file_prefix=f'{dropbox_file_prefix}_{observation.observed_at.timestamp() * 1000}',
             label=label,
         )
 
