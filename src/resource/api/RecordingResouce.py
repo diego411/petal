@@ -13,10 +13,28 @@ class RecordingResource(Resource):
     def __init__(self):
         self.socketio = current_app.socketio
 
-    @authenticate('api')
-    def get(self, payload: Payload):
+    @authenticate(endpoint_type='api')
+    def get(self, recording_id: int = None, payload: Payload = None):
         assert payload.resource == 'user', f"Expected payload of resource: 'user' got {payload.resource}"
-        return recording_service.get_all(user=payload.id), 200
+
+        if recording_id is None:
+            return recording_service.get_all(user=payload.id), 200
+
+        recording = recording_service.find_by_id(recording_id)
+
+        if recording is None:
+            return {
+                'error': 'Not found',
+                'message': f'No recording with id {recording_id} found'
+            }, 404
+
+        if recording.user != payload.id:
+            return {
+                'error': 'Not authorized',
+                'message': 'You are not authorized to access this recording'
+            }, 401
+
+        return recording_service.to_dto(recording), 200
 
     @authenticate('api')
     def post(self, payload: Payload):
@@ -44,6 +62,10 @@ class RecordingResource(Resource):
             sample_rate,
             threshold,
         )
+
+        current_app.socketio.emit('recording-register', {
+            'id': recording_id
+        })
 
         return {'id': recording_id}, 201
 
