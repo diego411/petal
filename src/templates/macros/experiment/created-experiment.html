@@ -10,10 +10,32 @@
         <b>Status</b>: {{data.experiment.status}}
     </p>
     <p>
-        For instructions to configure the experiment please refer to this page. <br>
-        I herby consent to the use of the data blah blah <input type="checkbox" id="consent-checkbox">
+        For instructions to configure the experiment please refer to <a
+            href="/instructions/experiment-instructions">this</a> page.<br>
+        <br>
+        This experiment does not save any of your personal data.The only data that will <br>
+        be saved are the electrical signal data from the plant and the output of the <br>
+        emotion recognition model. However, this data is completely anonymous it is <br>
+        impossible to infer your person from this data! The webcam feed will not be <br>
+        saved in any way!<br>
+        <br>
+        <b>
+            <a style="color: red;">TRIGGER WARNING:</a> The content of the following video clips may be <br>
+            disturbing to some viewers. The contents of the videos include <br>
+            harm of animals, war imagery, jumpscares and other potentially <br>
+            triggering images.<br>
+            <br>
+            If you do now feel equipped to view such content, we ask you to not take <br>
+            part in this experiment!
+        </b>
+        <br>
+        <br>
+        I have read the above terms and conditions and agree to take part <br>
+        in the experiment <input type="checkbox" id="consent-checkbox" required><br>
+        <br>
+        To proceed please select a device for the experiment and then click the <br>
+        Start button
     </p>
-    <p>To proceed please select a device for the experiment and then click the next button</p>
     <div>
         <select class="select" name="recordings" id="recordings" onchange="updateRecording()">
             {% for recording in data.recordings.recordings %}
@@ -32,8 +54,11 @@
 
     async function start() {
         if (!consentCheckbox.checked) {
-            alert("You need to consent to continue!");
+            consentCheckbox.classList.add('error');
+            alert("You need to consent by checking the checkbox to continue!");
             return;
+        } else {
+            consentCheckbox.classList.remove('error');
         }
 
         if (!recordings.value) {
@@ -124,6 +149,19 @@
     .consent-form {
         display: flex;
         gap: 1em;
+    }
+
+    input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+        accent-color: green;
+        /* Normal color */
+    }
+
+    .error {
+        box-shadow: 0 0 5px 2px rgba(255, 0, 0, 0.7);
+        /* Red glow */
+        border-radius: 4px;
     }
 </style>
 {% endmacro %}
