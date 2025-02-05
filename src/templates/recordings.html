@@ -91,7 +91,7 @@
             display: flex;
             flex-direction: row;
             gap: 0.4em
-        }        
+        }
     </style>
 </head>
 
@@ -101,10 +101,14 @@
     {% from "macros/confirmation-dialog.html" import render_confirmation_dialog %}
     {% from "macros/loading-spinner.html" import render_loading_spinner %}
     {% from "macros/snackbar.html" import render_snackbar %}
+    {% from "macros/help.html" import render_help %}
     {{ render_top_bar('recordings') }}
 
     <div class="wrapper">
         <p style="display: none;" id="recordings">{{data.recordings}}</p>
+        <div style="margin-top: 1em;">
+            {{render_help('/instructions/recording-instructions')}}
+        </div>
         <ul>
             {% for recording in data.recordings %}
             <li id="item_{{recording.id}}">
