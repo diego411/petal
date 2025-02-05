@@ -136,8 +136,10 @@
 <body>
     {% from "macros/top-bar.html" import render_top_bar %}
     {% from "macros/footer.html" import render_footer %}
+    {% from "macros/help.html" import render_help %}
     {{ render_top_bar('scripts') }}
     <p id="parsedScripts" style="display: none;">{{data.parsed_scripts}}</p>
+    {{render_help('/instructions/script-instructions')}}
     <h2 id="scriptHeader"></h2>
     <div class="wrapper">
         <div>
