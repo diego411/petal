@@ -174,12 +174,18 @@
     }
 
     socket.on('recording-start', (data) => {
+        if (recording?.id != data.id)
+            return;
+
         const startTimeParagraph = document.getElementById(`start-time`);
         startTimeParagraph.textContent = `Start time: ${data['start_time']}`;
         recording['last_update'] = getNowFormatted();
     });
 
     socket.on('recording-stop', (data) => {
+        if (recording?.id != data.id)
+            return;
+
         const startTimeParagraph = document.getElementById(`start-time`);
         startTimeParagraph.textContent = "";
         chart?.clear()

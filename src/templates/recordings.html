@@ -112,24 +112,24 @@
         <ul>
             {% for recording in data.recordings %}
             <li id="item_{{recording.id}}">
-                <div id="header_{{recording.name}}" class="header">
+                <div class="header">
                     <a href="/recording/{{recording.id}}">{{recording.name}}</a>
                     {% if recording.start_time is defined %}
-                    <p id="start_time_{{recording.name}}">Start time: {{recording.start_time}}</p>
+                    <p id="start_time_{{recording.id}}">Start time: {{recording.start_time}}</p>
                     {% else %}
-                    <p id="start_time_{{recording.name}}"></p>
+                    <p id="start_time_{{recording.id}}"></p>
                     {% endif %}
 
-                    <p id="expected_update_{{recording.name}}"></p>
+                    <p id="expected_update_{{recording.id}}"></p>
 
-                    <div id="action_container_{{recording.name}}" class="action-container">
+                    <div id="action_container_{{recording.id}}" class="action-container">
                         {% if recording.start_time is defined %}
-                        <button id="button_stop_{{recording.name}}" onclick="stop('{{recording.id}}')"
+                        <button id="button_stop_{{recording.id}}" onclick="stop('{{recording.id}}')"
                             class="action-button finish" title="Finish Recording">
                             <img class="finish-icon" src="/static/finish.svg">
                         </button>
                         {% else %}
-                        <button id="button_start_{{recording.name}}"
+                        <button id="button_start_{{recording.id}}"
                             onclick="executeAction('start', '{{recording.id}}')" class="action-button">
                             <img class="start-icon" src="/static/play.svg" title="Start Recording">
                         </button>
@@ -155,7 +155,7 @@
 
     for (const recording of recordings) {
         const measurements = recording.measurements.slice(recording.measurements.length);
-        const expectedUpdateParagraph = document.getElementById(`expected_update_${recording.name}`);
+        const expectedUpdateParagraph = document.getElementById(`expected_update_${recording.id}`);
         expectedUpdate = calculateExpectedUpdate(recording['last_update'], recording['threshold'], recording['sample_rate']);
         if (!isNaN(expectedUpdate))
             expectedUpdateParagraph.textContent = `Expecting update in: ${expectedUpdate}s`
@@ -191,23 +191,23 @@
                 }
             }
         });
-        charts[recording.name] = myChart;
+        charts[recording.id] = myChart;
     }
 
     socket.on('recording-start', (data) => {
-        const startTimeParagraph = document.getElementById(`start_time_${data.name}`);
+        const startTimeParagraph = document.getElementById(`start_time_${data.id}`);
         if (startTimeParagraph !== null)
             startTimeParagraph.textContent = `Start time: ${data['start_time']}`;
 
-        const startButton = document.getElementById(`button_start_${data.name}`);
+        const startButton = document.getElementById(`button_start_${data.id}`);
         if (startButton !== null)
             startButton.remove();
 
-        const actionContainer = document.getElementById(`action_container_${data.name}`);
+        const actionContainer = document.getElementById(`action_container_${data.id}`);
 
         const button = document.createElement('button');
         button.setAttribute('class', 'action-button finish');
-        button.id = `button_stop_${data.name}`;
+        button.id = `button_stop_${data.id}`;
         button.onclick = () => stop(data.id);
 
         const img = document.createElement('img');
@@ -218,24 +218,32 @@
 
         actionContainer.insertBefore(button, actionContainer.firstChild);
 
-        const recordingIndex = recordings.findIndex(recording => recording.name === data.name);
+        const recordingIndex = recordings.findIndex(recording => recording.id === data.id);
         recordings[recordingIndex]['last_update'] = getNowFormatted();
     });
 
     socket.on('recording-stop', (data) => {
         const item = document.getElementById(`item_${data.id}`);
         item?.remove();
-        recordings.splice(recordings.findIndex(recording => recording.id === data.id), 1);
+
+        const recordingIndex = recordings.findIndex(recording => recording.id === data.id);
+
+        if (recordingIndex >= 0)
+            recordings.splice(recordingIndex, 1);
     });
 
     socket.on('recording-delete', (data) => {
         const item = document.getElementById(`item_${data.id}`);
         item?.remove();
-        recordings.splice(recordings.findIndex(recording => recording.id === data.id), 1);
+
+        const recordingIndex = recordings.findIndex(recording => recording.id === data.id);
+
+        if (recordingIndex >= 0)
+            recordings.splice(recordingIndex, 1);
     });
 
     socket.on(`recording-update`, (data) => {
-        const chart = charts[data.name];
+        const chart = charts[data.id];
         if (chart === undefined)
             return;
 
@@ -319,7 +327,7 @@
 
     function updateExpectedUpdate() {
         for (recording of recordings) {
-            const expectedUpdateParagraph = document.getElementById(`expected_update_${recording.name}`);
+            const expectedUpdateParagraph = document.getElementById(`expected_update_${recording.id}`);
             const expectedUpdate = calculateExpectedUpdate(recording['last_update'], recording['threshold'], recording['sample_rate']);
             if (!isNaN(expectedUpdate))
                 expectedUpdateParagraph.textContent = `Expecting update in: ${expectedUpdate}s`
