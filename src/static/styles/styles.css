@@ -74,12 +74,12 @@ body {
 }
 
 footer {
-    width: 100%;
     padding: 5px 0;
     margin-left: 1rem;
     text-align: start;
     color: #1b5e20;
     font-size: 0.8em;
     position: fixed;
+    left: 0;
     bottom: 0;
 }
