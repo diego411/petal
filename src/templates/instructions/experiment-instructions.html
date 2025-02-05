@@ -13,6 +13,8 @@
         }
 
         .content {
+            display: flex;
+            justify-content: center;
             width: 100%;
             background-color: white;
             border: 2px black solid;
@@ -26,6 +28,10 @@
         .content h1 {
             padding: 0;
             margin: 0;
+        }
+
+        .inner-content {
+            width: 70%;
         }
 
         .vertical-image {
@@ -54,63 +60,145 @@
         {{ render_instruction_navigation('experiments') }}
 
         <div class="content">
-            <h1>Emotion Experiment</h1>
+            <div class="inner-content">
+                <h1>Emotion Experiment</h1>
+                <br>
 
-            <h1>WORK IN PROGRESS</h1>
-            <ul>
-                <li>The goal of this experiment is to collect plant signal data while the participants watch a series of
-                    emotionally charged videos</li>
-                <li>The face of the participant will be recorded through a webcam and an emotion recognition model will
-                    be
-                    used
-                    to extract the currently felt emotion of the participant</li>
-                <li>At the same time, a sensor connected to a nearby plant will record the plant signals</li>
-                <li>The video feed from the webcam will not be saved by us</li>
-                <li>The only saved data entails the extracted emotions and the plant signals</li>
-                <li>The collected data will then be used to train machine learning models</li>
-            </ul>
+                <p>
+                    Before conducting the experiment please set up your Oxocard sensor according to the instructions <a
+                        href="/instructions/oxocard-setup">here</a>
+                </p>
+                <h4>To conduct this experiment you need the following requirements:</h4>
 
-            <h4>To conduct this experiment you need the following requirements:</h4>
-            <ul>
-                <li><input type="checkbox"> an Oxocard</li>
-                <li><input type="checkbox"> a Plant Cartridge and the appropriate wires</li>
-                <li><input type="checkbox"> a basil plant</li>
-                <li><input type="checkbox"> a webcam</li>
-            </ul>
+                <input type="checkbox"> an Oxocard <br>
+                <input type="checkbox"> a Plant Cartridge and the appropriate wires <br>
+                <input type="checkbox"> a plant (preferably basil) <br>
+                <input type="checkbox"> a webcam <br>
 
-            <h1 id="experimentSetup">Experiment Setup</h1>
-            <ul>
-                <li>We highly recommend conducting the experiment on a desktop computer and not on your smartphone</li>
-                <li>Connect the Oxocard to the power source and restart it</li>
-                <li>Connect the red wire to one of the plant's leaves</li>
-                <li>Plug the black wire into the earth</li>
-                <li>Place the plant next to you and sit in front of your webcam</li>
-                <li>We ask you to do this experiment in a well-lit room</li>
-                <li>Additionally, please make sure no one else is in the room for the time of the experiment to minimize
-                    noise
-                </li>
-            </ul>
 
-            <h1>Conducting the Experiment</h1>
-            <ul>
-                <li>In the following, you will be redirected to a site displaying a video for you to watch</li>
-                <li>On the right side, you will see your webcam feed with annotations displaying the predicted emotions
-                    from
-                    the
-                    facial recognition model</li>
-                <li>Under the webcam, the collected data from the Oxocard will be displayed in a graph</li>
-                <li>Once you enter the site, please allow the use of the camera in your web browser</li>
-                <li>In the dropdown, please select your Oxocard (if not already selected)
+                <h3>About this experiment</h3>
+                <ul>
+                    <li>
+                        The goal of this experiment is to collect plant signal data while the participants watch a
+                        series of emotionally charged (and potentially triggering) videos
+                    </li>
+                    <li>The face of the participant will be recorded through a webcam and an emotion recognition model
+                        will
+                        be
+                        used
+                        to extract the currently felt emotion of the participant</li>
+                    <li>At the same time, a sensor connected to a nearby plant will record the plant signals</li>
+                    <li>The video feed from the webcam will not be saved by us</li>
+                    <li>The only saved data entails the extracted emotions and the plant signals</li>
+                    <li>The collected data will then be used to train machine learning models</li>
+                </ul>
+
+
+
+                <h2 id="experimentSetup">Experiment Setup</h2>
+                <p>
+                    Please follow the upcoming steps to set up the experiment.
+                    We highly recommend conducting the experiment on a desktop computer and not on your smartphone.
+                    We ask you to do this experiment in a well-lit room. Additionally, please make sure no one else
+                    is in the room for the time of the experiment to minimize noise.
+                </p>
+                <ol>
+                    <li>Place the plant on the desk next to you</li><br>
+                    <li>Restart your Oxocard by unplugging it and plugging it in again</li><br>
+                    <li>Start the Oxocard script by clicking the start option</li><br>
+                    <p>
+                        <b>To conduct the experiment you need a fresh recording.</b><br>
+                        <br>
+                        A fresh recording:
                     <ul>
-                        <li>Should your Oxocard not show up, please restart it, refresh the web browser, and try again
-                        </li>
+                        <li>is registered. Meaning it shows up on the <a href="/recordings">Recordings</a> page and</li>
+                        <li>is not yet in progress. Meaning it has not started yet and does not have a start date!</li>
                     </ul>
-                </li>
-                <li>Then once you are ready, simply press the "Start" button</li>
-                <li>The video will then start</li>
-                <li>Simply watch the video until the end and press the "Stop" button once the video finishes</li>
-                <li>That's it! Thank you for participating in the experiment!</li>
-            </ul>
+                    <br>
+                    You can check if you have a fresh recording by going to the
+                    <a href="/recordings">Recordings</a> page and checking if there are any entries that do not have
+                    a start date yet.
+                    <br>
+                    <div class="figures">
+                        <figure>
+                            <img class="horizontal-image" src="/static/fresh-recording.png">
+                            <figcaption>This is a fresh recording</figcaption>
+                        </figure>
+                        <figure>
+                            <img class="horizontal-image" src="/static/not-fresh-recording.png">
+                            <figcaption>This is not a fresh recording! Since it is already in progress</figcaption>
+                        </figure>
+                    </div>
+                    Should there be a recording in progress that was created with the Oxocard you are planning to use
+                    for the
+                    experiment
+                    you will first have to stop the recording by pressing the red button in the top right of the
+                    unit!
+                    <figure>
+                        <img class="horizontal-image" src="/static/remove-recording.png">
+                        <figcaption>How to stop recording</figcaption>
+                    </figure>
+                    </p>
+                    <br>
+                    <b>Afterwards you will need to redo Step 2 and 3 to get a fresh recording!</b>
+                    <br> <br>
+                    <li>Connect the red wire to one of the plant's leaves</li><br>
+                    <li>Place the black wire into the earth</li><br>
+                    <li>Turn on your webcam</li>
+                </ol>
+
+                <h2>Conducting the Experiment</h2>
+                <ol>
+                    <li>Navigate to the <a href="/experiments">Experiments</a> page</li><br>
+                    <h3 id="createExperiment">Create experiment</h3>
+                    <li>Click on the create button</li><br>
+                    <li>Input your name</li><br>
+                    <li>Click on create</li><br>
+                    <figure>
+                        <img class="horizontal-image" src="/static/create-experiment.png">
+                        <figcaption>Steps 1 - 4</figcaption>
+                    </figure>
+                    <h3 id="startExperiment">Start experiment</h3>
+                    <li>You will be navigated to a page looking like this:</li><br>
+                    <figure>
+                        <img class="horizontal-image" src="/static/created-experiment.png">
+                        <figcaption>Created experiment</figcaption>
+                    </figure>
+                    <br>
+                    On this page, we ask you to carefully read the terms and conditions of the experiment.
+                    Once you have read them and agree we ask you to click the checkbox.
+                    Then you will need to select your fresh recording in the dropdown and press the start button
+                    <br><br>
+                    <h3 id="duringExperiment">During the experiment</h3>
+                    <li>
+                        Once you have clicked start you will be asked if you're ready.
+                        Once you click yes you will be shown a page similar to this one:
+                    </li>
+                    <figure>
+                        <img class="horizontal-image" src="/static/running-experiment.png">
+                        <figcaption>Running experiment</figcaption>
+                    </figure>
+                    <br>
+                    Your browser at this point will prompt you to allow the use of your camera. Please press allow.
+                    Once you have allowed the use of your camera the video will start playing and the experiment
+                    has offically begun!
+                    <br><br>
+                    The top right of the page will display your webcam feed along with the emotions predicted from the
+                    facial
+                    recognition model. The bottom right will display the data coming in from the oxocard.
+                    On the left you will see the video.
+                    <br><br>
+                    <li>Now simply watch the video. Please refrain from pausing the video at all.</li><br>
+                    <li>
+                        Once the video has finished, simply press the "Finish experiment" button on the top. <br>
+                        <b>Please do not close the browser window yet at this point!</b><br>
+                        Once the loading screen has finished you can savely close the browser window.
+                    </li>
+                </ol>
+                <h3>That's it! Thank you for participating in the experiment!</h3>
+                <p>If you want to start another experiment please start following the steps again starting 
+                    <a href="/instructions/experiment-instructions#experimentSetup">here</a></p>
+            </div>
         </div>
     </div>
 </body>
