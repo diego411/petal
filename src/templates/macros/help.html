@@ -1,0 +1,21 @@
+{% macro render_help(link) %}
+<div class="help-container">
+    <img src="/static/help.png" style="width: 2em;">
+    <p>
+        If you don't know what to do here please refer to the instructions <a href="{{link}}">here.</a>
+    </p>
+</div>
+
+<style>
+    .help-container {
+        width: fit-content;
+        display: flex;
+        align-items: center;
+        gap: 0.5em;
+        background-color: white;
+        border: 1px black solid;
+        border-radius: 5px;
+        padding: 0em 0.5em;
+    }
+</style>
+{% endmacro %}

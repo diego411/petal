@@ -87,10 +87,12 @@
     {% from "macros/confirmation-dialog.html" import render_confirmation_dialog %}
     {% from "macros/snackbar.html" import render_snackbar %}
     {% from "macros/loading-spinner.html" import render_loading_spinner %}
+    {% from "macros/help.html" import render_help %}
 
     {{ render_top_bar('experiments') }}
     <div class="container">
         <h1>Your Experiments</h1>
+        {{render_help('/instructions/experiment-instructions#createExperiment')}}
         <div class="button-wrapper">
             <input id="nameInput" type="text" class="name-input not-displayed" placeholder="Enter a name" required>
             <button id="createButton" class="action-button" onclick="create()">+ New Experiment</button>

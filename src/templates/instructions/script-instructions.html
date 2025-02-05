@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Script Instructions</title>
+    <link rel="stylesheet" type="text/css" href="/static/styles/styles.css">
+    <style>
+        .wrapper {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        .content {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            background-color: white;
+            border: 2px black solid;
+            margin: 1em 1em 1em 0.5em;
+            padding: 1em;
+            overflow: auto;
+            max-width: 95%;
+            font-size: 22px;
+        }
+
+        .content h1 {
+            padding: 0;
+            margin: 0;
+        }
+
+        .inner-content {
+            width: 70%;
+        }
+
+        .vertical-image {
+            width: 10em;
+        }
+
+        .horizontal-image {
+            height: 10em;
+        }
+
+        .figures {
+            display: flex;
+            flex-direction: row;
+        }
+    </style>
+</head>
+
+<body>
+    {% from "macros/top-bar.html" import render_top_bar %}
+    {% from "macros/footer.html" import render_footer %}
+    {% from "macros/instruction-navigation.html" import render_instruction_navigation %}
+
+    {{ render_top_bar('instructions') }}
+
+    <div class="wrapper">
+        {{ render_instruction_navigation('recordings') }}
+
+        <div class="content">
+            <div class="inner-content">
+                <h1>Recordings</h1>
+                <br>
+
+                <h1>WIP</h1>
+            </div>
+        </div>
+    </div>
+</body>
+{{ render_footer(version) }}
+
+</html>

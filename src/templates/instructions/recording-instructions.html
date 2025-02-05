@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Recording Instructions</title>
+    <link rel="stylesheet" type="text/css" href="/static/styles/styles.css">
+    <style>
+        .wrapper {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        .content {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            background-color: white;
+            border: 2px black solid;
+            margin: 1em 1em 1em 0.5em;
+            padding: 1em;
+            overflow: auto;
+            max-width: 95%;
+            font-size: 22px;
+        }
+
+        .content h1 {
+            padding: 0;
+            margin: 0;
+        }
+
+        .inner-content {
+            width: 70%;
+        }
+
+        .vertical-image {
+            width: 10em;
+        }
+
+        .horizontal-image {
+            height: 10em;
+        }
+
+        .figures {
+            display: flex;
+            flex-direction: row;
+        }
+    </style>
+</head>
+
+<body>
+    {% from "macros/top-bar.html" import render_top_bar %}
+    {% from "macros/footer.html" import render_footer %}
+    {% from "macros/instruction-navigation.html" import render_instruction_navigation %}
+
+    {{ render_top_bar('instructions') }}
+
+    <div class="wrapper">
+        {{ render_instruction_navigation('recordings') }}
+
+        <div class="content">
+            <div class="inner-content">
+                <h1>Recordings</h1>
+                <br>
+
+                <p>
+                    Before being able to work with recordings please set up your Oxocard sensor according to the instructions <a
+                        href="/instructions/oxocard-setup">here</a>
+                </p>
+
+                <h2>Create Recording</h2>
+                <p>
+                    You can create a recording by restarting your Oxocard and then pressing start
+                </p>
+                <figure>
+                    <img class="horizontal-image" src="/static/oxocard.jpg">
+                </figure>
+                <p>
+                    When you then navigate to the <a href="/recordings">Recordings</a> page you should see a unit for your recording. <br>
+                    <br>
+                    <b>
+                        Note: if there already is an existing recording for your Oxocard restarting the oxocard will not create a new one.
+                        If you want a fresh recording you will first have to get rid of the current recording for that Oxocard.
+                        For more information on how to get rid of recordings refer to the <a href="#finishRecordings">Finish Recording</a> section
+                    </b>
+                </p>
+                <h2>Start Recording</h2>
+                <p>
+                    In the top right of the unit there is a button to start the recording.
+                </p>
+                <figure>
+                    <img class="horizontal-image" src="/static/start-recording.png">
+                    <figcaption>Start recording</figcaption>
+                </figure>
+                <p>
+                    The unit should now display a start date and an estimate on when the next update should arrive.
+                </p>
+                <figure>
+                    <img class="horizontal-image" src="/static/started-recording.png">
+                    <figcaption>Started recording</figcaption>
+                </figure>
+                <p>
+                    Once measurement data comes in it will be display inside the graph of the unit
+                </p>
+                <figure>
+                    <img class="horizontal-image" src="/static/running-recording.png">
+                    <figcaption>Measurements</figcaption>
+                </figure>
+                <br>
+                <h2 id="finishRecordings">Finish Recording</h2>
+                <p>
+                    To finish a recording you simply press the red button in the top right of the unit.
+                    Once you confirm that you want to finish and the loading is done the data will be uploaded
+                    to the dropbox. To access the data simply click the link that will be displayed on the bottom of the
+                    screen.
+                </p>
+                <div class="figures">
+                    <figure>
+                        <img class="horizontal-image" src="/static/finish-recording-1.png">
+                        <figcaption>Finish recording</figcaption>
+                    </figure>
+                    <figure>
+                        <img class="horizontal-image" src="/static/finish-recording-2.png">
+                        <figcaption>Link to the data</figcaption>
+                    </figure>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+{{ render_footer(version) }}
+
+</html>

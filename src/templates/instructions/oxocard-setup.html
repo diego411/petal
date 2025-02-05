@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <title>Instructions</title>
     <link rel="stylesheet" type="text/css" href="/static/styles/styles.css">
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
     <style>
         .wrapper {
             width: 100%;
@@ -46,6 +47,22 @@
             display: flex;
             flex-direction: row;
         }
+
+        table {
+            border-collapse: collapse;
+            background-color: #f4f4f4;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
+
+        th {
+            background-color: #f4f4f4;
+            text-align: left;
+        }
     </style>
 </head>
 
@@ -60,14 +77,12 @@
         {{ render_instruction_navigation('oxocard-setup') }}
 
         <div class="content">
-            <div>
+            <div class="inner-content">
                 <h1>Oxocard Setup</h1>
-
-                <h1>WORK IN PROGRESS</h1>
-                <br><br>
+                <br>
 
                 <p>
-                    To set up the
+                    To set up the oxocard for data collection you need the components pictured below.
                 </p>
 
                 <b>Components</b>
@@ -88,43 +103,125 @@
                     </figure>
                 </div>
 
-                <ul>
-                    <li>Plug the Plant Cartridge into the Oxocard Connect interface like this</li>
+                <p>You can follow the upcoming steps to set up your oxocard for data collection.</p>
+                <ol>
+                    <li>Plug the Plant Cartridge into the Oxocard Connect interface like this</li><br>
                     <div class="figures">
                         <figure>
                             <img class="horizontal-image" src="/static/oxocard-connect-1.jpg">
+                            <figcaption>Connect Plant Cartridge Step 1</figcaption>
                         </figure>
                         <figure>
                             <img class="horizontal-image" src="/static/oxocard-connect-2.jpg">
+                            <figcaption>Connect Plant Cartridge Step 1</figcaption>
                         </figure>
                     </div>
-                    <li>Plug the wires into the Plant Cartridge
-                        <ul>
-                            <li>There are two inputs for the wires on the Plant Cartridge</li>
-                            <li>Use the one labeled with "IN"</li>
-                        </ul>
-                    </li>
-                    <li>Connect the Oxocard to a power source using a USB-C cable</li>
-                    <li>The Oxocard might download some data on startup and try to connect to memorized WIFI networks
-                        which
-                        might
-                        take a few minutes</li>
-                    <li>Once the Oxocard is fully started up you should see a screen similar to this one:</li>
-                    <li>Navigate to the menu entry called "WIFI" using the buttons under the screen</li>
-                    <li>Confirm by clicking the middle button</li>
-                    <li>Follow the instructions to connect to the WIFI</li>
-                    <li>Once the Oxocard is connected to the WIFI, simply click the menu entry "START"</li>
-                    <li>Your Oxocard should now show up here:</li>
-                    <li>If your Oxocard does not show up above, try to unplug it from the power source and plug it in
-                        again,
-                        then
-                        click the menu entry "START" once again</li>
-                    <li>Should there be any complications with the steps, please contact Diego under this E-Mail
-                        address: <a href="mailto:dlonghi1@smail.uni-koeln.de">dlonghi1@smail.uni-koeln.de</a></li>
-                </ul>
+                    <br>
+                    <li>Plug the wires into the Plant Cartridge:<br><br>
+                        <b>There are two inputs for wires on the Plant Cartridge. Use the one labeled with "IN" as
+                            pictured below</b>
+                    </li><br>
+                    <div class="figures">
+                        <figure>
+                            <img class="horizontal-image" src="/static/plant-cartridge-connect.jpg">
+                            <figcaption>Connect wires to Plant Cartridge</figcaption>
+                        </figure>
+                    </div>
+                    <br>
+                    <li>Connect the Oxocard to a power source using a USB-C cable</li><br>
+                    <li>
+                        The Oxocard might download some data on startup and try to connect to memorized WIFI networks
+                        which might take a few minutes
+                    </li><br>
+                    <li>Once the Oxocard is fully started up you should see a screen similar to this one:</li><br>
+                    <div class="figures">
+                        <figure>
+                            <img class="horizontal-image" src="/static/oxocard.jpg">
+                            <figcaption>Oxocard start screen</figcaption>
+                        </figure>
+                    </div>
+                    <br>
+                    <li>Navigate to the menu entry called "WIFI" using the buttons under the screen</li><br>
+                    <div class="figures">
+                        <figure>
+                            <img class="horizontal-image" src="/static/oxocard-wifi.jpg">
+                            <figcaption>Oxocard WIFI option</figcaption>
+                        </figure>
+                    </div>
+                    <br>
+                    <li>Confirm by clicking the middle button</li><br>
+                    <li>Follow the instructions to connect to the WIFI</li><br>
+                    <li>Once the Oxocard is connected to the WIFI, simply click the menu entry "START"</li><br>
+                    <li>Your Oxocard should now show up in the table below. If you previously already set up an oxocard
+                        and started it, it will also show up below</li><br>
+                    <table id="recordingsTable">
+                        <thead>
+                            <tr>
+                                <th>Recording</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tr id="placeholder">
+                            <td colspan="2" style="text-align: center; color: gray;">No data available</td>
+                        </tr>
+                    </table>
+                    <br>
+                    <li>
+                        If your Oxocard does not show up above, try to unplug it from the power source and plug it in
+                        again, then click the menu entry "START" once again
+                    </li><br>
+                    <li>
+                        Should there be any complications with the steps, please contact Diego under this E-Mail
+                        address: <a href="mailto:dlonghi1@smail.uni-koeln.de">dlonghi1@smail.uni-koeln.de</a>
+                    </li><br>
+                </ol>
             </div>
         </div>
     </div>
+
+    <script>
+        const socket = io();
+
+        try {
+            fetch('/api/v1/recording').then(async (response) => {
+                const responseBody = await response.json();
+                if (!responseBody?.recordings)
+                    return;
+
+                for (const recording of responseBody.recordings) {
+                    addTableRow(recording.name)
+                }
+            })
+        } catch {
+
+        }
+
+        socket.on('recording-register', async (data) => {
+            if (!data.id)
+                return;
+
+            const response = await fetch(`/api/v1/recording/${data.id}`);
+            if (response.ok) {
+                const responseBody = await response.json();
+                addTableRow(responseBody?.name)
+            }
+        })
+
+        function addTableRow(name) {
+            const table = document.getElementById("recordingsTable");
+            const placeholder = document.getElementById("placeholder");
+
+            if (placeholder) {
+                placeholder.remove();
+            }
+
+            const newRow = table.insertRow();
+            const cell1 = newRow.insertCell(0);
+            const cell2 = newRow.insertCell(1);
+            cell1.innerHTML = name;
+            cell2.innerHTML = "✅";
+        }
+    </script>
 </body>
 {{ render_footer(version) }}
 

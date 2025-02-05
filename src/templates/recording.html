@@ -142,6 +142,7 @@
         const userName = document.getElementById('userName').textContent;
         let initialData = JSON.parse(document.getElementById('initialData').textContent);
         const threshold = Number(document.getElementById('threshold').textContent) * 2;
+        const recordingId = '{{ data.recording.id }}';
         initialData = initialData.slice(initialData.length - threshold);
 
         const ctx = document.getElementById('myChart').getContext('2d');
@@ -172,6 +173,9 @@
         });
 
         socket.on('recording-start', (data) => {
+            if (recordingId != data.id)
+                return;
+
             const startTimeParagraph = document.getElementById(`start_time`);
             if (startTimeParagraph !== null)
                 startTimeParagraph.textContent = `Recording start time: ${data['start_time']}`;
@@ -207,15 +211,21 @@
         });
 
         socket.on('recording-stop', (data) => {
+            if (recordingId != data.id)
+                return;
+
             location.reload();
         });
 
         socket.on('recording-delete', (data) => {
+            if (recordingId != data.id)
+                return;
+
             location.reload();
         });
 
         socket.on(`recording-update`, (data) => {
-            if (data.name !== userName)
+            if (recordingId != data.id)
                 return;
 
             let measurements = data.measurements;

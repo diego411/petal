@@ -1,12 +1,13 @@
 {% macro render_running_experiment(data) %}
 {% from "macros/confirmation-dialog.html" import render_confirmation_dialog %}
 {% from "macros/loading-spinner.html" import render_loading_spinner %}
+{% from "macros/help.html" import render_help %}
 <div id="content" class="wrapper hidden">
     <div class="header">
         <h1>Experiment: {{data.experiment.name}}</h1>
         <button class="action-button" onclick="stop()" id="action-button">Finish Experiment</button>
     </div>
-
+    {{render_help('/instructions/experiment-instructions#duringExperiment')}}
     <div class="container">
         <iframe id="iframe" src="https://player.vimeo.com/video/495184503"></iframe>
 
@@ -136,15 +137,20 @@
             const sleepMs = (expectedUpdate * 1000) + 5000;
             await sleep(sleepMs); // this is done to wait for the last batch of measurements
             
-            await fetch(`/api/v1/experiment/${experimentId}/stop`, {
+            const requestData = {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: videoStartedAtTimestamp !== undefined ? JSON.stringify({
+                body: JSON.stringify({})
+            };
+
+            if (videoStartedAtTimestamp !== undefined)
+                requestData['body'] = JSON.stringify({
                     video_started_at_timestamp: videoStartedAtTimestamp
-                }) : undefined
-            });
+                });
+            
+            await fetch(`/api/v1/experiment/${experimentId}/stop`, requestData);
 
             dirty = false;
             window.location.reload();
@@ -168,12 +174,18 @@
     }
 
     socket.on('recording-start', (data) => {
+        if (recording?.id != data.id)
+            return;
+
         const startTimeParagraph = document.getElementById(`start-time`);
         startTimeParagraph.textContent = `Start time: ${data['start_time']}`;
         recording['last_update'] = getNowFormatted();
     });
 
     socket.on('recording-stop', (data) => {
+        if (recording?.id != data.id)
+            return;
+
         const startTimeParagraph = document.getElementById(`start-time`);
         startTimeParagraph.textContent = "";
         chart?.clear()
@@ -317,6 +329,7 @@
     .header {
         display: flex;
         gap: 2em;
+        margin-bottom: 1em;
     }
 
     .header h1 {
