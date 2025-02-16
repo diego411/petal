@@ -25,11 +25,9 @@ def upload_file_to_dropbox(file_path: str, dropbox_path: str) -> str:
 
 
 def download_folder(dbx, dropbox_folder, local_folder='data'):
-    # Ensure the local folder exists
     if not os.path.exists(local_folder):
         os.makedirs(local_folder)
 
-    # List files in the folder
     for entry in dbx.files_list_folder(dropbox_folder).entries:
         dropbox_path = entry.path_lower
         local_path = os.path.join(local_folder, os.path.basename(dropbox_path))

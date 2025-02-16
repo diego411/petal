@@ -7,3 +7,4 @@ __pycache__
 logs
 /dbs/**.db
 /dbs/**.db-journal
+out
