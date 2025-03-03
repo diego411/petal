@@ -1,7 +1,9 @@
 import os.path
 
 from ml.dataset import get_data_loaders, download_data
-from ml.model import ResCNNet
+from ml.models.ResCNNet import ResCNNet
+from ml.models.CNNet import CNNet
+#from ml.RandomClassifier import RandomClassifier
 from ml.functions import train, test
 from ml.evaluation import build_confusion_matrix_with_metrics, save_confusion_matrix
 import torch
@@ -59,7 +61,7 @@ if __name__ == '__main__':
     train_dataloader, test_dataloader, validation_dataloader = get_data_loaders()
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-    model = ResCNNet(n_output=7).to(device)
+    model = CNNet(n_output=7).to(device)
     # model.load_state_dict(torch.load(f'../out/models/50_Fri Feb 14 16:01:54 2025.pth'))
     print("Number of training samples:", len(train_dataloader))
     train_model(model, train_dataloader, validation_dataloader)
