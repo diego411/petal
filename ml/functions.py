@@ -52,7 +52,7 @@ def test(dataloader, model, cost, verbose=0):
     f1 = f1_score(all_labels, all_preds, average='macro')
 
     if verbose != 0:
-        print(f'\nTest Error:\nacc: {(100 * correct):>0.1f}%, avg loss: {test_loss:>8f}')
+        print(f'acc: {(100 * correct):>0.1f}%, avg loss: {test_loss:>8f}')
         print(f'Precision: {precision:.4f}, Recall: {recall:.4f}, F1-score: {f1:.4f}\n')
 
     return test_loss, correct, precision, recall, f1

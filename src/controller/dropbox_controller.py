@@ -25,7 +25,7 @@ def upload_file_to_dropbox(file_path: str, dropbox_path: str) -> str:
     return shared_link
 
 
-def download_folder(dbx, dropbox_folder, local_folder: Path = Path('data')):
+def download_folder(dbx, dropbox_folder: str, local_folder: Path = Path('data')):
     if not os.path.exists(local_folder):
         os.makedirs(local_folder)
 
