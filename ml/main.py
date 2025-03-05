@@ -72,6 +72,7 @@ def get_class_counts(dataloader):
 
 if __name__ == '__main__':
     dataset_type = 'post-labeled'
+    spectrogram_type = 'mel-spectrogram'
     
     classes = ['angry', 'disgusted', 'fearful', 'happy', 'sad', 'surprised']
     n_output = 6
@@ -81,7 +82,7 @@ if __name__ == '__main__':
         n_output = 7
 
     #download_data()
-    train_dataloader, test_dataloader, validation_dataloader = get_data_loaders(dataset_type)
+    train_dataloader, test_dataloader, validation_dataloader = get_data_loaders(dataset_type, spectrogram_type)
     print(get_class_counts(test_dataloader))
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 

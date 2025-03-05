@@ -91,16 +91,51 @@ def show_and_save_spectrogram_image(spectrogram: np.ndarray, n_fft: int, sample_
 
     plt.close(fig)
 
-def show_mel_spectrogram(mel_spectrogram):
-    mel_spec_db = T.AmplitudeToDB()(mel_spectrogram)
+def show_mel_spectrogram(mel_spectrogram: np.ndarray, n_fft: int, sample_rate: int, path: Optional[Path]):
+    freqs = np.fft.rfftfreq(n_fft, d=1/sample_rate)  # Compute frequency values
+    
+    fig, ax = plt.subplots()
+    img = ax.imshow(
+        mel_spectrogram,
+        cmap='viridis',
+        origin='lower',
+        aspect='auto',
+        extent=(
+            0.0,
+            mel_spectrogram.shape[1],
+            freqs[0],
+            freqs[-1]
+        )
+    )
+    ax.set_xlabel('Time')
+    ax.set_ylabel('Mel Frequency')
+    ax.set_title('Mel Spectrogram')
+    cbar = fig.colorbar(img, ax=ax, label="Decibels (dB)")
 
-    plt.figure(figsize=(10, 4))
-    plt.imshow(mel_spec_db[0].numpy(), aspect='auto', origin='lower')
-    plt.colorbar(label="Decibels (dB)")
-    plt.title("Mel Spectrogram")
-    plt.xlabel("Time")
-    plt.ylabel("Mel Frequency")
     plt.show()
+
+    if path is None:
+        return
+
+    # reset plot before saving image
+    ax.axis('off')
+    ax.set_xlabel("")
+    ax.set_ylabel("")
+    ax.set_title("")
+    ax.set_xticks([])
+    ax.set_yticks([])
+    cbar.remove()
+
+    # save spectrogram image
+    fig.savefig(
+        path,
+        dpi=300,
+        bbox_inches='tight',
+        pad_inches=0,
+        transparent=True
+    )
+
+    plt.close(fig)
 
 def visualize_transform(image_path: Path, transform):
     image = Image.open(image_path)

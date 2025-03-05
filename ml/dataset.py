@@ -11,7 +11,7 @@ from torchvision import transforms
 from torchvision.datasets.folder import ImageFolder
 from torch.utils.data.dataset import Subset
 from torch.utils.data import DataLoader, random_split
-from torchaudio.transforms._transforms import Spectrogram
+from torchaudio.transforms._transforms import Spectrogram, MelSpectrogram
 import torchaudio.transforms as T
 from typing import Tuple, List
 from torch import Tensor
@@ -66,16 +66,7 @@ def get_number_of_fourier_transform_bins(waveform: Tensor) -> int:
     n_fft = 2 ** (waveform_length - 1).bit_length() // 2
     return max(n_fft, 8)  # Ensure n_fft is at least 8
 
-def create_spectrogram_transform(waveform: Tensor) -> Spectrogram:
-    n_fft = get_number_of_fourier_transform_bins(waveform)
-    return torchaudio.transforms.Spectrogram(
-        n_fft=n_fft,
-        hop_length=n_fft // 4
-    )
-
-def create_spectrogram(waveform: Tensor) -> np.ndarray:
-    spectrogram_transform: Spectrogram = create_spectrogram_transform(waveform)
-    spectrogram_tensor: Tensor = spectrogram_transform(waveform)
+def filter_spectrogram(spectrogram_tensor: Tensor) -> np.ndarray:
     spectrogram_numpy: np.ndarray = spectrogram_tensor.log2()[0, :, :].numpy().T
     
     infinity_filter = spectrogram_numpy != np.NINF
@@ -86,21 +77,41 @@ def create_spectrogram(waveform: Tensor) -> np.ndarray:
     )  # replace remaining -inf with smallest float
     return filtered_spectrogram
 
+def create_spectrogram_transform(waveform: Tensor) -> Spectrogram:
+    n_fft = get_number_of_fourier_transform_bins(waveform)
+    return T.Spectrogram(
+        n_fft=n_fft,
+        hop_length=n_fft // 4
+    )
 
-def create_mel_spectrogram(waveform, sample_rate):
-    waveform_length = waveform.shape[-1]
-    n_fft = 2 ** (waveform_length - 1).bit_length() // 2
-    n_fft = max(n_fft, 8)  # Ensure n_fft is at least 8
-    
+def create_mel_spectrogram_transform(waveform: Tensor, sample_rate: int) -> MelSpectrogram:
+    n_fft = get_number_of_fourier_transform_bins(waveform)
+    n_freqs = n_fft // 2 + 1
+    n_mels = min(64, n_freqs)
+
     mel_spectrogram = T.MelSpectrogram(
         sample_rate=sample_rate,
         n_fft=n_fft,         # Number of FFT bins
         hop_length=n_fft // 4,     # Step size between FFTs
-        n_mels=64          # Number of mel bands
+        n_mels=n_mels          # Number of mel bands
     )
 
-    # Convert waveform to mel spectrogram
-    return mel_spectrogram(waveform)
+    return mel_spectrogram
+
+def create_spectrogram(waveform: Tensor) -> np.ndarray:
+    spectrogram_transform: Spectrogram = create_spectrogram_transform(waveform)
+    spectrogram_tensor: Tensor = spectrogram_transform(waveform)
+    return filter_spectrogram(
+        spectrogram_tensor
+    ) 
+
+
+def create_mel_spectrogram(waveform, sample_rate):
+    mel_spectrogram_transform = create_mel_spectrogram_transform(waveform, sample_rate)
+    mel_spectrogram_tensor: Tensor = mel_spectrogram_transform(waveform)
+    return filter_spectrogram(
+        mel_spectrogram_tensor
+    )
 
 # Emotions occuring in the video
 # key is the timestamp where the specific video clip ENDS
@@ -152,7 +163,7 @@ def label_by_video_emotions():
             i += 1
 
 
-def create_spectrogram_images(dataset_type: str) -> Path:
+def create_spectrogram_images(dataset_type: str) -> Tuple[Path, Path]:
     ekman_emotions = ['angry', 'disgusted', 'fearful', 'happy', 'sad', 'surprised']
 
     all_emotions = ekman_emotions
@@ -162,9 +173,14 @@ def create_spectrogram_images(dataset_type: str) -> Path:
     if dataset_type == 'post-labeled':
         label_by_video_emotions()
 
-    spectrogram_path = BASE_DATA_PATH / f'{dataset_type}/spectrograms'
+    spectrogram_path = BASE_DATA_PATH / dataset_type / 'spectrograms'
+    mel_spectrogram_path = BASE_DATA_PATH / dataset_type / 'mel-spectrograms'
+    
     if not os.path.isdir(spectrogram_path):
         os.makedirs(spectrogram_path, mode=0o777, exist_ok=True)
+
+    if not os.path.isdir(mel_spectrogram_path):
+        os.makedirs(mel_spectrogram_path, mode=0o777, exist_ok=True)
 
     for emotion in all_emotions:
         print(f"Starting to generate spectrograms for emotion: {emotion}")
@@ -172,12 +188,25 @@ def create_spectrogram_images(dataset_type: str) -> Path:
         walker_wav  = sorted(str(p) for p in Path(path).glob(f'*.wav'))
         walker_mp3 = sorted(str(p) for p in Path(path).glob(f'*.mp3'))
 
-        emotion_path = spectrogram_path / emotion
+        spectrogram_emotion_path = spectrogram_path / emotion
+        mel_spectrogram_emotion_path = mel_spectrogram_path / emotion
 
-        if not os.path.isdir(emotion_path):
-            os.makedirs(emotion_path, mode=0o777, exist_ok=True)
-        elif os.listdir(emotion_path) != 0:
+        skip_spectrogram_generation = False
+        skip_mel_spectrogram_generation = False
+
+        if not os.path.isdir(spectrogram_emotion_path):
+            os.makedirs(spectrogram_emotion_path, mode=0o777, exist_ok=True)
+        elif os.listdir(spectrogram_emotion_path) != 0:
             print(f"Skipping generation of spectrograms for emotion: {emotion} since the directory is not empty!")
+            skip_spectrogram_generation = True
+
+        if not os.path.isdir(mel_spectrogram_emotion_path):
+            os.makedirs(mel_spectrogram_emotion_path, mode=0o777, exist_ok=True)
+        elif os.listdir(mel_spectrogram_emotion_path) != 0:
+            print(f"Skipping generation of mel spectrograms for emotion: {emotion} since the directory is not empty!")
+            skip_mel_spectrogram_generation = True
+
+        if skip_spectrogram_generation and skip_mel_spectrogram_generation:
             continue
 
         for i, file_path in enumerate(list(chain(walker_wav, walker_mp3))):
@@ -185,23 +214,42 @@ def create_spectrogram_images(dataset_type: str) -> Path:
             waveform = waveform + 1e-9
 
             try:
-                spectrogram: np.ndarray = create_spectrogram(waveform)
                 n_fft = get_number_of_fourier_transform_bins(waveform)
-                show_and_save_spectrogram_image(
-                    spectrogram=spectrogram,
-                    n_fft=n_fft,
-                    sample_rate=sample_rate,
-                    path=emotion_path / f'spec_img{i}.png'
-                )
+
+                if not skip_spectrogram_generation:
+                    spectrogram: np.ndarray = create_spectrogram(waveform)
+                    show_and_save_spectrogram_image(
+                        spectrogram=spectrogram,
+                        n_fft=n_fft,
+                        sample_rate=sample_rate,
+                        path=spectrogram_emotion_path / f'spec_img{i}.png'
+                    )
+
+                if not skip_mel_spectrogram_generation:
+                    mel_spectrogram: np.ndarray = create_mel_spectrogram(waveform, sample_rate)
+                    show_and_save_spectrogram_image(
+                        spectrogram=mel_spectrogram,
+                        n_fft=n_fft,
+                        sample_rate=sample_rate,
+                        path=mel_spectrogram_emotion_path / f'spec_img{i}.png'
+                    )
             except Exception:
                 print(f"Failed to generate spectrogram for emotion: {emotion} at index {i}")
-    return spectrogram_path
+    return spectrogram_path, mel_spectrogram_path
 
 
-def get_image_dataset(dataset_type: str) -> ImageFolder:
-    spectrogram_path: Path = create_spectrogram_images(dataset_type)
+def get_image_dataset(dataset_type: str, spectrogram_type: str) -> ImageFolder:
+    spectrogram_path, mel_spectrogram_path = create_spectrogram_images(dataset_type)
+
+    if spectrogram_type == 'spectrogram':
+        path = spectrogram_path
+    elif spectrogram_type == 'mel-spectrogram':
+        path = mel_spectrogram_path
+    else:
+        raise RuntimeError("Unexpected spectrogram type")
+    
     image_folder: ImageFolder = ImageFolder(
-        root=str(spectrogram_path),
+        root=str(path),
         transform=transforms.Compose([
             transforms.Resize((224, 224)),  # transforms.Resize((224,224))
             transforms.ToTensor()
@@ -227,8 +275,8 @@ def create_data_split(dataset: ImageFolder) -> Tuple[Subset, Subset, Subset]:
     return train, test, validation
 
 
-def get_data_loaders(dataset_type: str) -> Tuple[DataLoader, DataLoader, DataLoader]:
-    spectrogram_dataset: ImageFolder = get_image_dataset(dataset_type)
+def get_data_loaders(dataset_type: str, spectrogram_type: str) -> Tuple[DataLoader, DataLoader, DataLoader]:
+    spectrogram_dataset: ImageFolder = get_image_dataset(dataset_type, spectrogram_type)
 
     train_dataset, test_dataset, validation_dataset = create_data_split(spectrogram_dataset)
 
