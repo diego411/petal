@@ -71,11 +71,11 @@ def get_start_and_end_ms(
         recording_length: int
 ) -> Tuple[float, float]:
     start: float = int(observation.observed_at.timestamp() * 1000)  # datetime.timestamp return timestamp in seconds
-    end: float = int(next_observation.observed_at.timestamp() * 1000) if next_observation is not None else None
+    end: Optional[float] = int(next_observation.observed_at.timestamp() * 1000) if next_observation is not None else None
 
     # Convert these to milliseconds
     start_ms: float = start - recording_start_timestamp
-    end_ms: float = end - recording_start_timestamp if end is not None else None
+    end_ms: Optional[float] = end - recording_start_timestamp if end is not None else None
 
     if start_ms < 0:
         start_ms = 0  # Clip start of observation to the start of the recording
@@ -132,8 +132,8 @@ def label_recording(
         experiment: Experiment,
         recording_path: str,
         recording: Recording,
-        observations: List[Observation] = None,
-        dropbox_file_prefix: str = None
+        observations: Optional[List[Observation]] = None,
+        dropbox_file_prefix: Optional[str] = None
 ):
     if observations is None or len(observations) == 0:
         return
