@@ -23,3 +23,6 @@ seaborn~=0.13.2
 scikit-learn~=1.6.1
 pillow~=10.4.0
 psycopg2~=2.9.10
+lightning==2.5.0.post0
+lightning-utilities==0.13.1
+pytorch-lightning==2.5.0.post0
