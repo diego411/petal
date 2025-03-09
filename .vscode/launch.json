@@ -5,6 +5,13 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Debug model CLI",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "ml.model_cli",
+            "args": ["fit", "--config", "ml/scripts/config.yaml"]
+        },
+        {
             "name": "Debug ml main",
             "type": "debugpy",
             "request": "launch",

@@ -26,3 +26,6 @@ psycopg2~=2.9.10
 lightning==2.5.0.post0
 lightning-utilities==0.13.1
 pytorch-lightning==2.5.0.post0
+wandb==0.19.8
+jsonargparse==4.37.0
+wandb==0.19.8

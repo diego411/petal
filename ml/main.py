@@ -1,6 +1,6 @@
 import os.path
 
-from ml.dataset import get_data_loaders, download_data
+from ml.data.data_util import get_data_loaders, download_data
 from ml.models.ResCNNet import ResCNNet
 from ml.models.CNNet import CNNet
 #from ml.RandomClassifier import RandomClassifier
