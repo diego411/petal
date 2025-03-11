@@ -2,16 +2,18 @@ trainer:
   max_epochs: 50
   logger:
     - class_path: lightning.pytorch.loggers.WandbLogger
-      init_args:
+      init_args: 
         project: petal
         offline: false
+    - class_path: lightning.pytorch.loggers.CSVLogger
   callbacks:
-    - class_path: lightning.pytorch.callbacks.ModelCheckpoint
-      init_args:
-        save_top_k: 3
-        monitor: validation_f1
-        mode: max
-        dirpath: model_checkpoints
-        filename: {epoch:02d}-{validation_f1:.2f}
+    class_path: lightning.pytorch.callbacks.ModelCheckpoint
+    init_args:
+      #dirpath: experiments/experiment1/checkpoints  # Save checkpoints here
+      save_top_k: 3
+      monitor: validation_f1
+      filename: "{epoch:02d}-{validation_f1:.2f}"
+      mode: max
 model:
-  n_output: 6
+  n_output: 6 # test
+  lr: 0.002
