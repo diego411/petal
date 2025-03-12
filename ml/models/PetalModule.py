@@ -89,9 +89,10 @@ class PetalModule(L.LightningModule):
         os.makedirs(log_dir, mode=0o777, exist_ok=True)
 
         current_epoch = self.trainer.current_epoch
-        log_confusion_matrix(self.log, self.confusion_matrix, stage, log_dir, current_epoch)
-        log_precision_recall_curve(self.precision_recall_curve, stage, log_dir, current_epoch)
-        log_roc_curve(self.roc_curve, stage, log_dir, current_epoch)
+        idx_to_class = self.trainer.datamodule.idx_to_class
+        log_confusion_matrix(self.log, self.confusion_matrix, stage, log_dir, current_epoch, idx_to_class)
+        log_precision_recall_curve(self.precision_recall_curve, stage, log_dir, current_epoch, idx_to_class)
+        log_roc_curve(self.roc_curve, stage, log_dir, current_epoch, idx_to_class)
 
     def _reset_metrics(self):
         self.accuracy.reset()

@@ -1,6 +1,6 @@
 from lightning.pytorch.cli import LightningCLI
 from ml.models.VisionCNNet import VisionCNN 
-from ml.data.PlantAudioDataModule import PlantAudioDataModule
+from ml.data.PetalDataModule import PetalDataModule
 import wandb
 
 def cli_main() -> None:
@@ -8,7 +8,7 @@ def cli_main() -> None:
  
     cli = LightningCLI(
         model_class=VisionCNN,
-        datamodule_class=PlantAudioDataModule,
+        datamodule_class=PetalDataModule,
         save_config_kwargs={"overwrite": True},
     )
 

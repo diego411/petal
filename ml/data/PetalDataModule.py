@@ -1,4 +1,3 @@
-import os
 import lightning.pytorch as L
 import torch
 from torchvision import transforms
@@ -9,7 +8,7 @@ from ml.data.data_util import create_spectrogram_images
 from typing import Tuple
 
 
-class PlantAudioDataModule(L.LightningDataModule):
+class PetalDataModule(L.LightningDataModule):
 
     def __init__(
         self,
@@ -67,7 +66,10 @@ class PlantAudioDataModule(L.LightningDataModule):
                 transforms.ToTensor()
             ])
         )
-        print(image_folder.class_to_idx)
+        
+        self.class_to_idx = image_folder.class_to_idx
+        self.idx_to_class = {v: k for k, v in image_folder.class_to_idx.items()}
+
         return image_folder
 
     def train_dataloader(self):
