@@ -5,6 +5,24 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Debug model CLI",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "ml.model_cli",
+            "args": [
+                "fit", 
+                "--config", 
+                "ml/scripts/config.yaml",
+                "--trainer.logger.save_dir",
+                "ml/experiments",
+                "--trainer.logger.name",
+                "debug_run",
+                "--trainer.logger.version",
+                "version_0",
+                "--trainer.callbacks.dirpath=ml/experiments/debug_run/version_0/checkpoints"
+            ]
+        },
+        {
             "name": "Debug ml main",
             "type": "debugpy",
             "request": "launch",
