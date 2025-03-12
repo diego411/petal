@@ -3,6 +3,7 @@ from ml.models.VisionCNNet import VisionCNN
 from ml.data.PetalDataModule import PetalDataModule
 import wandb
 
+# TODO: maybe one cli for everything will work?
 def cli_main() -> None:
     wandb.login()
  

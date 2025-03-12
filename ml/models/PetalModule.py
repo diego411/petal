@@ -16,15 +16,16 @@ class PetalModule(L.LightningModule):
         self.save_hyperparameters()
         self.n_output = n_output
         self.criterion = nn.BCEWithLogitsLoss() if n_output == 1 else nn.CrossEntropyLoss()
-        
-        self.accuracy = Accuracy(task="binary" if n_output == 1 else "multiclass", num_classes=n_output)
-        self.precision = Precision(task="binary" if n_output == 1 else "multiclass", num_classes=n_output)
-        self.recall = Recall(task="binary" if n_output == 1 else "multiclass", num_classes=n_output)
-        self.f1 = F1Score(task="binary" if n_output == 1 else "multiclass", num_classes=n_output, average="weighted")
-        self.auroc = AUROC(task="binary" if n_output == 1 else "multiclass", num_classes=n_output)
-        self.confusion_matrix = ConfusionMatrix(task="binary" if n_output == 1 else "multiclass", num_classes=n_output) 
-        self.precision_recall_curve = PrecisionRecallCurve(task="binary" if n_output == 1 else "multiclass", num_classes=n_output)
-        self.roc_curve = ROC(task="binary" if n_output == 1 else "multiclass", num_classes=n_output)
+
+        task = "binary" if n_output == 1 else "multiclass" 
+        self.accuracy = Accuracy(task=task, num_classes=n_output)
+        self.precision = Precision(task=task, num_classes=n_output)
+        self.recall = Recall(task=task, num_classes=n_output)
+        self.f1 = F1Score(task=task, num_classes=n_output, average="weighted")
+        self.auroc = AUROC(task=task, num_classes=n_output)
+        self.confusion_matrix = ConfusionMatrix(task=task, num_classes=n_output) 
+        self.precision_recall_curve = PrecisionRecallCurve(task=task, num_classes=n_output)
+        self.roc_curve = ROC(task=task, num_classes=n_output)
         
     def forward(self, x) -> Tensor:
         raise NotImplementedError 
@@ -89,7 +90,7 @@ class PetalModule(L.LightningModule):
         os.makedirs(log_dir, mode=0o777, exist_ok=True)
 
         current_epoch = self.trainer.current_epoch
-        idx_to_class = self.trainer.datamodule.idx_to_class
+        idx_to_class = self.trainer.datamodule.idx_to_class # type: ignore
         log_confusion_matrix(self.log, self.confusion_matrix, stage, log_dir, current_epoch, idx_to_class)
         log_precision_recall_curve(self.precision_recall_curve, stage, log_dir, current_epoch, idx_to_class)
         log_roc_curve(self.roc_curve, stage, log_dir, current_epoch, idx_to_class)
