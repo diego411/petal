@@ -5,6 +5,7 @@ trainer:
       init_args: 
         project: petal
         offline: false
+        save_dir: ml/experiments
     - class_path: lightning.pytorch.loggers.CSVLogger
   callbacks:
     class_path: lightning.pytorch.callbacks.ModelCheckpoint
@@ -16,4 +17,4 @@ trainer:
       mode: max
 model:
   n_output: 6 # test
-  lr: 0.002
+  lr: 0.001
