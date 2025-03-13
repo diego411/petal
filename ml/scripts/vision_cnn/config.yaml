@@ -16,5 +16,6 @@ trainer:
       filename: "{epoch:02d}-{validation_f1:.2f}"
       mode: max
 model:
-  n_output: 6 # test
+  n_output: 6 
   lr: 0.001
+  freeze: true
