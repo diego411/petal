@@ -30,26 +30,27 @@ def log_confusion_matrix(
     ax.set_ylabel('True labels')
     ax.set_title(f'Confusion Matrix {stage} Epoch {current_epoch}')
 
-    log(
-        f'{stage}_true_negatives',
-        conf_matrix[0, 0].item(),
-        sync_dist=True
-    )
-    log(
-        f'{stage}_false_positives',
-        conf_matrix[0, 1].item(),
-        sync_dist=True
-    )
-    log(
-        f'{stage}_false_negatives',
-        conf_matrix[1, 0].item(),
-        sync_dist=True
-    )
-    log(
-        f'{stage}_true_positives',
-        conf_matrix[1, 1].item(),
-        sync_dist=True
-    )
+    if confusion_matrix.num_classes == 1:
+        log(
+            f'{stage}_true_negatives',
+            conf_matrix[0, 0].item(),
+            sync_dist=True
+        )
+        log(
+            f'{stage}_false_positives',
+            conf_matrix[0, 1].item(),
+            sync_dist=True
+        )
+        log(
+            f'{stage}_false_negatives',
+            conf_matrix[1, 0].item(),
+            sync_dist=True
+        )
+        log(
+            f'{stage}_true_positives',
+            conf_matrix[1, 1].item(),
+            sync_dist=True
+        )
     
     confusion_matrices_dir = log_dir / 'confusion_matrices'
     os.makedirs(confusion_matrices_dir, mode=0o777, exist_ok=True)
