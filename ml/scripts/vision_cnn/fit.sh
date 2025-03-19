@@ -5,6 +5,8 @@ EXPERIMENTS_PATH="ml/experiments"
 EXPERIMENT_PATH="$EXPERIMENTS_PATH/$EXPERIMENT_HASH"
 EXPERIMENT_VERSION=$(python -m ml.utils.generate_experiment_version $EXPERIMENT_PATH)
 
+echo Fitting experiment $EXPERIMENT_HASH with version $EXPERIMENT_VERSION
+
 python -m ml.clis.vision_cnn_cli fit \
     --config $CONFIG_FILE \
     --trainer.logger.save_dir=$EXPERIMENTS_PATH \

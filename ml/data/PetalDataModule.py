@@ -1,19 +1,25 @@
 import lightning.pytorch as L
 import torch
-from torchvision import transforms
 from torchvision.datasets import ImageFolder
 from torch.utils.data import DataLoader, random_split
 from torch.utils.data.dataset import Subset
 from ml.data.data_util import create_spectrogram_images
 from typing import Tuple
-
+import timm
+from timm.data.config import resolve_data_config
+from timm.data.transforms_factory import create_transform
+from collections import Counter
+import numpy as np
+from sklearn.model_selection import StratifiedShuffleSplit
+from sklearn.model_selection import train_test_split
 
 class PetalDataModule(L.LightningDataModule):
 
     def __init__(
         self,
-        dataset_type:str='post-labeled',
-        spectrogram_type:str='spectrogram',
+        dataset_type:str='post-labeled', # TODO: validate this param
+        spectrogram_type:str='spectrogram', # TODO: validate this param
+        pretrained_model_name:str='resnet18', # TODO: link this param to model
         train_ratio:float=0.7,
         validation_ratio:float=0.1,
         seed:int=42,
@@ -28,6 +34,12 @@ class PetalDataModule(L.LightningDataModule):
         self.seed = seed 
         self.batch_size = batch_size
         self.number_of_workers = number_of_workers
+        
+        timm_model = timm.create_model(pretrained_model_name, pretrained=True) 
+        self.transform = create_transform(**resolve_data_config(
+            pretrained_cfg=timm_model.pretrained_cfg,
+            model=timm_model
+        ))
 
 
     def setup(self, stage=None):
@@ -61,10 +73,11 @@ class PetalDataModule(L.LightningDataModule):
         
         image_folder: ImageFolder = ImageFolder(
             root=str(path),
-            transform=transforms.Compose([
-                transforms.Resize((224, 224)),  # transforms.Resize((224,224))
-                transforms.ToTensor()
-            ])
+            transform=self.transform
+            #transforms.Compose([
+                #transforms.Resize((224, 224)),  # transforms.Resize((224,224))
+                #transforms.ToTensor()
+            #])
         )
         
         self.class_to_idx = image_folder.class_to_idx

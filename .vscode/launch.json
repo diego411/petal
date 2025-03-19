@@ -19,10 +19,10 @@
             ]
         },
         {
-            "name": "Debug ml dataset",
+            "name": "Debug data util",
             "type": "debugpy",
             "request": "launch",
-            "module": "ml.dataset"
+            "module": "ml.data.data_util"
         }
     ]
 }
