@@ -116,21 +116,21 @@ def create_mel_spectrogram(waveform, sample_rate):
 # key is the timestamp where the specific video clip ENDS
 # value is the emotion of the clip
 VIDEO_LABELS = {
-    12000: 'happy', # puppies
-    20000: 'happy', # kid with avocado
-    59000: 'angry', # kid throwing a tantrum: this has multiple emotions!
-    82000: 'happy', # runners supporting competitor over finish line
-    120000: 'disgusted', # man eating a maggot
-    155000: 'sad', # soldiers in battle: this has multiple emotions!
-    207000: 'angry', # trump talking: this has multiple emotions imo!
-    237000: 'surprised', # mountain biker riding down rock bridge: is this really surprise?
-    265000: 'fearful', # person biking on top of a skyscraper
-    283000: 'surprised', # runner almost falling off skyscraper
-    298000: 'angry', # man beating raccoon: is this really anger?
-    363000: 'sad', # social worker feeding starved toddler
-    394000: 'sad', # residents collecting electronic waste in the slums of Accra
-    407000: 'sad', # dog on the grave of his owner
-    562000: 'fearful' # man discovering monster through his camera
+    12000: 'happy', # puppies - 12sec.
+    20000: 'happy', # kid with avocado - 8sec.
+    59000: 'angry', # kid throwing a tantrum: this has multiple emotions! - 39sec.
+    82000: 'happy', # runners supporting competitor over finish line - 23sec.
+    120000: 'disgusted', # man eating a maggot - 38sec.
+    155000: 'sad', # soldiers in battle: this has multiple emotions! - 35sec.
+    207000: 'angry', # trump talking: this has multiple emotions imo! - 52sec.
+    237000: 'surprised', # mountain biker riding down rock bridge: is this really surprise? - 30sec.
+    265000: 'fearful', # person biking on top of a skyscraper - 28sec.
+    283000: 'surprised', # runner almost falling off skyscraper - 18sec.
+    298000: 'angry', # man beating raccoon: is this really anger? - 15sec.
+    363000: 'sad', # social worker feeding starved toddler - 65sec.
+    394000: 'sad', # residents collecting electronic waste in the slums of Accra - 31sec.
+    407000: 'sad', # dog on the grave of his owner - 13sec.
+    562000: 'fearful' # man discovering monster through his camera - 155sec.
 }
 
 def label_by_video_emotions():
@@ -148,13 +148,20 @@ def label_by_video_emotions():
         i: int = 0
         for time_stamp, emotion in VIDEO_LABELS.items():
             try:
-                snippet = recording[cursor:time_stamp]
                 directory = BASE_DATA_PATH / 'post-labeled' / 'audio' / emotion 
               
                 if not os.path.exists(directory):
                    os.makedirs(directory)
                 
-                snippet.export(directory / f'{base_name}_{i}.wav', format='wav')
+                video_length = time_stamp - cursor
+                num_snippets = video_length // 10000
+                snippet_length = video_length / num_snippets
+                start = cursor
+                for snippet_index in range(0, num_snippets):
+                    end = start + snippet_length
+                    snippet = recording[start:end]
+                    snippet.export(directory / f'{base_name}_{i}_{snippet_index}.wav', format='wav')
+                    start = end
             except Exception as e:
                 print(f'Failed to create or save snippet for recording: {file_path} with following error: {e}. Start of snippet: {cursor}. End of snippet: {time_stamp}')
             
