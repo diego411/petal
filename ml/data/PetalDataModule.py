@@ -44,8 +44,7 @@ class PetalDataModule(L.LightningDataModule):
 
     def setup(self, stage=None):
         image_folder = self.create_image_folder()
-        self.train_dataset, self.test_dataset, self.validation_dataset = self.create_data_split(image_folder)
-
+        self.train_dataset, self.test_dataset, self.validation_dataset = self.create_stratified_data_split(image_folder)
 
     def create_data_split(self, dataset: ImageFolder) -> Tuple[Subset, Subset, Subset]:
         train_size = int(self.train_ratio * len(dataset))
@@ -59,7 +58,50 @@ class PetalDataModule(L.LightningDataModule):
             generator=generator
         )
         return train, test, validation
-
+    
+    def create_stratified_data_split(self, dataset: ImageFolder) -> Tuple[Subset, Subset, Subset]:
+        """
+        Creates a stratified train/test/validation split from a dataset.
+        
+        Args:
+            dataset: An ImageFolder dataset
+            
+        Returns:
+            Tuple of (train, test, validation) subsets
+        """
+   
+        # Get labels for all samples
+        targets = np.array(dataset.targets)
+        
+        # Calculate the size of each split
+        train_size = self.train_ratio
+        validation_size = self.validation_ratio / (1 - train_size)  # Adjusted for two-step split
+        
+        # First split: train and (test+validation)
+        train_indices, temp_indices = train_test_split(
+            np.arange(len(targets)),
+            test_size=(1 - train_size),
+            stratify=targets,
+            random_state=self.seed
+        )
+        
+        # Get the targets for the temporary test+validation set
+        temp_targets = targets[temp_indices]
+        
+        # Second split: test and validation from the temporary set
+        test_indices, validation_indices = train_test_split(
+            temp_indices,
+            test_size=validation_size,
+            stratify=temp_targets,
+            random_state=self.seed
+        )
+        
+        # Create subset datasets
+        train_subset = Subset(dataset, train_indices)
+        test_subset = Subset(dataset, test_indices)
+        validation_subset = Subset(dataset, validation_indices)
+        
+        return train_subset, test_subset, validation_subset
 
     def create_image_folder(self) -> ImageFolder:
         spectrogram_path, mel_spectrogram_path = create_spectrogram_images(self.dataset_type)
@@ -82,6 +124,11 @@ class PetalDataModule(L.LightningDataModule):
         
         self.class_to_idx = image_folder.class_to_idx
         self.idx_to_class = {v: k for k, v in image_folder.class_to_idx.items()}
+
+        labels = [label for _, label in image_folder.samples]
+        class_counts = {image_folder.classes[i]: count for i, count in Counter(labels).items()}
+
+        print("Number of samples per class in whole dataset:", class_counts)
 
         return image_folder
 
