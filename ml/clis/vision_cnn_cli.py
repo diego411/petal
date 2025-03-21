@@ -1,6 +1,6 @@
 from lightning.pytorch.cli import LightningArgumentParser, LightningCLI, SaveConfigCallback
 from lightning.pytorch import LightningModule, Trainer
-from ml.models.VisionCNNet import VisionCNN 
+from ml.models.VisionCNN import VisionCNN 
 from ml.data.PetalDataModule import PetalDataModule
 import wandb
 import yaml
