@@ -36,4 +36,4 @@ class VisionCNN(PetalModule):
     #        param.requires_grad = False
 
     def configure_optimizers(self):
-        return optim.Adam(self.parameters(), lr=self.lr)
+        return optim.Adam(self.parameters(), lr=(self.lr or self.learning_rate))
