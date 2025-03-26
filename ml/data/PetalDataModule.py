@@ -10,7 +10,6 @@ from timm.data.config import resolve_data_config
 from timm.data.transforms_factory import create_transform
 from collections import Counter
 import numpy as np
-from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn.model_selection import train_test_split
 
 class PetalDataModule(L.LightningDataModule):

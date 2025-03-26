@@ -14,7 +14,7 @@ class VisionCNN(PetalModule):
     ): 
         super().__init__(n_output=n_output)
 
-        self.lr = lr
+        self.learning_rate = lr
         self.pretrained_model = timm.create_model(
             pretrained_model_name,
             pretrained=True,
@@ -30,10 +30,9 @@ class VisionCNN(PetalModule):
     def predict_step(self, batch, batch_idx):
         return self(batch) 
 
-    # TODO: reimplement this 
-    #def freeze(self):
-    #    for param in self.resnet.parameters():
-    #        param.requires_grad = False
+    def freeze(self):
+      for param in self.pretrained_model.parameters():
+        param.requires_grad = False 
 
     def configure_optimizers(self):
-        return optim.Adam(self.parameters(), lr=(self.lr or self.learning_rate))
+        return optim.AdamW(self.parameters(), lr=self.learning_rate)
