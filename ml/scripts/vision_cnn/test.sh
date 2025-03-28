@@ -1,0 +1,10 @@
+# Configure this
+EXPERIMENT_NAME=8fca855cb43b738a17d0ba9448d16a9a
+EXPERIMENT_VERSION=version_0
+CHECKPOINT_NAME="epoch=30-validation_f1=0.66"
+
+EXPERIMENTS_PATH=ml/experiments
+EXPERIMENT_PATH=$EXPERIMENTS_PATH/$EXPERIMENT_NAME/$EXPERIMENT_VERSION
+CHECKPOINT_PATH=$EXPERIMENT_PATH/checkpoints/$CHECKPOINT_NAME.ckpt
+
+python -m ml.clis.vision_cnn_cli test --config=$EXPERIMENT_PATH/config.yaml --ckpt_path=$CHECKPOINT_PATH

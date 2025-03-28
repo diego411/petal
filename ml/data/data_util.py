@@ -19,6 +19,15 @@ from pydub import AudioSegment
 from ml.data.vision import show_and_save_spectrogram_image
 
 BASE_DATA_PATH = Path.home() / '.data/petal/'
+ekman_emotions = ['angry', 'disgusted', 'fearful', 'happy', 'sad', 'surprised']
+
+
+def get_emotions(dataset_type: str) -> List[str]:
+    emotions = ekman_emotions
+    if dataset_type != 'post-labeled':
+        emotions = ekman_emotions + ['neutral']
+    
+    return emotions
 
 
 def download_data():
@@ -48,17 +57,12 @@ def download_data():
         local_folder=BASE_DATA_PATH / 'post-labeled/unlabeled-audio'
     )
 
-def load_audio(path: str, label: str):
-    dataset = []
-
-    walker_wav = sorted(str(p) for p in Path(path).glob(f'*.wav'))
-    walker_mp3 = sorted(str(p) for p in Path(path).glob(f'*.mp3'))
-
-    for i, file_path in enumerate(list(chain(walker_wav, walker_mp3))):
-        waveform, sample_rate = torchaudio.load(file_path)
-        dataset.append([waveform, sample_rate, label])
-
-    return dataset
+def get_audio_files(dataset_type: str, emotion: str) -> List[Path]:
+    path = BASE_DATA_PATH / dataset_type / 'audio' / emotion
+    walker_wav = sorted(p for p in Path(path).glob(f'*.wav'))
+    walker_mp3 = sorted(p for p in Path(path).glob(f'*.mp3'))
+    
+    return list(chain(walker_wav, walker_mp3))
 
 def get_number_of_fourier_transform_bins(waveform: Tensor) -> int:
     waveform_length = waveform.shape[-1]
@@ -163,11 +167,7 @@ def label_by_video_emotions():
 
 
 def create_spectrogram_images(dataset_type: str) -> Tuple[Path, Path]:
-    ekman_emotions = ['angry', 'disgusted', 'fearful', 'happy', 'sad', 'surprised']
-
-    all_emotions = ekman_emotions
-    if dataset_type != 'post-labeled':
-        all_emotions = ekman_emotions + ['neutral']
+    emotions: List[str] = get_emotions(dataset_type)
 
     if dataset_type == 'post-labeled':
         label_by_video_emotions()
@@ -181,11 +181,8 @@ def create_spectrogram_images(dataset_type: str) -> Tuple[Path, Path]:
     if not os.path.isdir(mel_spectrogram_path):
         os.makedirs(mel_spectrogram_path, mode=0o777, exist_ok=True)
 
-    for emotion in all_emotions:
+    for emotion in emotions:
         print(f"Starting to generate spectrograms for emotion: {emotion}")
-        path = BASE_DATA_PATH / dataset_type / 'audio' / emotion
-        walker_wav  = sorted(str(p) for p in Path(path).glob(f'*.wav'))
-        walker_mp3 = sorted(str(p) for p in Path(path).glob(f'*.mp3'))
 
         spectrogram_emotion_path = spectrogram_path / emotion
         mel_spectrogram_emotion_path = mel_spectrogram_path / emotion
@@ -208,7 +205,7 @@ def create_spectrogram_images(dataset_type: str) -> Tuple[Path, Path]:
         if skip_spectrogram_generation and skip_mel_spectrogram_generation:
             continue
 
-        for i, file_path in enumerate(list(chain(walker_wav, walker_mp3))):
+        for i, file_path in enumerate(get_audio_files(dataset_type, emotion)):
             waveform, sample_rate = torchaudio.load(file_path)
             waveform = waveform + 1e-9
 
@@ -258,49 +255,19 @@ def get_image_dataset(dataset_type: str, spectrogram_type: str) -> ImageFolder:
     return image_folder
 
 
-def create_data_split(dataset: ImageFolder) -> Tuple[Subset, Subset, Subset]:
-    # split data to test and train
-    # use 80% to train
-    train_size = int(0.7 * len(dataset))
-    validation_size = int(0.1 * len(dataset))
-    test_size = len(dataset) - train_size - validation_size
+def get_audios(dataset_type: str) -> List[dict]:
+    audios = []
+    emotions = get_emotions(dataset_type)
 
-    generator = torch.Generator().manual_seed(42)
-    train, test, validation = random_split(
-        dataset,
-        [train_size, test_size, validation_size],
-        generator=generator
-    )
-    return train, test, validation
+    for i, emotion in enumerate(emotions):
+        for file_path in get_audio_files(dataset_type, emotion):
+            audios.append({
+                'label_idx': i,
+                'label': emotion,
+                'path': file_path,
+            })
 
-# TODO: unused
-def get_data_loaders(dataset_type: str, spectrogram_type: str) -> Tuple[DataLoader, DataLoader, DataLoader]:
-    spectrogram_dataset: ImageFolder = get_image_dataset(dataset_type, spectrogram_type)
-
-    train_dataset, test_dataset, validation_dataset = create_data_split(spectrogram_dataset)
-
-    train_dataloader: DataLoader = DataLoader(
-        train_dataset,
-        batch_size=16,
-        num_workers=2,
-        shuffle=True
-    )
-
-    test_dataloader: DataLoader = DataLoader(
-        test_dataset,
-        batch_size=16,
-        num_workers=2,
-        shuffle=True
-    )
-
-    validation_dataloader: DataLoader = DataLoader(
-        validation_dataset,
-        batch_size=16,
-        num_workers=2
-    )
-
-    return train_dataloader, test_dataloader, validation_dataloader
-
+    return audios
 
 if __name__ == '__main__':
     label_by_video_emotions()
