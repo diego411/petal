@@ -1,5 +1,4 @@
-import lightning.pytorch as L
-import torch
+from lightning.pytorch import LightningDataModule
 from torchvision.datasets import ImageFolder
 from torch.utils.data import DataLoader, random_split
 from torch.utils.data.dataset import Subset
@@ -12,7 +11,7 @@ from collections import Counter
 import numpy as np
 from sklearn.model_selection import train_test_split
 
-class PetalDataModule(L.LightningDataModule):
+class PetalDataModule(LightningDataModule):
 
     def __init__(
         self,
@@ -45,19 +44,6 @@ class PetalDataModule(L.LightningDataModule):
         image_folder = self.create_image_folder()
         self.train_dataset, self.test_dataset, self.validation_dataset = self.create_stratified_data_split(image_folder)
 
-    def create_data_split(self, dataset: ImageFolder) -> Tuple[Subset, Subset, Subset]:
-        train_size = int(self.train_ratio * len(dataset))
-        validation_size = int(self.validation_ratio * len(dataset))
-        test_size = len(dataset) - train_size - validation_size
-
-        generator = torch.Generator().manual_seed(self.seed)
-        train, test, validation = random_split(
-            dataset,
-            [train_size, test_size, validation_size],
-            generator=generator
-        )
-        return train, test, validation
-    
     def create_stratified_data_split(self, dataset: ImageFolder) -> Tuple[Subset, Subset, Subset]:
         """
         Creates a stratified train/test/validation split from a dataset.

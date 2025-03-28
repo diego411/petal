@@ -7,7 +7,7 @@ import wandb
 import yaml
 from pathlib import Path
 from ml.utils.generate_experiment_name import hash_yaml
-from ml.utils.generate_experiment_version import get_experiment_version, get_latest_version
+from ml.utils.generate_experiment_version import get_latest_version
 import os
 
 
@@ -18,7 +18,7 @@ class CustomSaveConfigCallback(SaveConfigCallback):
 
         config_path = 'ml/scripts/vision_cnn/config.yaml'
         experiment_path = Path('ml/experiments') / hash_yaml(config_path) 
-        path = experiment_path / get_experiment_version(str(experiment_path))
+        path = experiment_path / get_latest_version(str(experiment_path))
         os.makedirs(path, mode=0o777, exist_ok=True)
 
         with open(path / 'config.yaml', "w") as file:
