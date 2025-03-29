@@ -281,7 +281,7 @@ model_names = [
 ]
 
 CONFIG_PATH = 'ml/scripts/vision_cnn/config.yaml'
-OUT_PATH = 'model_search_output.txt'
+OUT_PATH = 'logs/model_search_output.txt'
 
 def run_fit():
     process = subprocess.Popen(["bash", "ml/scripts/vision_cnn/fit.sh"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -321,3 +321,4 @@ if __name__ == '__main__':
         duration = (datetime.now() - start).seconds
         with open(OUT_PATH, "a") as file:
             file.write(f'{hash}, {duration}, {success}\n') 
+
