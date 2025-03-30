@@ -23,6 +23,12 @@
             "type": "debugpy",
             "request": "launch",
             "module": "ml.data.data_util"
+        },
+        {
+            "name": "Debug summarise experiments",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "ml.scripts.summarise_experiments"
         }
     ]
 }
