@@ -5,12 +5,7 @@ import numpy as np
 import os
 import sys
 from itertools import chain
-import torch
 import torchaudio
-from torchvision import transforms
-from torchvision.datasets.folder import ImageFolder
-from torch.utils.data.dataset import Subset
-from torch.utils.data import DataLoader, random_split
 from torchaudio.transforms._transforms import Spectrogram, MelSpectrogram
 import torchaudio.transforms as T
 from typing import Tuple, List
@@ -21,7 +16,7 @@ from ml.data.vision import show_and_save_spectrogram_image
 BASE_DATA_PATH = Path.home() / '.data/petal/'
 
 
-def download_data():
+def download_data(verbose: bool):
     app_key = AppConfig.DROPBOX_APP_KEY
     app_secret = AppConfig.DROPBOX_APP_SECRET
     refresh_token = AppConfig.DROPBOX_REFRESH_TOKEN
@@ -37,15 +32,16 @@ def download_data():
 
     download_folder(
         dbx=dropbox,
-        dropbox_folder=f'/EmotionExperiment/labeled',
-        local_folder=BASE_DATA_PATH / 'pre-labeled/audio'
+        dropbox_folder=Path('/EmotionExperiment/labeled'),
+        local_folder=BASE_DATA_PATH / 'pre-labeled/audio',
+        verbose=verbose
     )
-
 
     download_folder(
         dbx=dropbox,
-        dropbox_folder=f'/EmotionExperiment/unlabeled',
-        local_folder=BASE_DATA_PATH / 'post-labeled/unlabeled-audio'
+        dropbox_folder=Path('/EmotionExperiment/unlabeled'),
+        local_folder=BASE_DATA_PATH / 'post-labeled/unlabeled-audio',
+        verbose=verbose
     )
 
 def load_audio(path: str, label: str):
@@ -133,7 +129,7 @@ VIDEO_LABELS = {
     562000: 'fearful' # man discovering monster through his camera - 155sec.
 }
 
-def label_by_video_emotions():
+def label_by_video_emotions(verbose: bool):
     path = BASE_DATA_PATH / 'post-labeled' / 'unlabeled-audio'
     walker_wav: List[Path]  = sorted(p for p in Path(path).glob(f'*.wav'))
 
@@ -142,7 +138,7 @@ def label_by_video_emotions():
         try:
             recording = AudioSegment.from_wav(str(file_path))
         except Exception as e:
-            print(f'Loading recording: {file_path} failed with following error: {e}')
+            print(f'\033[31m[Datamodule] Loading recording: {file_path} failed with following error: {e}\033[0m')
 
         cursor: int = 0
         i: int = 0
@@ -155,21 +151,35 @@ def label_by_video_emotions():
                 
                 video_length = time_stamp - cursor
                 num_snippets = video_length // 10000
-                snippet_length = video_length / num_snippets
+                if num_snippets == 0:
+                    num_snippets = 1
+                    snippet_length = video_length
+                else:
+                    snippet_length = video_length / num_snippets
+
                 start = cursor
                 for snippet_index in range(0, num_snippets):
+                    snippet_path = directory / f'{base_name}_{i}_{snippet_index}.wav' 
+                    if snippet_path.exists():
+                        if verbose:
+                            print(f'\033[33m[Datamodule] Skipping snippet with emotion {emotion} for recording: {base_name}. Video index: {i}, snippet index: {snippet_index}\033[0m')
+                        continue
+
                     end = start + snippet_length
                     snippet = recording[start:end]
-                    snippet.export(directory / f'{base_name}_{i}_{snippet_index}.wav', format='wav')
+                    snippet.export(snippet_path, format='wav')
+                    if verbose:
+                        print(f'\033[32m[Datamodule] Exporting snippet with emotion {emotion} for recording: {base_name}. Video index: {i}, snippet index: {snippet_index}\033[0m')
                     start = end
             except Exception as e:
-                print(f'Failed to create or save snippet for recording: {file_path} with following error: {e}. Start of snippet: {cursor}. End of snippet: {time_stamp}')
+                print(f'\033[31m[Datamodule] Failed to create or save snippet for recording: {file_path} with following error: {e}. Start of snippet: {cursor}. End of snippet: {time_stamp}\033[0m')
             
             cursor = time_stamp
             i += 1
 
 
-def create_spectrogram_images(dataset_type: str) -> Tuple[Path, Path]:
+def create_spectrogram_images(dataset_type: str, binary: bool, verbose: bool) -> Tuple[Path, Path]:
+    download_data(verbose)
     ekman_emotions = ['angry', 'disgusted', 'fearful', 'happy', 'sad', 'surprised']
 
     all_emotions = ekman_emotions
@@ -177,10 +187,11 @@ def create_spectrogram_images(dataset_type: str) -> Tuple[Path, Path]:
         all_emotions = ekman_emotions + ['neutral']
 
     if dataset_type == 'post-labeled':
-        label_by_video_emotions()
+        label_by_video_emotions(verbose)
 
-    spectrogram_path = BASE_DATA_PATH / dataset_type / 'spectrograms'
-    mel_spectrogram_path = BASE_DATA_PATH / dataset_type / 'mel-spectrograms'
+    type_path = Path(dataset_type) / 'binary' if binary else dataset_type
+    spectrogram_path = BASE_DATA_PATH / type_path / 'spectrograms'
+    mel_spectrogram_path = BASE_DATA_PATH / type_path / 'mel-spectrograms'
     
     if not os.path.isdir(spectrogram_path):
         os.makedirs(spectrogram_path, mode=0o777, exist_ok=True)
@@ -189,125 +200,57 @@ def create_spectrogram_images(dataset_type: str) -> Tuple[Path, Path]:
         os.makedirs(mel_spectrogram_path, mode=0o777, exist_ok=True)
 
     for emotion in all_emotions:
-        print(f"Starting to generate spectrograms for emotion: {emotion}")
+        print(f"[Datamodule] Starting to generate spectrograms for emotion: {emotion}")
         path = BASE_DATA_PATH / dataset_type / 'audio' / emotion
-        walker_wav  = sorted(str(p) for p in Path(path).glob(f'*.wav'))
-        walker_mp3 = sorted(str(p) for p in Path(path).glob(f'*.mp3'))
+        walker_wav  = sorted(p for p in Path(path).glob(f'*.wav'))
+        walker_mp3 = sorted(p for p in Path(path).glob(f'*.mp3'))
 
-        spectrogram_emotion_path = spectrogram_path / emotion
-        mel_spectrogram_emotion_path = mel_spectrogram_path / emotion
-
-        skip_spectrogram_generation = False
-        skip_mel_spectrogram_generation = False
+        class_path = emotion
+        if binary:
+            if emotion != 'neutral':
+                class_path = 'not-neutral'
+    
+        spectrogram_emotion_path = spectrogram_path / class_path 
+        mel_spectrogram_emotion_path = mel_spectrogram_path / class_path
 
         if not os.path.isdir(spectrogram_emotion_path):
             os.makedirs(spectrogram_emotion_path, mode=0o777, exist_ok=True)
-        elif os.listdir(spectrogram_emotion_path) != 0:
-            print(f"Skipping generation of spectrograms for emotion: {emotion} since the directory is not empty!")
-            skip_spectrogram_generation = True
 
         if not os.path.isdir(mel_spectrogram_emotion_path):
             os.makedirs(mel_spectrogram_emotion_path, mode=0o777, exist_ok=True)
-        elif os.listdir(mel_spectrogram_emotion_path) != 0:
-            print(f"Skipping generation of mel spectrograms for emotion: {emotion} since the directory is not empty!")
-            skip_mel_spectrogram_generation = True
-
-        if skip_spectrogram_generation and skip_mel_spectrogram_generation:
-            continue
 
         for i, file_path in enumerate(list(chain(walker_wav, walker_mp3))):
-            waveform, sample_rate = torchaudio.load(file_path)
-            waveform = waveform + 1e-9
+            spectrogram_image_path = spectrogram_emotion_path / f'{file_path.stem}.png' 
+            mel_spectrogram_image_path = mel_spectrogram_emotion_path / f'{file_path.stem}.png' 
+
+            if spectrogram_image_path.exists() and mel_spectrogram_image_path.exists():
+                continue
 
             try:
+                waveform, sample_rate = torchaudio.load(file_path)
+                waveform = waveform + 1e-9
                 n_fft = get_number_of_fourier_transform_bins(waveform)
-
-                if not skip_spectrogram_generation:
+                if not spectrogram_image_path.exists():
                     spectrogram: np.ndarray = create_spectrogram(waveform)
                     show_and_save_spectrogram_image(
                         spectrogram=spectrogram,
                         n_fft=n_fft,
                         sample_rate=sample_rate,
-                        path=spectrogram_emotion_path / f'spec_img{i}.png'
+                        path=spectrogram_image_path
                     )
 
-                if not skip_mel_spectrogram_generation:
+                if not mel_spectrogram_image_path.exists():
                     mel_spectrogram: np.ndarray = create_mel_spectrogram(waveform, sample_rate)
                     show_and_save_spectrogram_image(
                         spectrogram=mel_spectrogram,
                         n_fft=n_fft,
                         sample_rate=sample_rate,
-                        path=mel_spectrogram_emotion_path / f'spec_img{i}.png'
+                        path=mel_spectrogram_image_path
                     )
             except Exception:
-                print(f"Failed to generate spectrogram for emotion: {emotion} at index {i}")
+                print(f"\033[31m[Datamodule] Failed to generate spectrogram for emotion: {emotion} at index {i}\033[0m")
     return spectrogram_path, mel_spectrogram_path
 
 
-def get_image_dataset(dataset_type: str, spectrogram_type: str) -> ImageFolder:
-    spectrogram_path, mel_spectrogram_path = create_spectrogram_images(dataset_type)
-
-    if spectrogram_type == 'spectrogram':
-        path = spectrogram_path
-    elif spectrogram_type == 'mel-spectrogram':
-        path = mel_spectrogram_path
-    else:
-        raise RuntimeError("Unexpected spectrogram type")
-    
-    image_folder: ImageFolder = ImageFolder(
-        root=str(path),
-        transform=transforms.Compose([
-            transforms.Resize((224, 224)),  # transforms.Resize((224,224))
-            transforms.ToTensor()
-        ])
-    )
-    print(image_folder.class_to_idx)
-    return image_folder
-
-
-def create_data_split(dataset: ImageFolder) -> Tuple[Subset, Subset, Subset]:
-    # split data to test and train
-    # use 80% to train
-    train_size = int(0.7 * len(dataset))
-    validation_size = int(0.1 * len(dataset))
-    test_size = len(dataset) - train_size - validation_size
-
-    generator = torch.Generator().manual_seed(42)
-    train, test, validation = random_split(
-        dataset,
-        [train_size, test_size, validation_size],
-        generator=generator
-    )
-    return train, test, validation
-
-# TODO: unused
-def get_data_loaders(dataset_type: str, spectrogram_type: str) -> Tuple[DataLoader, DataLoader, DataLoader]:
-    spectrogram_dataset: ImageFolder = get_image_dataset(dataset_type, spectrogram_type)
-
-    train_dataset, test_dataset, validation_dataset = create_data_split(spectrogram_dataset)
-
-    train_dataloader: DataLoader = DataLoader(
-        train_dataset,
-        batch_size=16,
-        num_workers=2,
-        shuffle=True
-    )
-
-    test_dataloader: DataLoader = DataLoader(
-        test_dataset,
-        batch_size=16,
-        num_workers=2,
-        shuffle=True
-    )
-
-    validation_dataloader: DataLoader = DataLoader(
-        validation_dataset,
-        batch_size=16,
-        num_workers=2
-    )
-
-    return train_dataloader, test_dataloader, validation_dataloader
-
-
 if __name__ == '__main__':
-    label_by_video_emotions()
+    label_by_video_emotions(verbose=True)

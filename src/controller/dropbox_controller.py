@@ -1,8 +1,9 @@
 import dropbox
+from dropbox.files import FolderMetadata, FileMetadata
 from flask import current_app
 import os
 from pathlib import Path
-
+import hashlib
 
 def create_dropbox_client(app_key: str, app_secret: str, refresh_token: str) -> dropbox.Dropbox:
     return dropbox.Dropbox(
@@ -13,7 +14,7 @@ def create_dropbox_client(app_key: str, app_secret: str, refresh_token: str) -> 
 
 
 def upload_file_to_dropbox(file_path: str, dropbox_path: str) -> str:
-    dropbox_client: dropbox.Dropbox = current_app.dropbox_client
+    dropbox_client: dropbox.Dropbox = current_app.dropbox_client # type: ignore
     dropbox_client.check_and_refresh_access_token()
 
     # Open the file and upload it
@@ -25,33 +26,32 @@ def upload_file_to_dropbox(file_path: str, dropbox_path: str) -> str:
     return shared_link
 
 
-def download_folder(dbx, dropbox_folder: str, local_folder: Path = Path('data')):
-    if not os.path.exists(local_folder):
+def download_folder(dbx, dropbox_folder: Path, local_folder: Path = Path('data'), verbose: bool = True):
+    if not local_folder.exists():
         os.makedirs(local_folder)
 
-    for entry in dbx.files_list_folder(dropbox_folder).entries:
-        dropbox_path = entry.path_lower
-        local_path = os.path.join(local_folder, os.path.basename(dropbox_path))
+    for entry in dbx.files_list_folder(str(dropbox_folder)).entries:
+        dropbox_path = Path(entry.path_lower)
+        local_path = local_folder / f'{hash_file_name(dropbox_path.stem)}{dropbox_path.suffix}'
 
-        if isinstance(entry, dropbox.files.FileMetadata):
+        if isinstance(entry, FileMetadata):
+            if local_path.exists():
+                if verbose:
+                    print(f"\033[33m[Dropbox] Skipping: {dropbox_path.name} downloaded version {local_path.name} already exists!\033[0m")
+                continue
             # It's a file, download it
             with open(local_path, "wb") as f:
-                metadata, res = dbx.files_download(dropbox_path)
+                metadata, res = dbx.files_download(str(dropbox_path))
                 f.write(res.content)
-            print(f"Downloaded: {dropbox_path} → {local_path}")
+            
+            if verbose:
+                print(f"\033[32m[Dropbox] Downloaded: {dropbox_path} → {local_path}\033[0m")
 
-        elif isinstance(entry, dropbox.files.FolderMetadata):
+        elif isinstance(entry, FolderMetadata):
             # It's a subfolder, recursively download it
-            sub_local_folder = os.path.join(local_folder, os.path.basename(dropbox_path))
-            download_folder(dbx, dropbox_path, sub_local_folder)
+            sub_local_folder = local_folder / dropbox_path.stem
+            download_folder(dbx, dropbox_path, sub_local_folder, verbose)
 
-
-if __name__ == '__main__':
-    from src.AppConfig import AppConfig
-
-    dropbox = create_dropbox_client(
-        app_key=AppConfig.DROPBOX_APP_KEY,
-        app_secret=AppConfig.DROPBOX_APP_SECRET,
-        refresh_token=AppConfig.DROPBOX_REFRESH_TOKEN
-    )
-    print(dropbox.files_list_folder('/EmotionExperiment/labeled').entries)
+def hash_file_name(file_name: str) -> str:
+    hash_object = hashlib.md5(file_name.encode())
+    return hash_object.hexdigest()

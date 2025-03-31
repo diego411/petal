@@ -11,34 +11,38 @@ from collections import Counter
 import numpy as np
 from sklearn.model_selection import train_test_split
 
+
 class PetalDataModule(LightningDataModule):
 
     def __init__(
         self,
         dataset_type:str='post-labeled', # TODO: validate this param
         spectrogram_type:str='spectrogram', # TODO: validate this param
+        binary:bool=False, 
         pretrained_model_name:str='resnet18', # TODO: link this param to model
         train_ratio:float=0.7,
         validation_ratio:float=0.1,
         seed:int=42,
         batch_size:int=16,
-        number_of_workers:int=1
+        number_of_workers:int=1,
+        verbose:bool=True
     ):
         super().__init__()
         self.dataset_type = dataset_type
         self.spectrogram_type = spectrogram_type
+        self.binary = binary
         self.train_ratio = train_ratio
         self.validation_ratio = validation_ratio 
         self.seed = seed 
         self.batch_size = batch_size
         self.number_of_workers = number_of_workers
+        self.verbose = verbose
         
         timm_model = timm.create_model(pretrained_model_name, pretrained=True) 
         self.transform = create_transform(**resolve_data_config(
             pretrained_cfg=timm_model.pretrained_cfg,
             model=timm_model
         ))
-
 
     def setup(self, stage=None):
         image_folder = self.create_image_folder()
@@ -89,7 +93,7 @@ class PetalDataModule(LightningDataModule):
         return train_subset, test_subset, validation_subset
 
     def create_image_folder(self) -> ImageFolder:
-        spectrogram_path, mel_spectrogram_path = create_spectrogram_images(self.dataset_type)
+        spectrogram_path, mel_spectrogram_path = create_spectrogram_images(self.dataset_type, self.binary, self.verbose)
 
         if self.spectrogram_type == 'spectrogram':
             path = spectrogram_path
@@ -101,10 +105,6 @@ class PetalDataModule(LightningDataModule):
         image_folder: ImageFolder = ImageFolder(
             root=str(path),
             transform=self.transform
-            #transforms.Compose([
-                #transforms.Resize((224, 224)),  # transforms.Resize((224,224))
-                #transforms.ToTensor()
-            #])
         )
         
         self.class_to_idx = image_folder.class_to_idx
@@ -113,7 +113,7 @@ class PetalDataModule(LightningDataModule):
         labels = [label for _, label in image_folder.samples]
         class_counts = {image_folder.classes[i]: count for i, count in Counter(labels).items()}
 
-        print("Number of samples per class in whole dataset:", class_counts)
+        print("[Datamodule] Number of samples per class in whole dataset:", class_counts)
 
         return image_folder
 
