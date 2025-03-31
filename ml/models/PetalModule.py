@@ -65,6 +65,7 @@ class PetalModule(L.LightningModule):
         self._reset_metrics()
     
     def _update_metrics(self, targets: Tensor, predictions: Tensor):
+        targets = targets.long() if self.n_output == 1 else targets
         self.accuracy.update(predictions, targets)
         self.precision.update(predictions, targets)
         self.recall.update(predictions, targets)

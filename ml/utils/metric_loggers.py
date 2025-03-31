@@ -1,4 +1,5 @@
 from torchmetrics import Metric
+from torchmetrics.classification.confusion_matrix import BinaryConfusionMatrix 
 import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
@@ -30,7 +31,7 @@ def log_confusion_matrix(
     ax.set_ylabel('True labels')
     ax.set_title(f'Confusion Matrix {stage} Epoch {current_epoch}')
 
-    if confusion_matrix.num_classes == 1:
+    if isinstance(confusion_matrix, BinaryConfusionMatrix):
         log(
             f'{stage}_true_negatives',
             conf_matrix[0, 0].item(),
