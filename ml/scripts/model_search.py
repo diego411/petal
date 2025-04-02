@@ -280,11 +280,11 @@ model_names = [
     'cait_xxs36_384'
 ]
 
-CONFIG_PATH = 'ml/scripts/vision_cnn/config.yaml'
+CONFIG_PATH = 'ml/scripts/configs/vision_config.yaml'
 OUT_PATH = 'logs/model_search_output.txt'
 
 def run_fit():
-    process = subprocess.Popen(["bash", "ml/scripts/vision_cnn/fit.sh"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    process = subprocess.Popen(["bash", "ml/scripts/fit_vision_cnn.sh"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     assert process.stdout is not None
     for line in process.stdout:
@@ -295,7 +295,7 @@ def run_fit():
 
 if __name__ == '__main__':
     with open(OUT_PATH, 'w') as file:
-        file.write('experiment_hash, seconds, success \n') 
+        file.write('experiment_hash, model_name, seconds, success \n') 
     
     for model_name in model_names:
         start = datetime.now()
@@ -304,8 +304,8 @@ if __name__ == '__main__':
         with open(CONFIG_PATH, 'r') as file:
             yaml_data = yaml.safe_load(file)
         
-        yaml_data['model']['pretrained_model_name'] = model_name
-        yaml_data['data']['pretrained_model_name'] = model_name
+        yaml_data['model']['init_args']['pretrained_model_name'] = model_name
+        yaml_data['data']['init_args']['pretrained_model_name'] = model_name
         
         with open(CONFIG_PATH, "w") as file:
             yaml.dump(yaml_data, file, default_flow_style=False)
@@ -320,5 +320,5 @@ if __name__ == '__main__':
 
         duration = (datetime.now() - start).seconds
         with open(OUT_PATH, "a") as file:
-            file.write(f'{hash}, {duration}, {success}\n') 
+            file.write(f'{hash}, {model_name}, {duration}, {success}\n') 
 
