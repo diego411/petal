@@ -19,6 +19,20 @@
             ]
         },
         {
+            "name": "Debug Vision CNN CLI PLUS",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "ml.clis.vision_cnn_cli_plus",
+            "args": [
+                "fit", 
+                "--config", "ml/scripts/vision_cnn/config.yaml", 
+                "--trainer.logger.save_dir", "ml/experiments",
+                "--trainer.logger.name", "debug_run",
+                "--trainer.logger.version", "version_0",
+                "--trainer.callbacks.dirpath", "ml/experiments/debug_run/version_0/checkpoints"
+            ]
+        },
+        {
             "name": "Debug data util",
             "type": "debugpy",
             "request": "launch",

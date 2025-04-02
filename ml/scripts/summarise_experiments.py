@@ -5,6 +5,7 @@ EXPERIMENTS_PATH = Path('ml/experiments')
 
 if __name__ == '__main__':
     summary_df = pd.DataFrame(columns=[
+        'experiment',
         'model',
         'version',
         'epoch',
@@ -56,6 +57,7 @@ if __name__ == '__main__':
             best_epoch = df[df['validation_f1'] == best_f1].iloc[0]
 
             summary_df.loc[i] = pd.Series({
+                'experiment': experiment.stem,
                 'model': model_name,
                 'version': version.stem,
                 'epoch': best_epoch['epoch'],

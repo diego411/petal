@@ -10,9 +10,11 @@ from timm.data.transforms_factory import create_transform
 from collections import Counter
 import numpy as np
 from sklearn.model_selection import train_test_split
+from ml.data.SpectrogramDataset import SpectrogramDataset
+from pathlib import Path
 
 
-class PetalDataModule(LightningDataModule):
+class PetalDataModulePlus(LightningDataModule):
 
     def __init__(
         self,
@@ -24,6 +26,7 @@ class PetalDataModule(LightningDataModule):
         validation_ratio:float=0.1,
         seed:int=42,
         batch_size:int=16,
+        cache_file: str = 'dataset_cache.pth',
         number_of_workers:int=1,
         verbose:bool=True
     ):
@@ -35,6 +38,7 @@ class PetalDataModule(LightningDataModule):
         self.validation_ratio = validation_ratio 
         self.seed = seed 
         self.batch_size = batch_size
+        self.cache_file = cache_file
         self.number_of_workers = number_of_workers
         self.verbose = verbose
         
@@ -45,10 +49,10 @@ class PetalDataModule(LightningDataModule):
         ))
 
     def setup(self, stage=None):
-        image_folder = self.create_image_folder()
-        self.train_dataset, self.test_dataset, self.validation_dataset = self.create_stratified_data_split(image_folder)
+        dataset = self.create_dataset()
+        self.train_dataset, self.test_dataset, self.validation_dataset = self.create_stratified_data_split(dataset)
 
-    def create_stratified_data_split(self, dataset: ImageFolder) -> Tuple[Subset, Subset, Subset]:
+    def create_stratified_data_split(self, dataset: SpectrogramDataset) -> Tuple[Subset, Subset, Subset]:
         """
         Creates a stratified train/test/validation split from a dataset.
         
@@ -92,29 +96,22 @@ class PetalDataModule(LightningDataModule):
         
         return train_subset, test_subset, validation_subset
 
-    def create_image_folder(self) -> ImageFolder:
-        spectrogram_path, mel_spectrogram_path, _ = create_spectrogram_images(self.dataset_type, self.binary, self.verbose)
-
-        if self.spectrogram_type == 'spectrogram':
-            path = spectrogram_path
-        elif self.spectrogram_type == 'mel-spectrogram':
-            path = mel_spectrogram_path
-        else:
-            raise RuntimeError("Unexpected spectrogram type")
-        
-        image_folder: ImageFolder = ImageFolder(
-            root=str(path),
-            transform=self.transform
+    def create_dataset(self) -> SpectrogramDataset:
+        _, _, dataframe = create_spectrogram_images(self.dataset_type, self.binary, self.verbose)
+        dataset = SpectrogramDataset(
+            dataframe=dataframe,
+            transforms=self.transform,
+            cache_file=self.cache_file
         )
-        
-        self.class_to_idx = image_folder.class_to_idx
-        self.idx_to_class = {v: k for k, v in image_folder.class_to_idx.items()}
 
-        class_counts = {image_folder.classes[i]: count for i, count in Counter(image_folder.targets).items()}
+        self.class_to_idx = dataset.class_to_idx
+        self.idx_to_class = dataset.idx_to_class 
+
+        class_counts = {dataset.classes[i]: count for i, count in Counter(dataset.targets).items()}
 
         print("[Datamodule] Number of samples per class in whole dataset:", class_counts)
 
-        return image_folder
+        return dataset
 
     def train_dataloader(self):
         return DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True, num_workers=self.number_of_workers)
