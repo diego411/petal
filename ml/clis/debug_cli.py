@@ -1,3 +1,4 @@
+
 from lightning.pytorch.cli import LightningArgumentParser, LightningCLI, SaveConfigCallback
 from lightning.pytorch import LightningModule, Trainer
 from lightning.pytorch.tuner.tuning import Tuner
@@ -44,15 +45,23 @@ class CustomLightninCLI(LightningCLI):
         with open(path / 'config.yaml', 'r') as file:
             yaml_data = yaml.safe_load(file)
         
-        yaml_data['model']['init_args']['lr'] = new_lr
+        if 'init_args' in yaml_data['model']:
+            yaml_data['model']['init_args']['lr'] = new_lr
+        else:
+            yaml_data['model']['lr'] = new_lr
         
         with open(path / 'config.yaml', "w") as file:
             yaml.dump(yaml_data, file, default_flow_style=False)
 
         print(f"Using suggested learning rate: {new_lr}")
+
+from ml.data.modules import VisionDataModule
+from ml.models import VisionCNN
             
 def cli_main() -> None:
     cli = CustomLightninCLI(
+        datamodule_class=VisionDataModule,
+        model_class=VisionCNN,
         save_config_kwargs={"save_to_log_dir": False},
         save_config_callback=CustomSaveConfigCallback
     )
