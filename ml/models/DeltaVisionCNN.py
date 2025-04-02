@@ -7,7 +7,7 @@ from torch import nn
 from collections import OrderedDict 
 
 
-class VisionCNNPlus(PetalModule):
+class DeltaVisionCNN(PetalModule):
     def __init__(
         self,
         pretrained_model_name:str='resnet18',
@@ -16,6 +16,7 @@ class VisionCNNPlus(PetalModule):
         lr=1e-4
     ): 
         super().__init__(n_output=n_output)
+        print("[Model] Using DeltaVisionCNN")
 
         self.learning_rate = lr
         self.pretrained_model = timm.create_model(

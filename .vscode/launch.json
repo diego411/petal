@@ -8,14 +8,17 @@
             "name": "Debug Vision CNN CLI",
             "type": "debugpy",
             "request": "launch",
-            "module": "ml.clis.vision_cnn_cli",
+            "module": "ml.clis.petal_cli",
             "args": [
-                "fit", 
-                "--config", "ml/scripts/vision_cnn/config.yaml", 
+                "fit",
+                "--config", "ml/scripts/configs/vision_config.yaml", 
+                "--config", "ml/scripts/configs/base_config.yaml", 
                 "--trainer.logger.save_dir", "ml/experiments",
                 "--trainer.logger.name", "debug_run",
                 "--trainer.logger.version", "version_0",
-                "--trainer.callbacks.dirpath", "ml/experiments/debug_run/version_0/checkpoints"
+                "--trainer.callbacks.dirpath", "ml/experiments/debug_run/version_0/checkpoints",
+                "--experiment_hash", "debug_run",
+                "--experiment_version", "version_0"
             ]
         },
         {

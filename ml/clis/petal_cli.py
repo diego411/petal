@@ -1,8 +1,6 @@
 from lightning.pytorch.cli import LightningArgumentParser, LightningCLI, SaveConfigCallback
 from lightning.pytorch import LightningModule, Trainer
 from lightning.pytorch.tuner.tuning import Tuner
-from ml.models.VisionCNN import VisionCNN 
-from ml.data.PetalDataModule import PetalDataModule
 import wandb
 import yaml
 from pathlib import Path
@@ -16,9 +14,8 @@ class CustomSaveConfigCallback(SaveConfigCallback):
         config = self.parser.dump(self.config, skip_none=False)
         yaml_data = yaml.safe_load(config)
 
-        config_path = 'ml/scripts/vision_cnn/config.yaml'
-        experiment_path = Path('ml/experiments') / hash_yaml(config_path) 
-        path = experiment_path / get_latest_version(str(experiment_path))
+        path = Path('ml/experiments') / yaml_data['experiment_hash'] / yaml_data['experiment_version'] 
+        print(path)
         os.makedirs(path, mode=0o777, exist_ok=True)
 
         with open(path / 'config.yaml', "w") as file:
@@ -27,7 +24,9 @@ class CustomSaveConfigCallback(SaveConfigCallback):
 
 class CustomLightninCLI(LightningCLI):
     def add_arguments_to_parser(self, parser: LightningArgumentParser) -> None:
-        parser.add_argument('--auto_lr_find', default=False) 
+        parser.add_argument('--auto_lr_find', default=False)
+        parser.add_argument('--experiment_hash')
+        parser.add_argument('--experiment_version')
 
     def before_fit(self):
         if not self.config['fit']['auto_lr_find']:
@@ -42,26 +41,20 @@ class CustomLightninCLI(LightningCLI):
         self.model.learning_rate = new_lr 
         self.model.save_hyperparameters()
 
-        config_path = 'ml/scripts/vision_cnn/config.yaml'
-        experiment_path = Path('ml/experiments') / hash_yaml(config_path) 
-        path = experiment_path / get_latest_version(str(experiment_path))
+        path = Path('ml/experiments') / self.config['fit']['experiment_hash'] / self.config['fit']['experiment_version']
 
         with open(path / 'config.yaml', 'r') as file:
             yaml_data = yaml.safe_load(file)
         
-        yaml_data['model']['lr'] = new_lr
+        yaml_data['model']['init_args']['lr'] = new_lr
         
         with open(path / 'config.yaml', "w") as file:
             yaml.dump(yaml_data, file, default_flow_style=False)
 
         print(f"Using suggested learning rate: {new_lr}")
             
-
-# TODO: maybe one cli for everything will work?
 def cli_main() -> None:
     cli = CustomLightninCLI(
-        model_class=VisionCNN,
-        datamodule_class=PetalDataModule,
         save_config_kwargs={"save_to_log_dir": False},
         save_config_callback=CustomSaveConfigCallback
     )

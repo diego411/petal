@@ -13,6 +13,7 @@ class VisionCNN(PetalModule):
         lr=1e-4
     ): 
         super().__init__(n_output=n_output)
+        print("[Model] Using VisionCNN")
 
         self.learning_rate = lr
         self.pretrained_model = timm.create_model(

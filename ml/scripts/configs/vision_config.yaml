@@ -1,0 +1,14 @@
+auto_lr_find: true
+data:
+  class_path: ml.data.modules.VisionDataModule
+  init_args:
+    dataset_type: post-labeled
+    pretrained_model_name: resnet50
+    spectrogram_type: spectrogram
+model:
+  class_path: ml.models.VisionCNN
+  init_args:
+    freeze: false
+    n_output: 6
+    pretrained_model_name: resnet50
+
