@@ -7,6 +7,7 @@ import numpy as np
 from typing import Optional
 from PIL import Image
 import torchaudio.transforms as T
+import librosa
 
 def plot_waveform(waveform: Tensor):
     plt.figure(figsize=(8, 5))
@@ -92,7 +93,7 @@ def show_and_save_spectrogram_image(spectrogram: np.ndarray, n_fft: int, sample_
 
     plt.close(fig)
 
-def show_mel_spectrogram(mel_spectrogram: np.ndarray, n_fft: int, sample_rate: int, path: Optional[Path]):
+def show_and_save_mel_spectrogram(mel_spectrogram: np.ndarray, n_fft: int, sample_rate: int, path: Optional[Path]):
     freqs = np.fft.rfftfreq(n_fft, d=1/sample_rate)  # Compute frequency values
     
     fig, ax = plt.subplots()
@@ -138,6 +139,27 @@ def show_mel_spectrogram(mel_spectrogram: np.ndarray, n_fft: int, sample_rate: i
 
     plt.close(fig)
 
+def show_and_save_spectrogram_librosa(spectrogram: np.ndarray, sample_rate: int | float, hop_length: int, path: Optional[Path]):
+    fig, ax = plt.subplots()
+    librosa.display.specshow(spectrogram, sr=sample_rate, hop_length=hop_length, x_axis='time', y_axis='log', ax=ax)
+
+    ax.set_title("Mel Spectrogram")
+    ax.set_xlabel("Time")
+    ax.set_ylabel("Frequency")
+
+    plt.show()
+
+    fig, ax_clean = plt.subplots()
+    librosa.display.specshow(spectrogram, sr=sample_rate, hop_length=hop_length, ax=ax_clean)
+
+    ax_clean.set_xticks([])
+    ax_clean.set_yticks([])
+    ax_clean.set_frame_on(False)
+
+    plt.savefig(path, bbox_inches='tight', pad_inches=0, dpi=300)
+
+    plt.close(fig)
+
 def visualize_transform(image_path: Path, transform):
     image = Image.open(image_path)
 
@@ -154,3 +176,4 @@ def visualize_transform(image_path: Path, transform):
     ax[1].axis("off")
 
     plt.show()
+    plt.close(fig)

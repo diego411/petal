@@ -21,14 +21,24 @@ class VisionDataModule(PetalDataModule):
         ))
 
     def create_dataset(self):
-        spectrogram_path, mel_spectrogram_path, _ = create_spectrogram_images(self.dataset_type, self.binary, self.verbose)
+        spectrogram_path, mel_spectrogram_path, librosa_spectrogram_path, _ = create_spectrogram_images(
+            self.dataset_type,
+            self.binary,
+            self.verbose,
+            self.spectrogram_backend
+        )
 
-        if self.spectrogram_type == 'spectrogram':
-            path = spectrogram_path
-        elif self.spectrogram_type == 'mel-spectrogram':
-            path = mel_spectrogram_path
+        if self.spectrogram_backend == 'torch':
+            if self.spectrogram_type == 'spectrogram':
+                path = spectrogram_path
+            elif self.spectrogram_type == 'mel-spectrogram':
+                path = mel_spectrogram_path
+            else:
+                raise RuntimeError("Unexpected spectrogram type")
+        elif self.spectrogram_backend == 'librosa':
+            path = librosa_spectrogram_path
         else:
-            raise RuntimeError("Unexpected spectrogram type")
+            raise RuntimeError('Unexpected spectrogram backend')
         
         image_folder: ImageFolder = ImageFolder(
             root=str(path),

@@ -13,6 +13,7 @@ class PetalDataModule(LightningDataModule):
         self,
         dataset_type:str='post-labeled', # TODO: validate this param
         spectrogram_type:str='spectrogram', # TODO: validate this param
+        spectrogram_backend:str='torch',
         binary:bool=False, 
         train_ratio:float=0.7,
         validation_ratio:float=0.1,
@@ -25,6 +26,7 @@ class PetalDataModule(LightningDataModule):
         print(number_of_workers)
         self.dataset_type = dataset_type
         self.spectrogram_type = spectrogram_type
+        self.spectrogram_backend = spectrogram_backend
         self.binary = binary
         self.train_ratio = train_ratio
         self.validation_ratio = validation_ratio 

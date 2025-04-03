@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug Vision CNN CLI",
+            "name": "Debug Model CLI",
             "type": "debugpy",
             "request": "launch",
             "module": "ml.clis.debug_cli",
