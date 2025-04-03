@@ -43,6 +43,8 @@ if __name__ == '__main__':
                 yaml_data = yaml.safe_load(file)
             
             model_config = yaml_data['model']
+            if 'init_args' in model_config:
+                model_config = model_config['init_args']
             if 'pretrained_model_name' not in model_config:
                 continue
 
@@ -62,6 +64,7 @@ if __name__ == '__main__':
                 'version': version.stem,
                 'epoch': best_epoch['epoch'],
                 'validation_accuracy': best_epoch['validation_accuracy'].item(),
+                'validation_auroc': best_epoch['validation_auroc'].item(),
                 'validation_f1': best_epoch['validation_f1'].item(),
                 'validation_loss': best_epoch['validation_loss'].item(),
                 'validation_precision': best_epoch['validation_precision'].item(),
