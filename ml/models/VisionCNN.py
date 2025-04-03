@@ -36,4 +36,11 @@ class VisionCNN(PetalModule):
         param.requires_grad = False 
 
     def configure_optimizers(self):
-        return optim.AdamW(self.parameters(), lr=self.learning_rate)
+        optimizer = optim.AdamW(self.parameters(), lr=self.learning_rate)
+        lambda_lr = lambda epoch: 1.0 - (epoch / self.trainer.max_epochs)
+        scheduler_config = {
+            'scheduler': optim.lr_scheduler.LambdaLR(optimizer=optimizer, lr_lambda=lambda_lr),
+            'monitor': 'validation_f1'
+        }
+
+        return [optimizer], scheduler_config
