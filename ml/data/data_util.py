@@ -164,7 +164,11 @@ def label_by_video_emotions(verbose: bool):
                 
                 video_length = time_stamp - cursor
                 num_snippets = video_length // 10000
-                snippet_length = video_length / num_snippets
+                if num_snippets == 0:
+                    num_snippets = 1
+                    snippet_length = video_length
+                else:
+                    snippet_length = video_length / num_snippets 
 
                 start = cursor
                 for snippet_index in range(0, num_snippets):
