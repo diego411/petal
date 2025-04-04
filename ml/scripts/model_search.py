@@ -2,6 +2,7 @@ import yaml
 import subprocess
 from ml.utils.generate_experiment_name import hash_yaml
 from datetime import datetime
+from pathlib import Path
 
 model_names = [
     'tinynet_e',
@@ -297,9 +298,8 @@ if __name__ == '__main__':
     with open(OUT_PATH, 'w') as file:
         file.write('experiment_hash, model_name, seconds, success \n') 
     
-    for model_name in model_names:
+    for model_name in reversed(model_names):
         start = datetime.now()
-        print(f'Checking out model {model_name}')
         
         with open(CONFIG_PATH, 'r') as file:
             yaml_data = yaml.safe_load(file)
@@ -312,6 +312,12 @@ if __name__ == '__main__':
         
         hash = hash_yaml(CONFIG_PATH)
         success = True
+        experiment_path = Path('ml/experiments') / hash
+        if experiment_path.exists():
+            print(f"Skipping {model_name} since experiment with {hash} already exists")
+            continue
+
+        print(f'Checking out model {model_name}')
         try:
             run_fit()
         except Exception as e:
