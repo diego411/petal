@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug Model CLI",
+            "name": "Debug Model CLI Fit",
             "type": "debugpy",
             "request": "launch",
             "module": "ml.clis.debug_cli",
@@ -18,6 +18,17 @@
                 "--trainer.callbacks.dirpath", "ml/experiments/debug_run/version_0/checkpoints",
                 "--experiment_hash", "debug_run",
                 "--experiment_version", "version_0"
+            ]
+        },
+        {
+            "name": "Debug Model CLI Test",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "ml.clis.debug_cli",
+            "args": [
+                "test",
+                "--config", "ml/experiments/8b6c98c764de0afaabbdbbf19e529831/version_0/config.yaml", 
+                "--ckpt_path", "ml/experiments/8b6c98c764de0afaabbdbbf19e529831/version_0/checkpoints/epoch=11-validation_f1=0.58"
             ]
         },
         {
