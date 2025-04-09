@@ -28,10 +28,12 @@ class DeltaVisionDataModule(PetalDataModule):
 
     def create_dataset(self) -> SpectrogramDataset:
         _, _, _, dataframe = create_spectrogram_images(
-            self.dataset_type,
-            self.binary,
-            self.verbose,
-            self.spectrogram_backend
+            dataset_type=self.dataset_type,
+            spectrogram_type=self.spectrogram_type,
+            with_deltas=True,
+            binary=self.binary,
+            verbose=self.verbose,
+            spectrogram_backend=self.spectrogram_backend
         )
         dataset = SpectrogramDataset(
             dataframe=dataframe,

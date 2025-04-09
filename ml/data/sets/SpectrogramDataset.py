@@ -4,7 +4,7 @@ from PIL import Image
 from torch import Tensor, as_tensor, long, save, load
 import os
 from typing import Tuple
-from pathlib import Path
+from ml.data.vision import load_and_transform
 
 class SpectrogramDataset(Dataset):
     def __init__(
@@ -59,15 +59,12 @@ class SpectrogramDataset(Dataset):
             item = self.dataframe.iloc[index].to_dict()
             target = as_tensor(item['label_index'], dtype=long)
 
-            spectrogram_image = self._load_and_transform(item['spectrogram_path'])
-            delta_spectrogram_image = self._load_and_transform(item['delta_spectrogram_path'])
-            delta_delta_spectrogram_image = self._load_and_transform(item['delta_delta_spectrogram_path'])
+            spectrogram_image = load_and_transform(item['spectrogram_path'], self.transforms)
+            delta_spectrogram_image = load_and_transform(item['delta_spectrogram_path'], self.transforms)
+            delta_delta_spectrogram_image = load_and_transform(item['delta_delta_spectrogram_path'], self.transforms)
 
             items[index] = (spectrogram_image, delta_spectrogram_image, delta_delta_spectrogram_image), target
             targets.append(target)
 
         return items, targets, classes
 
-    def _load_and_transform(self, path: str) -> Tensor:
-        image = Image.open(path).convert('RGB')
-        return self.transforms(image)

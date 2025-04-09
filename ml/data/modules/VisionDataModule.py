@@ -6,6 +6,11 @@ from collections import Counter
 import timm
 from timm.data.config import resolve_data_config
 from timm.data.transforms_factory import create_transform
+from torch.utils.data.dataset import Subset, ConcatDataset, Dataset
+from ml.data.sets.AugmentedDataset import AugmentedDataset
+from ml.data.vision import load_and_transform
+from typing import List, Tuple
+from torch import Tensor
 
 
 class VisionDataModule(PetalDataModule):
@@ -22,10 +27,12 @@ class VisionDataModule(PetalDataModule):
 
     def create_dataset(self):
         spectrogram_path, mel_spectrogram_path, librosa_spectrogram_path, _ = create_spectrogram_images(
-            self.dataset_type,
-            self.binary,
-            self.verbose,
-            self.spectrogram_backend
+            dataset_type=self.dataset_type,
+            spectrogram_type=self.spectrogram_type,
+            with_deltas=False,
+            binary=self.binary,
+            verbose=self.verbose,
+            spectrogram_backend=self.spectrogram_backend
         )
 
         if self.spectrogram_backend == 'torch':
@@ -53,3 +60,19 @@ class VisionDataModule(PetalDataModule):
         print("[Datamodule] Number of samples per class in whole dataset:", class_counts)
 
         return image_folder
+    
+    def create_augmented_dataset(self, dataset: Subset, samples: List[dict]) -> Dataset:
+        key = 'spectrogram_path' if self.spectrogram_type == 'spectrogram' else 'mel_spectrogram_path' if self.spectrogram_type == 'mel-spectrogram' else None
+        if key == None:
+            raise RuntimeError("Unexpected spectrogram type")
+        
+        def _to_tensor_sample(sample: dict) -> Tuple[Tensor, Tensor]:
+            image_path = sample['paths'][key]
+            image_tensor = load_and_transform(image_path, self.transform)
+            return image_tensor, sample['label_index']
+        
+        augmented_dataset = AugmentedDataset(
+            list(map(_to_tensor_sample, samples))
+        )
+
+        return ConcatDataset([dataset, augmented_dataset]) 

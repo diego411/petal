@@ -177,3 +177,7 @@ def visualize_transform(image_path: Path, transform):
 
     plt.show()
     plt.close(fig)
+
+def load_and_transform(path: Path, transform) -> Tensor:
+    image = Image.open(path).convert('RGB')
+    return transform(image)

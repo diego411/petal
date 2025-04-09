@@ -10,11 +10,13 @@ import torchaudio
 from torchaudio.transforms._transforms import Spectrogram, MelSpectrogram
 import torchaudio.transforms as T
 from torchaudio.functional import compute_deltas
-from typing import Tuple, List
+from typing import Tuple, List, Optional, Dict
 from torch import Tensor
 from pydub import AudioSegment
 import librosa
 from ml.data.vision import show_and_save_spectrogram_image, show_and_save_mel_spectrogram, show_and_save_spectrogram_librosa
+from src.utils.hash import hash_file_name
+
 
 BASE_DATA_PATH = Path.home() / '.data/petal/'
 
@@ -156,6 +158,9 @@ def label_by_video_emotions(verbose: bool):
         cursor: int = 0
         i: int = 0
         for time_stamp, emotion in VIDEO_LABELS.items():
+            if emotion == 'skip':
+                cursor = time_stamp
+                continue
             try:
                 directory = BASE_DATA_PATH / 'post-labeled' / 'audio' / emotion 
               
@@ -189,17 +194,93 @@ def label_by_video_emotions(verbose: bool):
             
             cursor = time_stamp
             i += 1
+    
+def generate_spectrogram_for(
+    audio_path: Path,
+    dataset_type: str,
+    spectrogram_type: str,
+    spectrogram_backend: str,
+    with_deltas: bool
+) -> Dict[str, Path]:
+    paths = {}
+    augment_path = BASE_DATA_PATH / dataset_type / 'tmp-augmented' # TODO: rename
+    spectrogram_image_path = None 
+    mel_spectrogram_image_path = None
+    delta_spectrogram_image_path = None
+    delta_delta_spectrogram_image_path = None
 
-def compute_all_spectrograms_torch(
-    waveform: Tensor,
-    n_fft: int,
-    sample_rate: int,
-    spectrogram_image_path: Path,
-    delta_spectrogram_image_path: Path,
-    delta_delta_spectrogram_image_path: Path,
-    mel_spectrogram_image_path: Path
+    file_name = f'{hash_file_name(audio_path.stem)}.png'
+
+    if spectrogram_type == 'spectrogram':
+        spectrogram_path = augment_path / 'spectrogram' 
+        if not spectrogram_path.exists():
+            os.makedirs(spectrogram_path, mode=0o777, exist_ok=True)
+        spectrogram_image_path = spectrogram_path / file_name
+        paths['spectrogram_path'] = spectrogram_image_path
+    
+    if spectrogram_type == 'mel-spectrogram':
+        mel_spectrogram_path = augment_path / 'mel-spectrogram'
+        if not mel_spectrogram_path.exists():
+            os.makedirs(mel_spectrogram_path, mode=0o777, exist_ok=True)
+        mel_spectrogram_image_path = mel_spectrogram_path / file_name
+        paths['mel_spectrogram_path'] = mel_spectrogram_image_path
+
+    if with_deltas:
+        delta_spectrogram_path = augment_path / 'delta-spectrogram'
+        delta_delta_spectrogram_path = augment_path / 'delta-delta-spectrogram'
+        if not delta_spectrogram_path.exists():
+            os.makedirs(delta_spectrogram_path, mode=0o777, exist_ok=True)
+        if not delta_delta_spectrogram_path.exists():
+            os.makedirs(delta_delta_spectrogram_path, mode=0o777, exist_ok=True)
+        delta_spectrogram_image_path = delta_spectrogram_path / file_name
+        delta_delta_spectrogram_image_path = delta_delta_spectrogram_path / file_name
+        paths['delta_spectrogram_path'] = delta_spectrogram_image_path
+        paths['delta_delta_spectrogram_path'] = delta_delta_spectrogram_image_path
+
+    if spectrogram_backend == 'torch':
+        compute_spectrograms_torch(
+            file_path=audio_path,
+            spectrogram_type=spectrogram_type,
+            with_deltas=with_deltas,
+            spectrogram_image_path=spectrogram_image_path,
+            delta_spectrogram_image_path=delta_spectrogram_image_path,
+            delta_delta_spectrogram_image_path=delta_delta_spectrogram_image_path,
+            mel_spectrogram_image_path=mel_spectrogram_image_path
+        )
+    elif spectrogram_backend == 'librosa':
+        compute_spectrograms_librosa(
+            file_path=audio_path,
+            spectrogram_type=spectrogram_type,
+            with_deltas=with_deltas,
+            spectrogram_image_path=spectrogram_path
+        )
+
+    return paths 
+
+
+def compute_spectrograms_torch(
+    file_path: Path,
+    spectrogram_type: str,
+    with_deltas: bool,
+    spectrogram_image_path: Optional[Path],
+    delta_spectrogram_image_path: Optional[Path],
+    delta_delta_spectrogram_image_path: Optional[Path],
+    mel_spectrogram_image_path: Optional[Path]
 ):
-    if not mel_spectrogram_image_path.exists():
+    torch_should_generate_spectrograms = spectrogram_type == 'spectrogram' and spectrogram_image_path is not None and not spectrogram_image_path.exists() 
+    torch_should_generate_mel_spectrograms = spectrogram_type == 'mel-spectrogram' and mel_spectrogram_image_path is not None and not mel_spectrogram_image_path.exists()
+    torch_should_generate_deltas = spectrogram_type == 'spectrogram' and with_deltas and ((delta_spectrogram_image_path is not None and not delta_spectrogram_image_path.exists()) or (delta_delta_spectrogram_image_path is not None and delta_delta_spectrogram_image_path.exists()))
+
+    torch_should_generate = torch_should_generate_spectrograms or torch_should_generate_mel_spectrograms or torch_should_generate_deltas
+
+    if not torch_should_generate:
+        return
+
+    waveform, sample_rate = torchaudio.load(file_path)
+    waveform = waveform + 1e-9
+    n_fft = get_number_of_fourier_transform_bins(waveform)
+
+    if torch_should_generate_mel_spectrograms:
         mel_spectrogram: np.ndarray = create_mel_spectrogram(waveform, sample_rate)
         show_and_save_mel_spectrogram(
             mel_spectrogram=mel_spectrogram,
@@ -207,16 +288,13 @@ def compute_all_spectrograms_torch(
             sample_rate=sample_rate,
             path=mel_spectrogram_image_path
         )
-    
-    if spectrogram_image_path.exists() and delta_spectrogram_image_path.exists() and delta_delta_spectrogram_image_path.exists():
-        return
-        
-    spectrogram_transform: Spectrogram = create_spectrogram_transform(waveform)
-    spectrogram_tensor: Tensor = spectrogram_transform(waveform)
 
-    if not spectrogram_image_path.exists():
+    if torch_should_generate_spectrograms or torch_should_generate_deltas:
+        spectrogram_transform: Spectrogram = create_spectrogram_transform(waveform)
+        spectrogram_tensor: Tensor = spectrogram_transform(waveform)
         filtered_spectrogram: np.ndarray = filter_spectrogram(spectrogram_tensor) 
 
+    if torch_should_generate_spectrograms:
         show_and_save_spectrogram_image(
             spectrogram=filtered_spectrogram,
             n_fft=n_fft,
@@ -224,37 +302,52 @@ def compute_all_spectrograms_torch(
             path=spectrogram_image_path
         )
 
-    if not delta_spectrogram_image_path.exists() or not delta_delta_spectrogram_image_path.exists():
+    if torch_should_generate_deltas:
         delta_spectrogram: Tensor = compute_deltas(spectrogram_tensor)
         filtered_delta_spectrogram: np.ndarray = filter_spectrogram(delta_spectrogram)
 
-        show_and_save_spectrogram_image(
-            spectrogram=filtered_delta_spectrogram,
-            n_fft=n_fft,
-            sample_rate=sample_rate,
-            path=delta_spectrogram_image_path
-        )
+        if delta_spectrogram_image_path is not None and (not delta_spectrogram_image_path.exists()):
+            show_and_save_spectrogram_image(
+                spectrogram=filtered_delta_spectrogram,
+                n_fft=n_fft,
+                sample_rate=sample_rate,
+                path=delta_spectrogram_image_path
+            )
 
-    if not delta_delta_spectrogram_image_path.exists():
-        delta_delta_spectrogram: Tensor = compute_deltas(delta_spectrogram)
-        filtered_delta_delta_spectrogram: np.ndarray = filter_spectrogram(delta_delta_spectrogram)
+        if delta_delta_spectrogram_image_path is not None and (not delta_delta_spectrogram_image_path.exists()):
+            delta_delta_spectrogram: Tensor = compute_deltas(delta_spectrogram)
+            filtered_delta_delta_spectrogram: np.ndarray = filter_spectrogram(delta_delta_spectrogram)
 
-        show_and_save_spectrogram_image(
-            spectrogram=filtered_delta_delta_spectrogram,
-            n_fft=n_fft,
-            sample_rate=sample_rate,
-            path=delta_delta_spectrogram_image_path
-        )
+            show_and_save_spectrogram_image(
+                spectrogram=filtered_delta_delta_spectrogram,
+                n_fft=n_fft,
+                sample_rate=sample_rate,
+                path=delta_delta_spectrogram_image_path
+            )
    
 
-def compute_all_spectrogram_librosa(
-    waveform: np.ndarray,
-    n_fft: int,
-    hop_length: int,
-    sample_rate: int | float,
-    spectrogram_image_path: Path
+def compute_spectrograms_librosa(
+    file_path: Path,
+    spectrogram_type: str,
+    with_deltas: bool,
+    spectrogram_image_path: Optional[Path]
 ):
-    if not spectrogram_image_path.exists():
+    if spectrogram_type == 'mel-spectrogram':
+        raise NotImplementedError("Mel spectrograms not yet supported for spectrogram backend librosa")
+    if with_deltas:
+        raise NotImplementedError("Deltas not yet supported for spectrogram backend librosa")
+    
+    librosa_should_generate_spectrograms = spectrogram_type == 'spectrogram' and (spectrogram_image_path is not None and not spectrogram_image_path.exists())
+    librosa_should_generate = librosa_should_generate_spectrograms
+
+    if not librosa_should_generate:
+        return
+
+    waveform, sample_rate = librosa.load(file_path, sr=None)
+    n_fft = get_number_of_fourier_transform_bins(waveform)
+    hop_length = n_fft // 4
+
+    if spectrogram_image_path is not None and not spectrogram_image_path.exists():
         spectrogram = create_spectrogram_librosa(
             waveform=waveform,
             n_fft=n_fft,
@@ -270,11 +363,13 @@ def compute_all_spectrogram_librosa(
 
 def create_spectrogram_images(
     dataset_type: str,
+    spectrogram_type: str,
+    with_deltas: bool,
     binary: bool,
     verbose: bool,
     spectrogram_backend: str
 ) -> Tuple[Path, Path, Path, pd.DataFrame]:
-    #download_data(verbose)
+    download_data(verbose)
     ekman_emotions = ['angry', 'disgusted', 'fearful', 'happy', 'sad', 'surprised']
 
     all_emotions = ekman_emotions
@@ -348,6 +443,36 @@ def create_spectrogram_images(
             librosa_spectrogram_image_path = librosa_spectrogram_emotion_path / spectrogram_file_name
 
             if spectrogram_image_path.exists() and mel_spectrogram_image_path.exists() and spectrogram_backend == 'torch':
+                continue
+            elif librosa_spectrogram_image_path.exists() and spectrogram_backend == 'librosa':
+                continue
+
+            success = True
+            try:
+                if spectrogram_backend == 'torch':
+                    compute_spectrograms_torch(
+                        file_path=file_path,
+                        spectrogram_type=spectrogram_type,
+                        with_deltas=with_deltas,
+                        spectrogram_image_path=spectrogram_image_path,
+                        delta_spectrogram_image_path=delta_spectrogram_image_path,
+                        delta_delta_spectrogram_image_path=delta_delta_spectrogram_image_path,
+                        mel_spectrogram_image_path=mel_spectrogram_image_path
+                    )
+                elif spectrogram_backend == 'librosa':
+                    compute_spectrograms_librosa(
+                        file_path=file_path,
+                        spectrogram_type=spectrogram_type,
+                        with_deltas=with_deltas,
+                        spectrogram_image_path=librosa_spectrogram_image_path
+                    )
+                else:
+                    raise RuntimeError('Unexpected spectrogram backend')
+            except Exception:
+                success = False
+                print(f"\033[31m[Datamodule] Failed to generate spectrogram for emotion: {emotion} at index {i}\033[0m")
+            
+            if success and with_deltas:
                 df.loc[df_index] = pd.Series({
                     'label_index': emotion_index,
                     'label': emotion,
@@ -356,52 +481,6 @@ def create_spectrogram_images(
                     'delta_delta_spectrogram_path': delta_delta_spectrogram_image_path
                 })
                 df_index = df_index + 1
-                continue
-            elif librosa_spectrogram_image_path.exists() and spectrogram_backend == 'librosa':
-                continue
-
-            try:
-                if spectrogram_backend == 'torch':
-                    spectrogram_image_exists = spectrogram_image_path.exists()
-                    waveform, sample_rate = torchaudio.load(file_path)
-                    waveform = waveform + 1e-9
-                    n_fft = get_number_of_fourier_transform_bins(waveform)
-                    compute_all_spectrograms_torch(
-                        waveform=waveform,
-                        n_fft=n_fft,
-                        sample_rate=sample_rate,
-                        spectrogram_image_path=spectrogram_image_path,
-                        delta_spectrogram_image_path=delta_spectrogram_image_path,
-                        delta_delta_spectrogram_image_path=delta_delta_spectrogram_image_path,
-                        mel_spectrogram_image_path=mel_spectrogram_image_path
-                    )
-                    if not spectrogram_image_exists:
-                        df.loc[df_index] = pd.Series({
-                            'label_index': emotion_index,
-                            'label': emotion,
-                            'spectrogram_path': spectrogram_image_path,
-                            'delta_spectrogram_path': delta_spectrogram_image_path,
-                            'delta_delta_spectrogram_path': delta_delta_spectrogram_image_path
-                        })
-                        df_index = df_index + 1
-                elif spectrogram_backend == 'librosa':
-                    if librosa_spectrogram_image_path.exists():
-                        continue
-
-                    waveform, sample_rate = librosa.load(file_path, sr=None)
-                    n_fft = get_number_of_fourier_transform_bins(waveform)
-                    hop_length = n_fft // 4
-                    compute_all_spectrogram_librosa(
-                        waveform=waveform,
-                        n_fft=n_fft,
-                        hop_length=hop_length,
-                        sample_rate=sample_rate,
-                        spectrogram_image_path=librosa_spectrogram_image_path
-                    )
-                else:
-                    raise RuntimeError('Unexpected spectrogram backend')
-            except Exception:
-                print(f"\033[31m[Datamodule] Failed to generate spectrogram for emotion: {emotion} at index {i}\033[0m")
     print('\033[32m[Datamodule] Finished spectrogram generation\033[0m')
     return spectrogram_path, mel_spectrogram_path, librosa_spectrogram_path, df
 

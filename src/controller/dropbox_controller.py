@@ -3,7 +3,7 @@ from dropbox.files import FolderMetadata, FileMetadata
 from flask import current_app
 import os
 from pathlib import Path
-import hashlib
+from src.utils.hash import hash_file_name
 
 def create_dropbox_client(app_key: str, app_secret: str, refresh_token: str) -> dropbox.Dropbox:
     return dropbox.Dropbox(
@@ -52,6 +52,4 @@ def download_folder(dbx, dropbox_folder: Path, local_folder: Path = Path('data')
             sub_local_folder = local_folder / dropbox_path.stem
             download_folder(dbx, dropbox_path, sub_local_folder, verbose)
 
-def hash_file_name(file_name: str) -> str:
-    hash_object = hashlib.md5(file_name.encode())
-    return hash_object.hexdigest()
+
