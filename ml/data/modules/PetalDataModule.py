@@ -11,7 +11,8 @@ import random
 from pathlib import Path
 from ml.data.augmentation import AUGMENT_TECHNIQUES
 from ml.data.data_util import generate_spectrogram_for
-from lightning.fabric.utilities.exceptions import MisconfigurationException 
+from lightning.fabric.utilities.exceptions import MisconfigurationException
+from typing import Optional
 
 
 class PetalDataModule(LightningDataModule):
@@ -24,8 +25,8 @@ class PetalDataModule(LightningDataModule):
         binary:bool=False, 
         train_ratio:float=0.7,
         validation_ratio:float=0.1,
-        augment_technique:str='SP',
-        augment_ratio:float=0.1,
+        augment_technique:Optional[str]=None,
+        augment_ratio:float=0,
         seed:int=42,
         batch_size:int=16,
         number_of_workers:int=1,
@@ -45,10 +46,10 @@ class PetalDataModule(LightningDataModule):
         self.verbose = verbose
         self.augment_ratio = augment_ratio
 
-        if not augment_technique in AUGMENT_TECHNIQUES:
+        if (augment_technique is not None) and (not augment_technique in AUGMENT_TECHNIQUES):
             raise MisconfigurationException(f"Supplied augment technique {augment_technique} not supported!")
         
-        self.augment_technique = AUGMENT_TECHNIQUES[augment_technique]
+        self.augment_technique = AUGMENT_TECHNIQUES[augment_technique] if augment_technique is not None else None
 
         random.seed(seed)
         
@@ -58,14 +59,18 @@ class PetalDataModule(LightningDataModule):
 
         augmented_samples = self._create_augment_samples(dataset)
 
-        self.train_dataset = self.create_augmented_dataset(
-            dataset=self.train_dataset,
-            samples=augmented_samples
-        )
+        if augmented_samples is not None:
+            self.train_dataset = self.create_augmented_dataset(
+                dataset=self.train_dataset,
+                samples=augmented_samples
+            )
 
         print("[Datamodule] FInished data augmentation")
     
     def _create_augment_samples(self, dataset):
+        if self.augment_technique is None:
+            return
+
         print("[Datamodule] Starting data augmentation")
 
         augmented_samples: List[dict] = []

@@ -194,7 +194,43 @@ def label_by_video_emotions(verbose: bool):
             
             cursor = time_stamp
             i += 1
+
+def split_pre_labeled_audios():
+    pre_labeled_audio_path = BASE_DATA_PATH / 'pre-labeled' / 'audio'
+    split_pre_labeled_audio_path = BASE_DATA_PATH / 'pre-labeled' / 'split-audio'
+    emotion_dirs = list(filter(
+        lambda path: path.is_dir(),
+        pre_labeled_audio_path.iterdir()
+    ))
     
+    for emotion_dir in emotion_dirs:
+        split_emotion_path = split_pre_labeled_audio_path / emotion_dir.stem
+        if not split_emotion_path.exists():
+            os.makedirs(split_emotion_path, mode=0o777, exist_ok=True)
+        for audio_path in emotion_dir.iterdir():
+            try:
+                audio = AudioSegment.from_file(audio_path)
+            except Exception as e:
+                print(e)
+                continue
+
+            segment_length = 3000
+            cursor = 0
+            index = 0
+            while True:
+                end = cursor + segment_length
+                stop = False
+                if end > len(audio):
+                    end = len(audio)
+                    stop = True
+                
+                segment = audio[cursor:end]
+                segment.export(split_emotion_path / f'{audio_path.stem}_{index}.wav', format='wav')
+                if stop:
+                    break
+                index = index + 1
+                cursor = end
+
 def generate_spectrogram_for(
     audio_path: Path,
     dataset_type: str,
@@ -324,7 +360,6 @@ def compute_spectrograms_torch(
                 sample_rate=sample_rate,
                 path=delta_delta_spectrogram_image_path
             )
-   
 
 def compute_spectrograms_librosa(
     file_path: Path,
@@ -378,6 +413,9 @@ def create_spectrogram_images(
 
     if dataset_type == 'post-labeled':
         label_by_video_emotions(verbose)
+    
+    if binary:
+        split_pre_labeled_audios()
 
     type_path = Path(dataset_type) / 'binary' if binary else dataset_type
 
@@ -404,7 +442,9 @@ def create_spectrogram_images(
 
     for emotion_index, emotion in enumerate(all_emotions):
         print(f"[Datamodule] Starting to generate spectrograms for emotion: {emotion}")
-        path = BASE_DATA_PATH / dataset_type / 'audio' / emotion
+
+        audio_path = 'split-audio' if binary else 'audio'
+        path = BASE_DATA_PATH / dataset_type / audio_path / emotion
         walker_wav  = sorted(p for p in Path(path).glob(f'*.wav'))
         walker_mp3 = sorted(p for p in Path(path).glob(f'*.mp3'))
 
@@ -486,4 +526,4 @@ def create_spectrogram_images(
 
 
 if __name__ == '__main__':
-    label_by_video_emotions(verbose=True)
+    split_pre_labeled_audios()
