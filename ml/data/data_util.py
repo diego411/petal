@@ -21,6 +21,9 @@ from src.utils.hash import hash_file_name
 BASE_DATA_PATH = Path.home() / '.data/petal/'
 
 
+def get_audio_path(dataset_type: str) -> Path:
+    return BASE_DATA_PATH / dataset_type / ('split-audio' if dataset_type == 'pre-labeled' else 'audio')
+
 def download_data(verbose: bool):
     app_key = AppConfig.DROPBOX_APP_KEY
     app_secret = AppConfig.DROPBOX_APP_SECRET
@@ -233,13 +236,12 @@ def split_pre_labeled_audios():
 
 def generate_spectrogram_for(
     audio_path: Path,
-    dataset_type: str,
     spectrogram_type: str,
     spectrogram_backend: str,
-    with_deltas: bool
+    with_deltas: bool,
+    target_path: Path
 ) -> Dict[str, Path]:
     paths = {}
-    augment_path = BASE_DATA_PATH / dataset_type / 'tmp-augmented' # TODO: rename
     spectrogram_image_path = None 
     mel_spectrogram_image_path = None
     delta_spectrogram_image_path = None
@@ -248,22 +250,22 @@ def generate_spectrogram_for(
     file_name = f'{hash_file_name(audio_path.stem)}.png'
 
     if spectrogram_type == 'spectrogram':
-        spectrogram_path = augment_path / 'spectrogram' 
+        spectrogram_path = target_path / 'spectrogram' 
         if not spectrogram_path.exists():
             os.makedirs(spectrogram_path, mode=0o777, exist_ok=True)
         spectrogram_image_path = spectrogram_path / file_name
         paths['spectrogram_path'] = spectrogram_image_path
     
     if spectrogram_type == 'mel-spectrogram':
-        mel_spectrogram_path = augment_path / 'mel-spectrogram'
+        mel_spectrogram_path = target_path / 'mel-spectrogram'
         if not mel_spectrogram_path.exists():
             os.makedirs(mel_spectrogram_path, mode=0o777, exist_ok=True)
         mel_spectrogram_image_path = mel_spectrogram_path / file_name
         paths['mel_spectrogram_path'] = mel_spectrogram_image_path
 
     if with_deltas:
-        delta_spectrogram_path = augment_path / 'delta-spectrogram'
-        delta_delta_spectrogram_path = augment_path / 'delta-delta-spectrogram'
+        delta_spectrogram_path = target_path / 'delta-spectrogram'
+        delta_delta_spectrogram_path = target_path / 'delta-delta-spectrogram'
         if not delta_spectrogram_path.exists():
             os.makedirs(delta_spectrogram_path, mode=0o777, exist_ok=True)
         if not delta_delta_spectrogram_path.exists():
@@ -443,8 +445,7 @@ def create_spectrogram_images(
     for emotion_index, emotion in enumerate(all_emotions):
         print(f"[Datamodule] Starting to generate spectrograms for emotion: {emotion}")
 
-        audio_path = 'split-audio' if binary else 'audio'
-        path = BASE_DATA_PATH / dataset_type / audio_path / emotion
+        path = get_audio_path(dataset_type) / emotion
         walker_wav  = sorted(p for p in Path(path).glob(f'*.wav'))
         walker_mp3 = sorted(p for p in Path(path).glob(f'*.mp3'))
 

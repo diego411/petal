@@ -8,22 +8,23 @@ from pydub import AudioSegment
 import os
 from PIL import Image
 import random
-
-AUGMENT_AUDIO_PATH = Path.home() / '.data/petal/augmented-audios'
-AUGMENT_IMAGE_PATH = Path.home() / '.data/petal/augmented-images'
+from ml.data.data_util import BASE_DATA_PATH
 
 
-def get_augment_audio_path(audio_path: Path) -> Path:
+
+def get_augment_audio_path(audio_path: Path, technique: str, dataset_type: str) -> Path:
+    AUGMENT_AUDIO_PATH = BASE_DATA_PATH / dataset_type / 'augmented-audios'
     if not AUGMENT_AUDIO_PATH.exists():
         os.makedirs(AUGMENT_AUDIO_PATH)
 
-    return AUGMENT_AUDIO_PATH / audio_path.name
+    return AUGMENT_AUDIO_PATH / f'{technique}_{audio_path.name}'
 
-def get_augment_image_path(image_path: Path) -> Path:
+def get_augment_image_path(image_path: Path, technique: str, dataset_type: str) -> Path:
+    AUGMENT_IMAGE_PATH = BASE_DATA_PATH / dataset_type / 'augmented-images'
     if not AUGMENT_IMAGE_PATH.exists():
         os.makedirs(AUGMENT_IMAGE_PATH)
     
-    return AUGMENT_IMAGE_PATH / image_path.name
+    return AUGMENT_IMAGE_PATH / f'{technique}_{image_path.name}'
 
 def random_audio_segment(audio_path) -> Tuple[np.ndarray, int | float]:
     audio, sample_rate = librosa.load(audio_path, sr=None)
@@ -33,25 +34,19 @@ def random_audio_segment(audio_path) -> Tuple[np.ndarray, int | float]:
     start_idx = np.random.randint(0, total_samples - segment_samples)
     return audio[start_idx : start_idx + segment_samples], sample_rate
 
-def apply_pitch_shift(audio_path: Path, n_semitones: int) -> Path:
+def apply_pitch_shift(audio_path: Path, target_path: Path, n_semitones: int):
     y, sr = librosa.load(audio_path)
     y_shifted = librosa.effects.pitch_shift(y=y, sr=sr, n_steps=n_semitones)
 
-    augment_audio_path = get_augment_audio_path(audio_path)
-    sf.write(augment_audio_path, y_shifted, sr)
+    sf.write(target_path, y_shifted, sr)
 
-    return augment_audio_path
-
-def adjust_volume(audio_path: Path, db_change: float) -> Path:
+def adjust_volume(audio_path: Path, target_path: Path, db_change: float):
     audio = AudioSegment.from_file(audio_path)
     adjusted_audio = audio + db_change
 
-    augment_audio_path = get_augment_audio_path(audio_path)
-    adjusted_audio.export(augment_audio_path, format=augment_audio_path.suffix[1:])  # remove dot from ext
+    adjusted_audio.export(target_path, format=target_path.suffix[1:])  # remove dot from ext
 
-    return augment_audio_path
-
-def spectrogram_channel_shuffle(image_path: Path) -> Path:
+def spectrogram_channel_shuffle(image_path: Path, target_path: Path):
     img = Image.open(image_path).convert("RGB")
     img_np = np.array(img)
 
@@ -59,15 +54,14 @@ def spectrogram_channel_shuffle(image_path: Path) -> Path:
     random.shuffle(channels)
     shuffled_img_np = img_np[:, :, channels]
 
-    augment_image_path = get_augment_image_path(image_path)
-    Image.fromarray(shuffled_img_np).save(augment_image_path)
-    return augment_image_path
+    Image.fromarray(shuffled_img_np).save(target_path)
 
 def spectrogram_random_shifts(
     image_path: Path,
+    target_path: Path,
     max_time_shift: int = 30,
     max_pitch_shift: int = 20
-) -> Path:
+):
     img = Image.open(image_path).convert("RGB")
     spec = np.array(img)
 
@@ -87,24 +81,34 @@ def spectrogram_random_shifts(
     elif time_shift < 0:
         spec[:, time_shift:, :] = 0
 
-    augment_image_path = get_augment_image_path(image_path)
-    Image.fromarray(spec).save(augment_image_path)
-    return augment_image_path
+    Image.fromarray(spec).save(target_path)
 
 AUGMENT_TECHNIQUES = {
     'SP': {
+        'label': 'SP',
         'type': 'audio',
-        'apply': lambda audio_path: apply_pitch_shift(audio_path, n_semitones=2)
+        'apply': lambda audio_path, target_path: apply_pitch_shift(
+            audio_path=audio_path,
+            target_path=target_path,
+            n_semitones=2
+        )
     },
     'VA': {
+        'label': 'VA',
         'type': 'audio',
-        'apply': lambda audio_path: adjust_volume(audio_path, db_change=5)
+        'apply': lambda audio_path, target_path: adjust_volume(
+            audio_path=audio_path,
+            target_path=target_path,
+            db_change=5
+        )
     },
     'SCS': {
+        'label': 'SCS',
         'type': 'image',
         'apply': spectrogram_channel_shuffle
     },
     'SRS': {
+        'label': 'SRS',
         'type': 'image',
         'apply': spectrogram_random_shifts
     }

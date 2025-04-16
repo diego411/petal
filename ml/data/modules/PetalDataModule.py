@@ -9,18 +9,19 @@ from torchvision.datasets import ImageFolder
 from typing import List, Tuple
 import random
 from pathlib import Path
-from ml.data.augmentation import AUGMENT_TECHNIQUES
-from ml.data.data_util import generate_spectrogram_for
+from ml.data.augmentation import AUGMENT_TECHNIQUES, get_augment_audio_path, get_augment_image_path
+from ml.data.data_util import generate_spectrogram_for, get_audio_path
 from lightning.fabric.utilities.exceptions import MisconfigurationException
 from typing import Optional
+from src.utils.file import find_file_path
 
 
 class PetalDataModule(LightningDataModule):
 
     def __init__(
         self,
-        dataset_type:str='post-labeled', # TODO: validate this param
-        spectrogram_type:str='spectrogram', # TODO: validate this param
+        dataset_type:str='post-labeled',
+        spectrogram_type:str='spectrogram',
         spectrogram_backend:str='torch',
         binary:bool=False, 
         train_ratio:float=0.7,
@@ -45,6 +46,24 @@ class PetalDataModule(LightningDataModule):
         self.number_of_workers = number_of_workers
         self.verbose = verbose
         self.augment_ratio = augment_ratio
+
+        if dataset_type != 'pre-labeled' and dataset_type != 'post-labeled':
+            raise MisconfigurationException("Invalid dataset type! Only pre-labeled and post-labeled are supported!")
+        
+        if spectrogram_type != 'spectrogram' and spectrogram_type != 'mel-spectrogram':
+            raise MisconfigurationException("Invalid spectrogram type! Only spectrogram and mel-spectrogram are supported!")
+        
+        if spectrogram_backend != 'torch' and spectrogram_backend != 'librosa':
+            raise MisconfigurationException("Invalid spectrogram backend! Only torch and librosa are supported!")
+
+        if binary and dataset_type != 'pre-labeled':
+            raise MisconfigurationException("Binary mode is only supported for the pre-labeled dataset!")
+        
+        if validation_ratio < 0 or validation_ratio > 1:
+            raise MisconfigurationException("Invalid validation ratio! Please supply a value between 0 and 1!")
+
+        if train_ratio < 0 or train_ratio > 1:
+            raise MisconfigurationException("Invalid train ratio! Please supply a value between 0 and 1!")
 
         if (augment_technique is not None) and (not augment_technique in AUGMENT_TECHNIQUES):
             raise MisconfigurationException(f"Supplied augment technique {augment_technique} not supported!")
@@ -79,15 +98,41 @@ class PetalDataModule(LightningDataModule):
         random.shuffle(train_sample_paths)
 
         for train_spectrogram_path, label_index in train_sample_paths[0:int(len(train_sample_paths) * self.augment_ratio)]:
+            train_spectrogram_path = Path(train_spectrogram_path)
             if self.augment_technique['type'] == 'audio':
-                train_audio_path = Path(train_spectrogram_path.replace('spectrograms', 'audio')).with_suffix('.wav') 
-                augmented_audio_path = self.augment_technique['apply'](train_audio_path) 
+                if self.binary:
+                    train_audio_path = find_file_path(
+                        file_name=train_spectrogram_path.with_suffix('.wav').name,
+                        directory=get_audio_path(self.dataset_type)
+                    )
+                    if train_audio_path is None:
+                        raise RuntimeError(f"Augmentation failed. Path to spectrogram was not found for following path: {train_spectrogram_path}")
+                else:
+                    train_audio_path = Path(str(train_spectrogram_path).replace('spectrograms', 'audio')).with_suffix('.wav') 
+
+                augmented_audio_path = get_augment_audio_path(
+                    audio_path=train_audio_path,
+                    technique=self.augment_technique['label'],
+                    dataset_type=self.dataset_type
+                )
+
+                if not augmented_audio_path.exists():
+                    self.augment_technique['apply'](
+                        audio_path=train_audio_path,
+                        target_path=augmented_audio_path
+                    )
+
+                augmented_image_path = get_augment_image_path(
+                    image_path=train_audio_path,
+                    technique=self.augment_technique['label'],
+                    dataset_type=self.dataset_type
+                )
                 spectrogram_paths = generate_spectrogram_for(
                     audio_path=augmented_audio_path,
-                    dataset_type=self.dataset_type,
                     spectrogram_type=self.spectrogram_type,
                     spectrogram_backend=self.spectrogram_backend,
-                    with_deltas=False
+                    with_deltas=False,
+                    target_path=augmented_image_path.parent
                 )
                 sample = {
                     'label_index': label_index,
@@ -95,7 +140,16 @@ class PetalDataModule(LightningDataModule):
                 }
                 augmented_samples.append(sample)
             elif self.augment_technique['type'] == 'image':
-                augmented_image_path = self.augment_technique['apply'](Path(train_spectrogram_path))
+                augmented_image_path = get_augment_image_path(
+                    image_path=train_spectrogram_path,
+                    technique=self.augment_technique['label'],
+                    dataset_type=self.dataset_type
+                )
+                if not augmented_image_path.exists():
+                    self.augment_technique['apply'](
+                        audio_path=train_spectrogram_path,
+                        target_path=augmented_image_path
+                    )
                 sample = {
                     'label_index': label_index,
                     'paths': {
