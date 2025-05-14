@@ -147,7 +147,7 @@ class PetalDataModule(LightningDataModule):
                 )
                 if not augmented_image_path.exists():
                     self.augment_technique['apply'](
-                        audio_path=train_spectrogram_path,
+                        image_path=train_spectrogram_path,
                         target_path=augmented_image_path
                     )
                 sample = {

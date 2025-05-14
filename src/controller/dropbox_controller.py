@@ -26,11 +26,27 @@ def upload_file_to_dropbox(file_path: str, dropbox_path: str) -> str:
     return shared_link
 
 
-def download_folder(dbx, dropbox_folder: Path, local_folder: Path = Path('data'), verbose: bool = True):
+def list_all_folder_entries(dbx: dropbox.Dropbox, path=""):
+    """List all entries in a Dropbox folder, handling pagination."""
+    all_entries = []
+    
+    # Get initial result
+    result = dbx.files_list_folder(path=path)
+    all_entries.extend(result.entries)
+    
+    # Continue fetching if there are more entries
+    while result.has_more:
+        result = dbx.files_list_folder_continue(result.cursor)
+        all_entries.extend(result.entries)
+    
+    return all_entries
+
+def download_folder(dbx: dropbox.Dropbox, dropbox_folder: Path, local_folder: Path = Path('data'), verbose: bool = True):
     if not local_folder.exists():
         os.makedirs(local_folder)
 
-    for entry in dbx.files_list_folder(str(dropbox_folder)).entries:
+    entries = list_all_folder_entries(dbx, str(dropbox_folder))
+    for entry in entries:
         dropbox_path = Path(entry.path_lower)
         local_path = local_folder / f'{hash_file_name(dropbox_path.stem)}{dropbox_path.suffix}'
 

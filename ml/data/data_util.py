@@ -416,7 +416,7 @@ def create_spectrogram_images(
     if dataset_type == 'post-labeled':
         label_by_video_emotions(verbose)
     
-    if binary:
+    if dataset_type == 'pre-labeled':
         split_pre_labeled_audios()
 
     type_path = Path(dataset_type) / 'binary' if binary else dataset_type
