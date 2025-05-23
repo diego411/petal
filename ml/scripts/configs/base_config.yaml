@@ -2,9 +2,9 @@ trainer:
   callbacks:
     class_path: lightning.pytorch.callbacks.ModelCheckpoint
     init_args:
-      filename: '{epoch:02d}-{validation_f1:.2f}'
+      filename: '{epoch:02d}-{validation_macro_f1:.2f}'
       mode: max
-      monitor: validation_f1
+      monitor: validation_macro_f1
       save_top_k: 3
   logger:
   - class_path: lightning.pytorch.loggers.WandbLogger
@@ -16,8 +16,8 @@ trainer:
   max_epochs: 50
 data:
   init_args:
-    batch_size: 16
-    number_of_workers: 5
+    batch_size: 64
+    number_of_workers: 15
     seed: 42
     train_ratio: 0.7
     validation_ratio: 0.1
