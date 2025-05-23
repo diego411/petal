@@ -298,7 +298,7 @@ if __name__ == '__main__':
     with open(OUT_PATH, 'w') as file:
         file.write('experiment_hash, model_name, seconds, success \n') 
     
-    for model_name in reversed(model_names):
+    for model_name in model_names:
         start = datetime.now()
         
         with open(CONFIG_PATH, 'r') as file:
