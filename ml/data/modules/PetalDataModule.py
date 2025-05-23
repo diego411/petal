@@ -15,6 +15,7 @@ from lightning.fabric.utilities.exceptions import MisconfigurationException
 from typing import Optional, Dict
 from src.utils.file import find_file_path
 from collections import Counter
+import torch
 
 class PetalDataModule(LightningDataModule):
 
@@ -28,8 +29,7 @@ class PetalDataModule(LightningDataModule):
         validation_ratio:float=0.1,
         augment_technique:Optional[str]=None,
         augment_ratio:float=0,
-        undersample:bool=False,
-        undersample_strategy: Optional[Dict[int, int]]=None,
+        desired_distribution:Optional[Dict[str, float]]=None,
         seed:int=42,
         batch_size:int=16,
         number_of_workers:int=1,
@@ -43,8 +43,7 @@ class PetalDataModule(LightningDataModule):
         self.binary = binary
         self.train_ratio = train_ratio
         self.validation_ratio = validation_ratio 
-        self.undersample = undersample
-        self.undersample_strategy = undersample_strategy
+        self.desired_distribution = desired_distribution
         self.seed = seed 
         self.batch_size = batch_size
         self.number_of_workers = number_of_workers
@@ -80,6 +79,8 @@ class PetalDataModule(LightningDataModule):
         self.dataset = self.create_dataset()
         self.train_dataset, self.test_dataset, self.validation_dataset = self._create_stratified_data_split(self.dataset)
 
+        self._init_distribution_variables()
+
         augmented_samples = self._create_augment_samples(self.dataset)
 
         if augmented_samples is not None:
@@ -89,6 +90,12 @@ class PetalDataModule(LightningDataModule):
             )
 
         print("[Datamodule] FInished data augmentation")
+
+    def _init_distribution_variables(self):
+        self.train_indices = self.train_dataset.indices
+        self.all_targets = np.array(self.dataset.targets)
+        self.train_targets = self.all_targets[self.train_indices]
+        self.train_class_counts = Counter(self.train_targets)
     
     def _create_augment_samples(self, dataset):
         if self.augment_technique is None:
@@ -215,30 +222,37 @@ class PetalDataModule(LightningDataModule):
         raise NotImplementedError
 
     def train_dataloader(self):
-        if not self.undersample:
+        if self.desired_distribution is None:
             return DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True, num_workers=self.number_of_workers)
         
-        # Get all targets for training samples
         train_indices = self.train_dataset.indices
         all_targets = np.array(self.dataset.targets)
         train_targets = all_targets[train_indices]
         
-        # Calculate weights for each sample based on its class
         class_counts = Counter(train_targets)
-        class_weights = {
-            cls: 1.0 / count if self.undersample_strategy is None else 
-                 1.0 / min(count, self.undersample_strategy.get(cls, count))
-            for cls, count in class_counts.items()
-        }
+        total_samples = len(train_targets)
+
+        sample_weights = []
+
+        assert self.desired_distribution is not None, "Illegal state: undersampling was selected but no desired distribution supplied"
+        try:
+            desired_distribution = {self.class_to_idx[cls]: self.desired_distribution[cls] for cls in self.desired_distribution.keys()}
+        except KeyError:
+            raise MisconfigurationException("Desired distribution parameter contains invalid class")
+
+        for target in train_targets:
+            current_proportion = class_counts[target] / total_samples
+            desired_proportion = desired_distribution[target]
+            weight = desired_proportion / current_proportion
+            sample_weights.append(weight)
         
-        # Assign weight to each sample
-        weights = [class_weights[target] for target in train_targets]
-        
+        generator = torch.Generator().manual_seed(self.seed)
         # Create sampler
         sampler = WeightedRandomSampler(
-            weights=weights,
+            weights=sample_weights,
             num_samples=len(train_indices),  # Sample with replacement to match original dataset size
-            replacement=True
+            replacement=True,
+            generator=generator
         )
         
         dataloader = DataLoader(
@@ -248,11 +262,7 @@ class PetalDataModule(LightningDataModule):
             num_workers=self.number_of_workers
         )
 
-        class_distribution = self.count_classes(dataloader)
-        print(class_distribution)
-
         return dataloader
-
 
     def count_classes(self, dataloader):
         counts = {}
