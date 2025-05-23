@@ -1,5 +1,5 @@
 from lightning.pytorch import LightningDataModule
-from torch.utils.data import DataLoader 
+from torch.utils.data import DataLoader, WeightedRandomSampler 
 from torch.utils.data.dataset import Subset, Dataset
 from typing import Tuple
 import numpy as np
@@ -12,9 +12,9 @@ from pathlib import Path
 from ml.data.augmentation import AUGMENT_TECHNIQUES, get_augment_audio_path, get_augment_image_path
 from ml.data.data_util import generate_spectrogram_for, get_audio_path
 from lightning.fabric.utilities.exceptions import MisconfigurationException
-from typing import Optional
+from typing import Optional, Dict
 from src.utils.file import find_file_path
-
+from collections import Counter
 
 class PetalDataModule(LightningDataModule):
 
@@ -28,6 +28,8 @@ class PetalDataModule(LightningDataModule):
         validation_ratio:float=0.1,
         augment_technique:Optional[str]=None,
         augment_ratio:float=0,
+        undersample:bool=False,
+        undersample_strategy: Optional[Dict[int, int]]=None,
         seed:int=42,
         batch_size:int=16,
         number_of_workers:int=1,
@@ -41,6 +43,8 @@ class PetalDataModule(LightningDataModule):
         self.binary = binary
         self.train_ratio = train_ratio
         self.validation_ratio = validation_ratio 
+        self.undersample = undersample
+        self.undersample_strategy = undersample_strategy
         self.seed = seed 
         self.batch_size = batch_size
         self.number_of_workers = number_of_workers
@@ -73,10 +77,10 @@ class PetalDataModule(LightningDataModule):
         random.seed(seed)
         
     def setup(self, stage=None):
-        dataset = self.create_dataset()
-        self.train_dataset, self.test_dataset, self.validation_dataset = self._create_stratified_data_split(dataset)
+        self.dataset = self.create_dataset()
+        self.train_dataset, self.test_dataset, self.validation_dataset = self._create_stratified_data_split(self.dataset)
 
-        augmented_samples = self._create_augment_samples(dataset)
+        augmented_samples = self._create_augment_samples(self.dataset)
 
         if augmented_samples is not None:
             self.train_dataset = self.create_augmented_dataset(
@@ -211,7 +215,52 @@ class PetalDataModule(LightningDataModule):
         raise NotImplementedError
 
     def train_dataloader(self):
-        return DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True, num_workers=self.number_of_workers)
+        if not self.undersample:
+            return DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True, num_workers=self.number_of_workers)
+        
+        # Get all targets for training samples
+        train_indices = self.train_dataset.indices
+        all_targets = np.array(self.dataset.targets)
+        train_targets = all_targets[train_indices]
+        
+        # Calculate weights for each sample based on its class
+        class_counts = Counter(train_targets)
+        class_weights = {
+            cls: 1.0 / count if self.undersample_strategy is None else 
+                 1.0 / min(count, self.undersample_strategy.get(cls, count))
+            for cls, count in class_counts.items()
+        }
+        
+        # Assign weight to each sample
+        weights = [class_weights[target] for target in train_targets]
+        
+        # Create sampler
+        sampler = WeightedRandomSampler(
+            weights=weights,
+            num_samples=len(train_indices),  # Sample with replacement to match original dataset size
+            replacement=True
+        )
+        
+        dataloader = DataLoader(
+            self.train_dataset, 
+            batch_size=self.batch_size,
+            sampler=sampler,  # Use our custom sampler instead of shuffle=True
+            num_workers=self.number_of_workers
+        )
+
+        class_distribution = self.count_classes(dataloader)
+        print(class_distribution)
+
+        return dataloader
+
+
+    def count_classes(self, dataloader):
+        counts = {}
+        for _, labels in dataloader:
+            for label_tensor in labels:
+                label = label_tensor.item()
+                counts[label] = (counts[label] if label in counts else 0) + 1
+        return counts
 
     def val_dataloader(self):
         return DataLoader(self.validation_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.number_of_workers)
