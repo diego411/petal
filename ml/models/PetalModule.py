@@ -8,24 +8,51 @@ from ml.utils.metric_loggers import log_confusion_matrix, log_precision_recall_c
 import os
 from typing import Optional
 from pathlib import Path
+from collections import Counter
+from torch import Tensor
 
 class PetalModule(L.LightningModule):
-    def __init__(self, n_output=1):
+    def __init__(
+        self,
+        n_output:int=1,
+        weigh_loss:bool=False
+    ):
         super().__init__()
 
         self.save_hyperparameters()
         self.n_output = n_output
-        self.criterion = nn.BCEWithLogitsLoss() if n_output == 1 else nn.CrossEntropyLoss()
+        self.weight_loss = weigh_loss
 
         task = "binary" if n_output == 1 else "multiclass" 
         self.accuracy = Accuracy(task=task, num_classes=n_output)
-        self.precision = Precision(task=task, num_classes=n_output)
-        self.recall = Recall(task=task, num_classes=n_output)
-        self.f1 = F1Score(task=task, num_classes=n_output, average="weighted")
-        self.auroc = AUROC(task=task, num_classes=n_output)
+        self.precision = Precision(task=task, num_classes=n_output, average="macro")
+        self.recall = Recall(task=task, num_classes=n_output, average="macro")
+        self.weighted_f1 = F1Score(task=task, num_classes=n_output, average="weighted")
+        self.macro_f1 = F1Score(task=task, num_classes=n_output, average="macro")
+        self.auroc = AUROC(task=task, num_classes=n_output, average="macro")
         self.confusion_matrix = ConfusionMatrix(task=task, num_classes=n_output) 
         self.precision_recall_curve = PrecisionRecallCurve(task=task, num_classes=n_output)
         self.roc_curve = ROC(task=task, num_classes=n_output)
+
+    def setup(self, stage=None):
+        if not self.weight_loss:
+            self.criterion = nn.BCEWithLogitsLoss() if self.n_output == 1 else nn.CrossEntropyLoss()
+            return
+
+        train_class_counts: Counter = self.trainer.datamodule.train_class_counts
+        print("DANK")
+        assert train_class_counts is not None, "No train_class_counts in datamodule"
+
+        if self.n_output == 1:
+            assert len(train_class_counts) == 2, "Unexpected number of classes in train_class_counts"
+            pos_weight = train_class_counts[1] / train_class_counts[0]
+            self.criterion = nn.BCEWithLogitsLoss(pos_weight=Tensor([pos_weight]))
+        else:
+            weights = []
+            number_of_train_samples = sum(train_class_counts.values())
+            for cls, count in train_class_counts.items():
+                weights[cls] = number_of_train_samples / (self.n_output * count)
+            self.criterion = nn.CrossEntropyLoss(weight=Tensor(weights))
         
     def forward(self, x) -> Tensor:
         raise NotImplementedError 
@@ -65,10 +92,12 @@ class PetalModule(L.LightningModule):
         self._reset_metrics()
     
     def _update_metrics(self, targets: Tensor, predictions: Tensor):
+        targets = targets.long() if self.n_output == 1 else targets
         self.accuracy.update(predictions, targets)
         self.precision.update(predictions, targets)
         self.recall.update(predictions, targets)
-        self.f1.update(predictions, targets)
+        self.weighted_f1.update(predictions, targets)
+        self.macro_f1.update(predictions, targets)
         self.auroc.update(predictions, targets)
         self.confusion_matrix.update(predictions, targets)
         self.precision_recall_curve.update(predictions, targets)
@@ -78,7 +107,8 @@ class PetalModule(L.LightningModule):
         self.log(f"{stage}_accuracy", self.accuracy.compute())
         self.log(f"{stage}_precision", self.precision.compute())
         self.log(f"{stage}_recall", self.recall.compute())
-        self.log(f"{stage}_f1", self.f1.compute())
+        self.log(f"{stage}_weighted_f1", self.weighted_f1.compute())
+        self.log(f"{stage}_macro_f1", self.macro_f1.compute())
         self.log(f"{stage}_auroc", self.auroc.compute())
 
         csv_logger = self._get_csv_logger()
@@ -99,7 +129,8 @@ class PetalModule(L.LightningModule):
         self.accuracy.reset()
         self.precision.reset()
         self.recall.reset()
-        self.f1.reset()
+        self.weighted_f1.reset()
+        self.macro_f1.reset()
         self.auroc.reset()
         self.confusion_matrix.reset()
         self.precision_recall_curve.reset()

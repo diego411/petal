@@ -1,57 +1,72 @@
-from torch import nn
-import torch.nn.functional as F
+from ml.models.PetalModule import PetalModule
+import torch
+import torch.nn as nn
+from torch import Tensor
 
-class CNNet(nn.Module):
-    def __init__(self, n_output=1, conv_kernel_size=5, conv_stride=1, pool_kernel_size=2, pool_stride=2, l1=64, l2=50):
-        super().__init__()
-        ##self.resnet = resnet18_features
-        ##self.conv1 = nn.Conv2d(512, 32, kernel_size=3, padding=1)
-        self.conv_kernel_size = conv_kernel_size
-        self.conv_stride = conv_stride
-        self.pool_kernel_size = pool_kernel_size
-        self.pool_stride = pool_stride
+class CNNet(PetalModule):
+    def __init__(
+        self,
+        n_output:int=1,
+        weigh_loss:bool=False,
+        lr:float=1e-3,
+        kernel_size:int=3,
+        pool_kernel_size:int=2,
+        stride:int=1,
+        pool_stride:int=2,
+        padding:int=1,
+        dropout_rate:float=0.1
+    ):
+        super().__init__(n_output=n_output, weigh_loss=weigh_loss)
+        print("[Model] Using CNNet")
 
-        self.conv1 = nn.Conv2d(3, 32, kernel_size=self.conv_kernel_size, stride=self.conv_stride)
+        self.lr = lr
 
-        (width, height) = self.update_shape(224, 224)
-        (width, height) = self.update_shape(width, height, is_pool=True)
+        self.features = nn.Sequential(
+            nn.Conv2d(3, 64, kernel_size=kernel_size, stride=stride, padding=padding),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=pool_kernel_size, stride=pool_stride),
+            
+            nn.Conv2d(64, 128, kernel_size=kernel_size, stride=stride, padding=padding),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=pool_kernel_size, stride=pool_stride),
+            
+            nn.Conv2d(128, 256, kernel_size=kernel_size, stride=stride, padding=padding),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=pool_kernel_size, stride=pool_stride),
+            
+            nn.Conv2d(256, 512, kernel_size=kernel_size, stride=stride, padding=padding),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=pool_kernel_size, stride=pool_stride),
+            
+            nn.Conv2d(512, 512, kernel_size=kernel_size, stride=stride, padding=padding),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=pool_kernel_size, stride=pool_stride),
+            
+            # Global pooling - this ensures fixed output size regardless of input
+            nn.AdaptiveAvgPool2d((1, 1))
+        )
+        
+        # With adaptive pooling, the output will always be 512 × 1 × 1
+        self.classifier = nn.Sequential(
+            nn.Linear(512, 4096),
+            nn.ReLU(inplace=True),
+            nn.Dropout(dropout_rate),
+            nn.Linear(4096, 1024),
+            nn.ReLU(inplace=True),
+            nn.Dropout(dropout_rate),
+            nn.Linear(1024, n_output)
+        )
+        
+    def forward(self, x: Tensor) -> Tensor:
+        x = self.features(x)
+        x = torch.flatten(x, 1)  # Flatten all dimensions except batch
+        x = self.classifier(x)
 
-        self.conv2 = nn.Conv2d(32, l1, kernel_size=self.conv_kernel_size, stride=self.conv_stride)
+        if self.n_output == 1:
+            x = x.squeeze(1)
 
-        (width, height) = self.update_shape(width, height)
-        (width, height) = self.update_shape(width, height, is_pool=True)
-
-        self.conv2_drop = nn.Dropout2d()
-        self.flatten = nn.Flatten()
-        self.fc1 = nn.Linear(width * height * l1, l2)
-        self.fc2 = nn.Linear(l2, n_output)
-        #self.fc3 = nn.Linear(l2, n_output)
-
-
-    def forward(self, x):
-        ##x = self.resnet(x)
-        x = self.conv1(x)
-        x = F.max_pool2d(x, kernel_size=self.pool_kernel_size, stride=self.pool_stride)
-        x = F.relu(x)
-        x = self.conv2(x)
-        x = self.conv2_drop(x)
-        x = F.max_pool2d(x, kernel_size=self.pool_kernel_size, stride=self.pool_stride)
-        x = F.relu(x)
-        x = self.flatten(x)
-        x = self.fc1(x)
-        x = F.relu(x)
-        x = F.dropout(x, training=self.training)
-        x = self.fc2(x)
-        x = F.relu(x)
-        #x = self.fc3(x)
-        #x = F.relu(x)
-        return F.log_softmax(x,dim=1)
-
-    def update_shape(self, width, height, is_pool=False):
-        kernel_size = self.pool_kernel_size if is_pool else self.conv_kernel_size
-        stride = self.pool_stride if is_pool else self.conv_stride
-
-        width = int(((width - kernel_size) / stride) + 1)
-        height = int(((height - kernel_size) / stride) + 1)
-
-        return (width, height)
+        return x
+    
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
+        return optimizer

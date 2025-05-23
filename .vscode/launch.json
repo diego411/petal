@@ -5,21 +5,19 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug model CLI",
+            "name": "Debug Model CLI Fit",
             "type": "debugpy",
             "request": "launch",
-            "module": "ml.model_cli",
+            "module": "ml.clis.debug_cli",
             "args": [
-                "fit", 
-                "--config", 
-                "ml/scripts/config.yaml",
-                "--trainer.logger.save_dir",
-                "ml/experiments",
-                "--trainer.logger.name",
-                "debug_run",
-                "--trainer.logger.version",
-                "version_0",
-                "--trainer.callbacks.dirpath=ml/experiments/debug_run/version_0/checkpoints"
+                "fit",
+                "--config", "ml/scripts/configs/debug_config.yaml", 
+                "--trainer.logger.save_dir", "ml/experiments",
+                "--trainer.logger.name", "debug_run",
+                "--trainer.logger.version", "version_0",
+                "--trainer.callbacks.dirpath", "ml/experiments/debug_run/version_0/checkpoints",
+                "--experiment_hash", "debug_run",
+                "--experiment_version", "version_0"
             ]
         },
         {
@@ -40,13 +38,24 @@
             "name": "Debug data util",
             "type": "debugpy",
             "request": "launch",
-            "module": "ml.main"
+            "module": "ml.clis.debug_cli",
+            "args": [
+                "test",
+                "--config", "ml/experiments/8b6c98c764de0afaabbdbbf19e529831/version_0/config.yaml", 
+                "--ckpt_path", "ml/experiments/8b6c98c764de0afaabbdbbf19e529831/version_0/checkpoints/epoch=11-validation_f1=0.58"
+            ]
         },
         {
-            "name": "Debug ml dataset",
+            "name": "Debug data util",
             "type": "debugpy",
             "request": "launch",
-            "module": "ml.dataset"
+            "module": "ml.data.data_util"
+        },
+        {
+            "name": "Debug summarise experiments",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "ml.scripts.summarise_experiments"
         }
     ]
 }

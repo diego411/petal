@@ -8,3 +8,5 @@ logs
 /dbs/**.db
 /dbs/**.db-journal
 out
+**.out
+**.ckpt

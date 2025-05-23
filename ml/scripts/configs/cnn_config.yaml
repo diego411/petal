@@ -1,0 +1,18 @@
+auto_lr_find: true
+data:
+  class_path: ml.data.modules.CNNetDataModule
+  init_args:
+    binary: true
+    dataset_type: pre-labeled
+    spectrogram_backend: torch
+    spectrogram_type: spectrogram
+model:
+  class_path: ml.models.CNNet
+  init_args:
+    dropout_rate: 0.1
+    kernel_size: 3
+    n_output: 1
+    padding: 1
+    pool_kernel_size: 2
+    pool_stride: 2
+    stride: 1
