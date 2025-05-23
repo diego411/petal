@@ -4,37 +4,43 @@ import torch.nn as nn
 from torch import Tensor
 
 class CNNet(PetalModule):
-    def __init__(self, n_output=1, weigh_loss=False, lr=1e-3):
+    def __init__(
+        self,
+        n_output:int=1,
+        weigh_loss:bool=False,
+        lr:float=1e-3,
+        kernel_size:int=3,
+        pool_kernel_size:int=2,
+        stride:int=1,
+        pool_stride:int=2,
+        padding:int=1,
+        dropout_rate:float=0.1
+    ):
         super().__init__(n_output=n_output, weigh_loss=weigh_loss)
         print("[Model] Using CNNet")
 
         self.lr = lr
-        
+
         self.features = nn.Sequential(
-            # Block 1
-            nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(3, 64, kernel_size=kernel_size, stride=stride, padding=padding),
             nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.MaxPool2d(kernel_size=pool_kernel_size, stride=pool_stride),
             
-            # Block 2
-            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(64, 128, kernel_size=kernel_size, stride=stride, padding=padding),
             nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.MaxPool2d(kernel_size=pool_kernel_size, stride=pool_stride),
             
-            # Block 3
-            nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(128, 256, kernel_size=kernel_size, stride=stride, padding=padding),
             nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.MaxPool2d(kernel_size=pool_kernel_size, stride=pool_stride),
             
-            # Block 4
-            nn.Conv2d(256, 512, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(256, 512, kernel_size=kernel_size, stride=stride, padding=padding),
             nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.MaxPool2d(kernel_size=pool_kernel_size, stride=pool_stride),
             
-            # Block 5
-            nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(512, 512, kernel_size=kernel_size, stride=stride, padding=padding),
             nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.MaxPool2d(kernel_size=pool_kernel_size, stride=pool_stride),
             
             # Global pooling - this ensures fixed output size regardless of input
             nn.AdaptiveAvgPool2d((1, 1))
@@ -44,10 +50,10 @@ class CNNet(PetalModule):
         self.classifier = nn.Sequential(
             nn.Linear(512, 4096),
             nn.ReLU(inplace=True),
-            nn.Dropout(0.1),
+            nn.Dropout(dropout_rate),
             nn.Linear(4096, 1024),
             nn.ReLU(inplace=True),
-            nn.Dropout(0.1),
+            nn.Dropout(dropout_rate),
             nn.Linear(1024, n_output)
         )
         
