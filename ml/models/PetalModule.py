@@ -19,10 +19,11 @@ class PetalModule(L.LightningModule):
 
         task = "binary" if n_output == 1 else "multiclass" 
         self.accuracy = Accuracy(task=task, num_classes=n_output)
-        self.precision = Precision(task=task, num_classes=n_output)
-        self.recall = Recall(task=task, num_classes=n_output)
-        self.f1 = F1Score(task=task, num_classes=n_output, average="weighted")
-        self.auroc = AUROC(task=task, num_classes=n_output)
+        self.precision = Precision(task=task, num_classes=n_output, average="macro")
+        self.recall = Recall(task=task, num_classes=n_output, average="macro")
+        self.weighted_f1 = F1Score(task=task, num_classes=n_output, average="weighted")
+        self.macro_f1 = F1Score(task=task, num_classes=n_output, average="macro")
+        self.auroc = AUROC(task=task, num_classes=n_output, average="macro")
         self.confusion_matrix = ConfusionMatrix(task=task, num_classes=n_output) 
         self.precision_recall_curve = PrecisionRecallCurve(task=task, num_classes=n_output)
         self.roc_curve = ROC(task=task, num_classes=n_output)
@@ -65,10 +66,12 @@ class PetalModule(L.LightningModule):
         self._reset_metrics()
     
     def _update_metrics(self, targets: Tensor, predictions: Tensor):
+        targets = targets.long() if self.n_output == 1 else targets
         self.accuracy.update(predictions, targets)
         self.precision.update(predictions, targets)
         self.recall.update(predictions, targets)
-        self.f1.update(predictions, targets)
+        self.weighted_f1.update(predictions, targets)
+        self.macro_f1.update(predictions, targets)
         self.auroc.update(predictions, targets)
         self.confusion_matrix.update(predictions, targets)
         self.precision_recall_curve.update(predictions, targets)
@@ -78,7 +81,8 @@ class PetalModule(L.LightningModule):
         self.log(f"{stage}_accuracy", self.accuracy.compute())
         self.log(f"{stage}_precision", self.precision.compute())
         self.log(f"{stage}_recall", self.recall.compute())
-        self.log(f"{stage}_f1", self.f1.compute())
+        self.log(f"{stage}_weighted_f1", self.weighted_f1.compute())
+        self.log(f"{stage}_macro_f1", self.macro_f1.compute())
         self.log(f"{stage}_auroc", self.auroc.compute())
 
         csv_logger = self._get_csv_logger()
@@ -99,7 +103,8 @@ class PetalModule(L.LightningModule):
         self.accuracy.reset()
         self.precision.reset()
         self.recall.reset()
-        self.f1.reset()
+        self.weighted_f1.reset()
+        self.macro_f1.reset()
         self.auroc.reset()
         self.confusion_matrix.reset()
         self.precision_recall_curve.reset()

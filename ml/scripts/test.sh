@@ -1,0 +1,12 @@
+# Configure this
+EXPERIMENT_NAME=41cb7a079d42d31714cc10d07dff48cc
+EXPERIMENT_VERSION=version_10
+CHECKPOINT_NAME="epoch=16-validation_f1=0.25"
+
+EXPERIMENTS_PATH=ml/experiments
+EXPERIMENT_PATH=$EXPERIMENTS_PATH/$EXPERIMENT_NAME/$EXPERIMENT_VERSION
+CHECKPOINT_PATH=$EXPERIMENT_PATH/checkpoints/$CHECKPOINT_NAME.ckpt
+
+python -m ml.clis.petal_cli test \
+    --config=$EXPERIMENT_PATH/config.yaml \
+    --ckpt_path=$CHECKPOINT_PATH
