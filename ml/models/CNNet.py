@@ -4,8 +4,8 @@ import torch.nn as nn
 from torch import Tensor
 
 class CNNet(PetalModule):
-    def __init__(self, n_output=1, lr=1e-3):
-        super().__init__(n_output=n_output)
+    def __init__(self, n_output=1, weigh_loss=False, lr=1e-3):
+        super().__init__(n_output=n_output, weigh_loss=weigh_loss)
         print("[Model] Using CNNet")
 
         self.lr = lr

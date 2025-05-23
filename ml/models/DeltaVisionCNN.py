@@ -12,10 +12,11 @@ class DeltaVisionCNN(PetalModule):
         self,
         pretrained_model_name:str='resnet18',
         n_output:int=1,
+        weigh_loss:bool=False,
         freeze=True,
         lr=1e-4
     ): 
-        super().__init__(n_output=n_output)
+        super().__init__(n_output=n_output, weigh_loss=weigh_loss)
         print("[Model] Using DeltaVisionCNN")
 
         self.learning_rate = lr
