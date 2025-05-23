@@ -1,8 +1,8 @@
 import yaml
-import subprocess
 from ml.utils.generate_experiment_name import hash_yaml
 from datetime import datetime
 from pathlib import Path
+from ml.scripts.scripts_util import run_fit
 
 model_names = [
     'tinynet_e',
@@ -284,16 +284,6 @@ model_names = [
 CONFIG_PATH = 'ml/scripts/configs/vision_config.yaml'
 OUT_PATH = 'logs/model_search_output.txt'
 
-def run_fit():
-    process = subprocess.Popen(["bash", "ml/scripts/fit_vision_cnn.sh"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-
-    assert process.stdout is not None
-    for line in process.stdout:
-        print(line, end="")
-
-    process.wait()
-    print("Script finished.")
-
 if __name__ == '__main__':
     with open(OUT_PATH, 'w') as file:
         file.write('experiment_hash, model_name, seconds, success \n') 
@@ -319,7 +309,7 @@ if __name__ == '__main__':
 
         print(f'Checking out model {model_name}')
         try:
-            run_fit()
+            run_fit('fit_vision_cnn')
         except Exception as e:
             print(e)
             success = False
