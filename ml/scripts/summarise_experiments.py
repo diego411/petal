@@ -12,7 +12,8 @@ if __name__ == '__main__':
         'epoch',
         'validation_accuracy',
         'validation_auroc',
-        'validation_f1',
+        'validation_macro_f1',
+        'validation_weighted_f1',
         'validation_loss',
         'validation_precision',
         'validation_recall',
@@ -53,11 +54,11 @@ if __name__ == '__main__':
 
             df = pd.read_csv(metrics_path)
 
-            if not 'validation_f1' in df:
+            if not 'validation_macro_f1' in df:
                 continue
 
-            best_f1 = df['validation_f1'].max()
-            best_epoch = df[df['validation_f1'] == best_f1].iloc[0]
+            best_f1 = df['validation_macro_f1'].max()
+            best_epoch = df[df['validation_macro_f1'] == best_f1].iloc[0]
 
             summary_df.loc[i] = pd.Series({
                 'experiment': experiment.stem,
@@ -67,7 +68,8 @@ if __name__ == '__main__':
                 'epoch': best_epoch['epoch'],
                 'validation_accuracy': best_epoch['validation_accuracy'].item(),
                 'validation_auroc': best_epoch['validation_auroc'].item(),
-                'validation_f1': best_epoch['validation_f1'].item(),
+                'validation_macro_f1': best_epoch['validation_macro_f1'].item(),
+                'validation_weighted_f1': best_epoch['validation_weighted_f1'].item(),
                 'validation_loss': best_epoch['validation_loss'].item(),
                 'validation_precision': best_epoch['validation_precision'].item(),
                 'validation_recall': best_epoch['validation_recall'].item(),
@@ -75,6 +77,6 @@ if __name__ == '__main__':
                 
             i = i + 1
     
-    summary_df.sort_values(by=['validation_f1'], ascending=False, inplace=True)
+    summary_df.sort_values(by=['validation_macro_f1'], ascending=False, inplace=True)
     summary_df.to_csv('ml/experiments/summary.csv', index=False)
 
