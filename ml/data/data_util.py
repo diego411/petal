@@ -529,6 +529,33 @@ def create_spectrogram_images(
     print('\033[32m[Datamodule] Finished spectrogram generation\033[0m')
     return spectrogram_path, mel_spectrogram_path, librosa_spectrogram_path, df
 
+def get_audios(dataset_type: str, binary: bool) -> List[dict]:
+    audios = []
+    emotions = get_emotions(dataset_type)
+
+    for i, emotion in enumerate(emotions):
+        for file_path in get_audio_files(dataset_type, emotion):
+            label_index = i
+            class_name = emotion
+            if binary:
+                label_index = 0 if emotion == 'neutral' else 1
+                class_name = 'neutral' if emotion == 'neutral' else 'not-neutral'
+
+            waveform, sr = torchaudio.load(file_path)
+            waveform = waveform.mean(dim=0)  # Convert stereo to mono if needed
+
+            min_samples_for_vggish = int(sr * 0.96)
+
+            if len(waveform) < min_samples_for_vggish:
+                continue
+
+            audios.append({
+                'label_idx': label_index,
+                'class_name': class_name,
+                'waveform': waveform,
+                'sample_rate': sr
+            })
+
     return audios
 
 if __name__ == '__main__':
