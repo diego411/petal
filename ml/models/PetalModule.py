@@ -40,7 +40,6 @@ class PetalModule(L.LightningModule):
             return
 
         train_class_counts: Counter = self.trainer.datamodule.train_class_counts
-        print("DANK")
         assert train_class_counts is not None, "No train_class_counts in datamodule"
 
         if self.n_output == 1:
@@ -48,7 +47,8 @@ class PetalModule(L.LightningModule):
             pos_weight = train_class_counts[1] / train_class_counts[0]
             self.criterion = nn.BCEWithLogitsLoss(pos_weight=Tensor([pos_weight]))
         else:
-            weights = []
+            weights = [None] * len(train_class_counts)
+
             number_of_train_samples = sum(train_class_counts.values())
             for cls, count in train_class_counts.items():
                 weights[cls] = number_of_train_samples / (self.n_output * count)
@@ -121,8 +121,22 @@ class PetalModule(L.LightningModule):
 
         current_epoch = self.trainer.current_epoch
         idx_to_class = self.trainer.datamodule.idx_to_class # type: ignore
+        
+        minority_class_ratio = None
+        if stage == 'validation':
+            minority_class_ratio = self.trainer.datamodule.validation_minority_class_ratio
+        elif stage == 'test':
+            minority_class_ratio = self.trainer.datamodule.test_minority_class_ratio
+
         log_confusion_matrix(self.log, self.confusion_matrix, stage, log_dir, current_epoch, idx_to_class)
-        log_precision_recall_curve(self.precision_recall_curve, stage, log_dir, current_epoch, idx_to_class)
+        log_precision_recall_curve(
+            self.precision_recall_curve,
+            stage,
+            log_dir,
+            current_epoch,
+            idx_to_class,
+            minority_class_ratio
+        )
         log_roc_curve(self.roc_curve, stage, log_dir, current_epoch, idx_to_class)
 
     def _reset_metrics(self):

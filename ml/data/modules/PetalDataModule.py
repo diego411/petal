@@ -36,7 +36,7 @@ class PetalDataModule(LightningDataModule):
         verbose:bool=True
     ):
         super().__init__()
-        print(number_of_workers)
+        
         self.dataset_type = dataset_type
         self.spectrogram_type = spectrogram_type
         self.spectrogram_backend = spectrogram_backend
@@ -79,6 +79,20 @@ class PetalDataModule(LightningDataModule):
         self.dataset = self.create_dataset()
         self.train_dataset, self.test_dataset, self.validation_dataset = self._create_stratified_data_split(self.dataset)
 
+        self.validation_minority_class_ratio = None
+        self.test_minority_class_ratio = None
+
+        if self.binary:
+            targets = np.array(self.dataset.targets)
+            target_counter = Counter(targets)
+            minority_class_idx = min(target_counter, key=target_counter.get)
+
+            validation_target_counter = Counter(targets[self.validation_dataset.indices])
+            test_target_counter = Counter(targets[self.test_dataset.indices])
+
+            self.validation_minority_class_ratio = validation_target_counter[minority_class_idx] / sum(validation_target_counter.values())
+            self.test_minority_class_ratio = test_target_counter[minority_class_idx] / sum(test_target_counter.values())
+        
         self._init_distribution_variables()
 
         augmented_samples = self._create_augment_samples(self.dataset)
