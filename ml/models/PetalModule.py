@@ -48,7 +48,7 @@ class PetalModule(L.LightningModule):
             pos_weight = train_class_counts[1] / train_class_counts[0]
             self.criterion = nn.BCEWithLogitsLoss(pos_weight=Tensor([pos_weight]))
         else:
-            weights = []
+            weights = [None] * len(train_class_counts.items())
             number_of_train_samples = sum(train_class_counts.values())
             for cls, count in train_class_counts.items():
                 weights[cls] = number_of_train_samples / (self.n_output * count)
@@ -68,12 +68,12 @@ class PetalModule(L.LightningModule):
     
     def training_step(self, batch, batch_idx):
         _, _, loss = self.single_step(batch)
-        self.log("train_loss", loss)
+        self.log("train_loss", loss, sync_dist=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
         targets, predictions, loss = self.single_step(batch)
-        self.log("validation_loss", loss)
+        self.log("validation_loss", loss, sync_dist=True)
         self._update_metrics(targets, predictions)
         return loss
 
@@ -104,12 +104,12 @@ class PetalModule(L.LightningModule):
         self.roc_curve.update(predictions, targets)
     
     def _log_metrics(self, stage: str):
-        self.log(f"{stage}_accuracy", self.accuracy.compute())
-        self.log(f"{stage}_precision", self.precision.compute())
-        self.log(f"{stage}_recall", self.recall.compute())
-        self.log(f"{stage}_weighted_f1", self.weighted_f1.compute())
-        self.log(f"{stage}_macro_f1", self.macro_f1.compute())
-        self.log(f"{stage}_auroc", self.auroc.compute())
+        self.log(f"{stage}_accuracy", self.accuracy.compute(), sync_dist=True)
+        self.log(f"{stage}_precision", self.precision.compute(), sync_dist=True)
+        self.log(f"{stage}_recall", self.recall.compute(), sync_dist=True)
+        self.log(f"{stage}_weighted_f1", self.weighted_f1.compute(), sync_dist=True)
+        self.log(f"{stage}_macro_f1", self.macro_f1.compute(), sync_dist=True)
+        self.log(f"{stage}_auroc", self.auroc.compute(), sync_dist=True)
 
         csv_logger = self._get_csv_logger()
         if csv_logger is None:

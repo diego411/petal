@@ -28,7 +28,8 @@ class PetalDataModule(LightningDataModule):
         train_ratio:float=0.7,
         validation_ratio:float=0.1,
         augment_technique:Optional[str]=None,
-        augment_ratio:float=0,
+        undersample_ratios:Optional[Dict[str, float]]=None,
+        oversample_ratios:Optional[Dict[str, float]]=None,
         desired_distribution:Optional[Dict[str, float]]=None,
         seed:int=42,
         batch_size:int=16,
@@ -48,7 +49,8 @@ class PetalDataModule(LightningDataModule):
         self.batch_size = batch_size
         self.number_of_workers = number_of_workers
         self.verbose = verbose
-        self.augment_ratio = augment_ratio
+        self.undersample_ratios = undersample_ratios
+        self.oversample_ratios = oversample_ratios
 
         if dataset_type != 'pre-labeled' and dataset_type != 'post-labeled':
             raise MisconfigurationException("Invalid dataset type! Only pre-labeled and post-labeled are supported!")
@@ -108,66 +110,77 @@ class PetalDataModule(LightningDataModule):
 
         random.shuffle(train_sample_paths)
 
-        for train_spectrogram_path, label_index in train_sample_paths[0:int(len(train_sample_paths) * self.augment_ratio)]:
-            train_spectrogram_path = Path(train_spectrogram_path)
-            if self.augment_technique['type'] == 'audio':
-                if self.binary:
-                    train_audio_path = find_file_path(
-                        file_name=train_spectrogram_path.with_suffix('.wav').name,
-                        directory=get_audio_path(self.dataset_type)
-                    )
-                    if train_audio_path is None:
-                        raise RuntimeError(f"Augmentation failed. Path to spectrogram was not found for following path: {train_spectrogram_path}")
-                else:
-                    train_audio_path = Path(str(train_spectrogram_path).replace('spectrograms', 'audio')).with_suffix('.wav') 
+        if self.oversample_ratios is None:
+            return None
+        
+        for class_name, ratio in self.oversample_ratios.items():
+            class_idx = self.class_to_idx[class_name]
+            augment_paths = list(filter(
+                lambda sample_path: sample_path[1] == class_idx,
+                train_sample_paths
+            ))    
+            augment_paths = augment_paths[:int(len(augment_paths)* ratio)]
 
-                augmented_audio_path = get_augment_audio_path(
-                    audio_path=train_audio_path,
-                    technique=self.augment_technique['label'],
-                    dataset_type=self.dataset_type
-                )
+            for train_spectrogram_path, label_index in augment_paths:
+                train_spectrogram_path = Path(train_spectrogram_path)
+                if self.augment_technique['type'] == 'audio':
+                    if self.binary:
+                        train_audio_path = find_file_path(
+                            file_name=train_spectrogram_path.with_suffix('.wav').name,
+                            directory=get_audio_path(self.dataset_type)
+                        )
+                        if train_audio_path is None:
+                            raise RuntimeError(f"Augmentation failed. Path to spectrogram was not found for following path: {train_spectrogram_path}")
+                    else:
+                        train_audio_path = Path(str(train_spectrogram_path).replace('spectrograms', 'audio')).with_suffix('.wav') 
 
-                if not augmented_audio_path.exists():
-                    self.augment_technique['apply'](
+                    augmented_audio_path = get_augment_audio_path(
                         audio_path=train_audio_path,
-                        target_path=augmented_audio_path
+                        technique=self.augment_technique['label'],
+                        dataset_type=self.dataset_type
                     )
 
-                augmented_image_path = get_augment_image_path(
-                    image_path=train_audio_path,
-                    technique=self.augment_technique['label'],
-                    dataset_type=self.dataset_type
-                )
-                spectrogram_paths = generate_spectrogram_for(
-                    audio_path=augmented_audio_path,
-                    spectrogram_type=self.spectrogram_type,
-                    spectrogram_backend=self.spectrogram_backend,
-                    with_deltas=False,
-                    target_path=augmented_image_path.parent
-                )
-                sample = {
-                    'label_index': label_index,
-                    'paths': spectrogram_paths
-                }
-                augmented_samples.append(sample)
-            elif self.augment_technique['type'] == 'image':
-                augmented_image_path = get_augment_image_path(
-                    image_path=train_spectrogram_path,
-                    technique=self.augment_technique['label'],
-                    dataset_type=self.dataset_type
-                )
-                if not augmented_image_path.exists():
-                    self.augment_technique['apply'](
-                        image_path=train_spectrogram_path,
-                        target_path=augmented_image_path
+                    if not augmented_audio_path.exists():
+                        self.augment_technique['apply'](
+                            audio_path=train_audio_path,
+                            target_path=augmented_audio_path
+                        )
+
+                    augmented_image_path = get_augment_image_path(
+                        image_path=train_audio_path,
+                        technique=self.augment_technique['label'],
+                        dataset_type=self.dataset_type
                     )
-                sample = {
-                    'label_index': label_index,
-                    'paths': {
-                        'spectrogram_path': augmented_image_path
+                    spectrogram_paths = generate_spectrogram_for(
+                        audio_path=augmented_audio_path,
+                        spectrogram_type=self.spectrogram_type,
+                        spectrogram_backend=self.spectrogram_backend,
+                        with_deltas=False,
+                        target_path=augmented_image_path.parent
+                    )
+                    sample = {
+                        'label_index': label_index,
+                        'paths': spectrogram_paths
                     }
-                }
-                augmented_samples.append(sample)
+                    augmented_samples.append(sample)
+                elif self.augment_technique['type'] == 'image':
+                    augmented_image_path = get_augment_image_path(
+                        image_path=train_spectrogram_path,
+                        technique=self.augment_technique['label'],
+                        dataset_type=self.dataset_type
+                    )
+                    if not augmented_image_path.exists():
+                        self.augment_technique['apply'](
+                            image_path=train_spectrogram_path,
+                            target_path=augmented_image_path
+                        )
+                    sample = {
+                        'label_index': label_index,
+                        'paths': {
+                            'spectrogram_path': augmented_image_path
+                        }
+                    }
+                    augmented_samples.append(sample)
         
         return augmented_samples
     
@@ -207,7 +220,24 @@ class PetalDataModule(LightningDataModule):
             stratify=temp_targets,
             random_state=self.seed
         )
-        
+
+        if self.undersample_ratios is not None:
+            dataset_targets = np.array(dataset.targets)
+            train_targets = dataset_targets[train_indices]
+            for class_name, ratio in self.undersample_ratios.items():
+                train_targets = dataset_targets[train_indices]
+                class_idx = self.class_to_idx[class_name]
+                target_mask = train_targets == class_idx
+
+                target_indices = train_indices[target_mask]
+                non_target_indices = train_indices[~target_mask]
+
+                n_keep = int(len(target_indices) * ratio)
+                np.random.shuffle(target_indices)
+                targets_keep = target_indices[:n_keep]
+
+                train_indices = np.concatenate([non_target_indices, targets_keep])
+                
         # Create subset datasets
         train_subset = Subset(dataset, train_indices)
         test_subset = Subset(dataset, test_indices)
