@@ -40,7 +40,6 @@ class PetalModule(L.LightningModule):
             return
 
         train_class_counts: Counter = self.trainer.datamodule.train_class_counts
-        print("DANK")
         assert train_class_counts is not None, "No train_class_counts in datamodule"
 
         if self.n_output == 1:

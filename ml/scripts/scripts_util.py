@@ -1,11 +1,14 @@
 import subprocess
 
 def run_fit(script_name):
-    process = subprocess.Popen(["bash", f"ml/scripts/{script_name}.sh"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-
-    assert process.stdout is not None
-    for line in process.stdout:
-        print(line, end="")
-
-    process.wait()
-    print("Script finished.")
+    try:
+        result = subprocess.run(
+            ["bash", f"ml/scripts/{script_name}.sh"],
+            text=True,
+            capture_output=False  # Print directly to terminal
+        )
+        print("Script finished.")
+        return result.returncode
+    except Exception as e:
+        print(f"Error running script: {e}")
+        return -1
