@@ -1,4 +1,3 @@
-auto_lr_find: true
 trainer:
   callbacks:
     class_path: lightning.pytorch.callbacks.ModelCheckpoint
@@ -23,12 +22,17 @@ data:
   validation_ratio: 0.1
   verbose: false
   dataset_type: pre-labeled
-  binary: true 
-  undersample: false
   pretrained_model_name: resnet50
   spectrogram_type: spectrogram
+  augment_technique: SRS
+  augment_ratios:
+    angry: 0.5
+  #undersample_ratios:
+  #  neutral: 0.5
 model:
   freeze: false
-  n_output: 1
+  n_output: 7
+  lr: 0.001
   pretrained_model_name: resnet50
+  weigh_loss: true
 
