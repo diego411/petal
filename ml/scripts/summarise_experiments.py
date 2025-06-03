@@ -45,12 +45,14 @@ if __name__ == '__main__':
                 yaml_data = yaml.safe_load(file)
             
             model_config = yaml_data['model']
+            model_name = None
+            architecture = None
             if 'init_args' in model_config:
                 model_config = model_config['init_args']
-            if 'pretrained_model_name' not in model_config:
-                continue
-
-            model_name = model_config['pretrained_model_name']
+            if 'pretrained_model_name' in model_config:
+                model_name = model_config['pretrained_model_name']
+            if 'class_path' in model_config:
+                architecture = model_config['class_path']
 
             df = pd.read_csv(metrics_path)
 
@@ -62,7 +64,8 @@ if __name__ == '__main__':
 
             summary_df.loc[i] = pd.Series({
                 'experiment': experiment.stem,
-                'model': model_name,
+                'architecture': architecture,
+                'pre_trained_model': model_name,
                 'version': version.stem,
                 'binary': model_config['n_output'] == 1,
                 'epoch': best_epoch['epoch'],

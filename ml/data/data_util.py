@@ -79,7 +79,7 @@ def filter_spectrogram(spectrogram_tensor: Tensor) -> np.ndarray:
 
     spectrogram_numpy: np.ndarray = spectrogram_tensor.log2()[0, :, :].numpy().T
     
-    infinity_filter = spectrogram_numpy != np.NINF
+    infinity_filter = spectrogram_numpy != -np.inf
     filtered_spectrogram = np.where(
         infinity_filter,
         spectrogram_numpy,
