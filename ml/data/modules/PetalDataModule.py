@@ -29,7 +29,6 @@ class PetalDataModule(LightningDataModule):
         train_ratio:float=0.7,
         validation_ratio:float=0.1,
         augment_technique:Optional[str]=None,
-        undersample_ratios:Optional[Dict[str, float]]=None,
         oversample_ratios:Optional[Dict[str, float]]=None,
         desired_distribution:Optional[Dict[str, float]]=None,
         undersample_ratios:Optional[Dict[str, float]]=None,
@@ -120,11 +119,7 @@ class PetalDataModule(LightningDataModule):
         if self.augment_technique is None:
             return
 
-        assert self.augment_ratios is not None, "Provided augment technique but not augment ratios!"
-        try:
-            augment_ratios = {self.class_to_idx[key]: augment_ratio for key, augment_ratio in self.augment_ratios.items()}
-        except KeyError:
-            raise MisconfigurationException("Invalid class provided in augment_ratios parameter!")
+        assert self.oversample_ratios is not None, "Provided augment technique but not augment ratios!"
         
         print("[Datamodule] Starting data augmentation")
 
@@ -137,7 +132,11 @@ class PetalDataModule(LightningDataModule):
             return None
         
         for class_name, ratio in self.oversample_ratios.items():
-            class_idx = self.class_to_idx[class_name]
+            try:
+                class_idx = self.class_to_idx[class_name]
+            except KeyError:
+                raise MisconfigurationException("Invalid class provided in augment_ratios parameter!")
+            
             augment_paths = list(filter(
                 lambda sample_path: sample_path[1] == class_idx,
                 train_sample_paths
