@@ -2,15 +2,6 @@ data:
   class_path: ml.data.modules.VisionDataModule
   init_args:
     dataset_type: pre-labeled
-    augment_technique: SRS
-    augment_ratios:
-      angry: 2.0
-      disgusted: 5.0
-      fearful: 5.0
-      surprised: 5.0
-    undersample_ratios:
-      neutral: 0.3
-      happy: 0.9
     pretrained_model_name: resnet50
     spectrogram_backend: torch
     spectrogram_type: spectrogram

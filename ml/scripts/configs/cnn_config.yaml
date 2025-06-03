@@ -3,14 +3,6 @@ data:
   class_path: ml.data.modules.CNNetDataModule
   init_args:
     dataset_type: pre-labeled
-    desired_distribution:
-      angry: 0.0557
-      disgusted: 0.01786
-      fearful: 0.00909
-      happy: 0.33785
-      neutral: 0.33785
-      sad: 0.22242
-      surprised: 0.019183
     spectrogram_backend: torch
     spectrogram_type: spectrogram
 model:

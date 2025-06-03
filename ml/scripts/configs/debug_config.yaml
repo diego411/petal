@@ -24,11 +24,6 @@ data:
   dataset_type: pre-labeled
   pretrained_model_name: resnet50
   spectrogram_type: spectrogram
-  augment_technique: SRS
-  augment_ratios:
-    angry: 0.5
-  #undersample_ratios:
-  #  neutral: 0.5
 model:
   freeze: false
   n_output: 7
