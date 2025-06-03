@@ -19,6 +19,15 @@ from src.utils.hash import hash_file_name
 
 
 BASE_DATA_PATH = Path.home() / '.data/petal/'
+ekman_emotions = ['angry', 'disgusted', 'fearful', 'happy', 'sad', 'surprised']
+
+
+def get_emotions(dataset_type: str) -> List[str]:
+    emotions = ekman_emotions
+    if dataset_type != 'post-labeled':
+        emotions = ekman_emotions + ['neutral']
+    
+    return emotions
 
 
 def get_audio_path(dataset_type: str) -> Path:
@@ -52,17 +61,12 @@ def download_data(verbose: bool):
         verbose=verbose
     )
 
-def load_audio(path: str, label: str):
-    dataset = []
-
-    walker_wav = sorted(str(p) for p in Path(path).glob(f'*.wav'))
-    walker_mp3 = sorted(str(p) for p in Path(path).glob(f'*.mp3'))
-
-    for i, file_path in enumerate(list(chain(walker_wav, walker_mp3))):
-        waveform, sample_rate = torchaudio.load(file_path)
-        dataset.append([waveform, sample_rate, label])
-
-    return dataset
+def get_audio_files(dataset_type: str, emotion: str) -> List[Path]:
+    path = BASE_DATA_PATH / dataset_type / 'audio' / emotion
+    walker_wav = sorted(p for p in Path(path).glob(f'*.wav'))
+    walker_mp3 = sorted(p for p in Path(path).glob(f'*.mp3'))
+    
+    return list(chain(walker_wav, walker_mp3))
 
 def get_number_of_fourier_transform_bins(waveform: Tensor | np.ndarray) -> int:
     waveform_length = waveform.shape[-1]
@@ -407,11 +411,8 @@ def create_spectrogram_images(
     spectrogram_backend: str
 ) -> Tuple[Path, Path, Path, pd.DataFrame]:
     download_data(verbose)
-    ekman_emotions = ['angry', 'disgusted', 'fearful', 'happy', 'sad', 'surprised']
 
-    all_emotions = ekman_emotions
-    if dataset_type != 'post-labeled':
-        all_emotions = ekman_emotions + ['neutral']
+    all_emotions = get_emotions(dataset_type)
 
     if dataset_type == 'post-labeled':
         label_by_video_emotions(verbose)
@@ -525,6 +526,34 @@ def create_spectrogram_images(
     print('\033[32m[Datamodule] Finished spectrogram generation\033[0m')
     return spectrogram_path, mel_spectrogram_path, librosa_spectrogram_path, df
 
+def get_audios(dataset_type: str, binary: bool) -> List[dict]:
+    audios = []
+    emotions = get_emotions(dataset_type)
+
+    for i, emotion in enumerate(emotions):
+        for file_path in get_audio_files(dataset_type, emotion):
+            label_index = i
+            class_name = emotion
+            if binary:
+                label_index = 0 if emotion == 'neutral' else 1
+                class_name = 'neutral' if emotion == 'neutral' else 'not-neutral'
+
+            waveform, sr = torchaudio.load(file_path)
+            waveform = waveform.mean(dim=0)  # Convert stereo to mono if needed
+
+            min_samples_for_vggish = int(sr * 0.96)
+
+            if len(waveform) < min_samples_for_vggish:
+                continue
+
+            audios.append({
+                'label_idx': label_index,
+                'class_name': class_name,
+                'waveform': waveform,
+                'sample_rate': sr
+            })
+
+    return audios
 
 if __name__ == '__main__':
     split_pre_labeled_audios()

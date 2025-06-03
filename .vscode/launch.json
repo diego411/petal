@@ -21,7 +21,21 @@
             ]
         },
         {
-            "name": "Debug Model CLI Test",
+            "name": "Debug Vggish CLI",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "ml.clis.vggish_cli",
+            "args": [
+                "fit", 
+                "--config", "ml/scripts/vggish/config.yaml", 
+                "--trainer.logger.save_dir", "ml/experiments",
+                "--trainer.logger.name", "debug_run",
+                "--trainer.logger.version", "version_0",
+                "--trainer.callbacks.dirpath", "ml/experiments/debug_run/version_0/checkpoints"
+            ]
+        },
+        {
+            "name": "Debug data util",
             "type": "debugpy",
             "request": "launch",
             "module": "ml.clis.debug_cli",
