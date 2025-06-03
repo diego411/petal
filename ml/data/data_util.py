@@ -411,11 +411,8 @@ def create_spectrogram_images(
     spectrogram_backend: str
 ) -> Tuple[Path, Path, Path, pd.DataFrame]:
     download_data(verbose)
-    ekman_emotions = ['angry', 'disgusted', 'fearful', 'happy', 'sad', 'surprised']
 
-    all_emotions = ekman_emotions
-    if dataset_type != 'post-labeled':
-        all_emotions = ekman_emotions + ['neutral']
+    all_emotions = get_emotions(dataset_type)
 
     if dataset_type == 'post-labeled':
         label_by_video_emotions(verbose)
