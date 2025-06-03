@@ -5,7 +5,7 @@ load_dotenv()
 
 
 class AppConfig:
-    VERSION = '1.0.0'
+    VERSION = '1.0.1'
     API_VERSION = 'v1'
     PROFILE = os.environ.get('PROFILE') or 'dev'
     JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY')
