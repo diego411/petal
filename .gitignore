@@ -1,9 +1,12 @@
 venv
 .env
-data
+./data
 model
 /audio/**.wav
 __pycache__
 logs
 /dbs/**.db
 /dbs/**.db-journal
+out
+**.out
+**.ckpt

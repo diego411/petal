@@ -1,0 +1,61 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Model CLI Fit",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "ml.clis.debug_cli",
+            "args": [
+                "fit",
+                "--config", "ml/scripts/configs/debug_config.yaml", 
+                "--trainer.logger.save_dir", "ml/experiments",
+                "--trainer.logger.name", "debug_run",
+                "--trainer.logger.version", "version_0",
+                "--trainer.callbacks.dirpath", "ml/experiments/debug_run/version_0/checkpoints",
+                "--experiment_hash", "debug_run",
+                "--experiment_version", "version_0"
+            ]
+        },
+        {
+            "name": "Debug Vggish CLI",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "ml.clis.vggish_cli",
+            "args": [
+                "fit", 
+                "--config", "ml/scripts/vggish/config.yaml", 
+                "--trainer.logger.save_dir", "ml/experiments",
+                "--trainer.logger.name", "debug_run",
+                "--trainer.logger.version", "version_0",
+                "--trainer.callbacks.dirpath", "ml/experiments/debug_run/version_0/checkpoints"
+            ]
+        },
+        {
+            "name": "Debug data util",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "ml.clis.debug_cli",
+            "args": [
+                "test",
+                "--config", "ml/experiments_to_test/9ec5795d0bb1c6eeffa679938a067b7e/version_0/debug_config.yaml", 
+                "--ckpt_path", "ml/experiments/9ec5795d0bb1c6eeffa679938a067b7e/version_0/checkpoints/epoch=00-validation_f1=0.66"
+            ]
+        },
+        {
+            "name": "Debug data util",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "ml.data.data_util"
+        },
+        {
+            "name": "Debug summarise experiments",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "ml.scripts.summarise_experiments"
+        }
+    ]
+}
