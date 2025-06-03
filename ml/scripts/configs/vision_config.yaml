@@ -1,17 +1,24 @@
 data:
   class_path: ml.data.modules.VisionDataModule
   init_args:
-    binary: true
     dataset_type: pre-labeled
-    desired_distribution: {'neutral': 0.5, 'not-neutral': 0.5}
-    pretrained_model_name: regnetx_008
+    augment_technique: SRS
+    augment_ratios:
+      angry: 2.0
+      disgusted: 5.0
+      fearful: 5.0
+      surprised: 5.0
+    undersample_ratios:
+      neutral: 0.3
+      happy: 0.9
+    pretrained_model_name: resnet50
     spectrogram_backend: torch
     spectrogram_type: spectrogram
 model:
   class_path: ml.models.VisionCNN
   init_args:
     freeze: false
-    n_output: 1
-    lr: 0.000630957
-    pretrained_model_name: regnetx_008
+    n_output: 7
+    lr: 0.0001
+    pretrained_model_name: resnet50
     weigh_loss: true

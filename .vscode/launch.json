@@ -27,8 +27,8 @@
             "module": "ml.clis.debug_cli",
             "args": [
                 "test",
-                "--config", "ml/experiments/8b6c98c764de0afaabbdbbf19e529831/version_0/config.yaml", 
-                "--ckpt_path", "ml/experiments/8b6c98c764de0afaabbdbbf19e529831/version_0/checkpoints/epoch=11-validation_f1=0.58"
+                "--config", "ml/experiments_to_test/9ec5795d0bb1c6eeffa679938a067b7e/version_0/debug_config.yaml", 
+                "--ckpt_path", "ml/experiments/9ec5795d0bb1c6eeffa679938a067b7e/version_0/checkpoints/epoch=00-validation_f1=0.66"
             ]
         },
         {

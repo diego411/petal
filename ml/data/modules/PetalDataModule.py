@@ -16,6 +16,7 @@ from typing import Optional, Dict
 from src.utils.file import find_file_path
 from collections import Counter
 import torch
+from ml.data.dataset_util import remove_class_samples
 
 class PetalDataModule(LightningDataModule):
 
@@ -28,16 +29,16 @@ class PetalDataModule(LightningDataModule):
         train_ratio:float=0.7,
         validation_ratio:float=0.1,
         augment_technique:Optional[str]=None,
-        undersample_ratios:Optional[Dict[str, float]]=None,
         oversample_ratios:Optional[Dict[str, float]]=None,
         desired_distribution:Optional[Dict[str, float]]=None,
+        undersample_ratios:Optional[Dict[str, float]]=None,
         seed:int=42,
         batch_size:int=16,
         number_of_workers:int=1,
         verbose:bool=True
     ):
         super().__init__()
-        print(number_of_workers)
+        
         self.dataset_type = dataset_type
         self.spectrogram_type = spectrogram_type
         self.spectrogram_backend = spectrogram_backend
@@ -45,6 +46,7 @@ class PetalDataModule(LightningDataModule):
         self.train_ratio = train_ratio
         self.validation_ratio = validation_ratio 
         self.desired_distribution = desired_distribution
+        self.undersample_ratios = undersample_ratios
         self.seed = seed 
         self.batch_size = batch_size
         self.number_of_workers = number_of_workers
@@ -81,6 +83,20 @@ class PetalDataModule(LightningDataModule):
         self.dataset = self.create_dataset()
         self.train_dataset, self.test_dataset, self.validation_dataset = self._create_stratified_data_split(self.dataset)
 
+        self.validation_minority_class_ratio = None
+        self.test_minority_class_ratio = None
+
+        if self.binary:
+            targets = np.array(self.dataset.targets)
+            target_counter = Counter(targets)
+            minority_class_idx = min(target_counter, key=target_counter.get)
+
+            validation_target_counter = Counter(targets[self.validation_dataset.indices])
+            test_target_counter = Counter(targets[self.test_dataset.indices])
+
+            self.validation_minority_class_ratio = validation_target_counter[minority_class_idx] / sum(validation_target_counter.values())
+            self.test_minority_class_ratio = test_target_counter[minority_class_idx] / sum(test_target_counter.values())
+        
         self._init_distribution_variables()
 
         augmented_samples = self._create_augment_samples(self.dataset)
@@ -103,6 +119,8 @@ class PetalDataModule(LightningDataModule):
         if self.augment_technique is None:
             return
 
+        assert self.oversample_ratios is not None, "Provided augment technique but not augment ratios!"
+        
         print("[Datamodule] Starting data augmentation")
 
         augmented_samples: List[dict] = []
@@ -114,7 +132,11 @@ class PetalDataModule(LightningDataModule):
             return None
         
         for class_name, ratio in self.oversample_ratios.items():
-            class_idx = self.class_to_idx[class_name]
+            try:
+                class_idx = self.class_to_idx[class_name]
+            except KeyError:
+                raise MisconfigurationException("Invalid class provided in augment_ratios parameter!")
+            
             augment_paths = list(filter(
                 lambda sample_path: sample_path[1] == class_idx,
                 train_sample_paths
@@ -222,22 +244,18 @@ class PetalDataModule(LightningDataModule):
         )
 
         if self.undersample_ratios is not None:
-            dataset_targets = np.array(dataset.targets)
-            train_targets = dataset_targets[train_indices]
             for class_name, ratio in self.undersample_ratios.items():
-                train_targets = dataset_targets[train_indices]
                 class_idx = self.class_to_idx[class_name]
-                target_mask = train_targets == class_idx
 
+                target_mask = np.array(dataset.targets)[train_indices] == class_idx
                 target_indices = train_indices[target_mask]
-                non_target_indices = train_indices[~target_mask]
 
                 n_keep = int(len(target_indices) * ratio)
-                np.random.shuffle(target_indices)
-                targets_keep = target_indices[:n_keep]
+                np.random.seed(self.seed)
+                indices_to_keep = np.random.choice(target_indices, n_keep, replace=False)
 
-                train_indices = np.concatenate([non_target_indices, targets_keep])
-                
+                train_indices = np.concatenate([train_indices[~target_mask], indices_to_keep])
+        
         # Create subset datasets
         train_subset = Subset(dataset, train_indices)
         test_subset = Subset(dataset, test_indices)
