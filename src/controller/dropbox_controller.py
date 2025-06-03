@@ -43,7 +43,7 @@ def list_all_folder_entries(dbx: dropbox.Dropbox, path=""):
 
 def download_folder(dbx: dropbox.Dropbox, dropbox_folder: Path, local_folder: Path = Path('data'), verbose: bool = True):
     if not local_folder.exists():
-        os.makedirs(local_folder)
+        os.makedirs(local_folder, exist_ok=True)
 
     entries = list_all_folder_entries(dbx, str(dropbox_folder))
     for entry in entries:
